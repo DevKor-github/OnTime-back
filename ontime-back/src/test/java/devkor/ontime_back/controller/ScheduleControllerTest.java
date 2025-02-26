@@ -9,8 +9,6 @@ import devkor.ontime_back.dto.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 
@@ -19,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -48,7 +45,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 new ScheduleDto(UUID.randomUUID(), new PlaceDto(UUID.randomUUID(), "과학도서관"), "공부하기", 10, startDate, 5, "늦으면 안됨", 2),
                 new ScheduleDto(UUID.randomUUID(), new PlaceDto(UUID.randomUUID(), "중식당"), "가족행사", 15, startDate.plusHours(2), 10, "생신", 0)
         );
-        when(scheduleService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
+        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         when(scheduleService.showSchedulesByPeriod(userId, startDate, endDate)).thenReturn(mockSchedules);
 
         // when & then
@@ -65,7 +62,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.data[1].scheduleName").value("가족행사"))
                 .andDo(print());
 
-        verify(scheduleService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
+        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).showSchedulesByPeriod(userId, startDate, endDate);
 
     }
@@ -79,7 +76,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
 
         ScheduleDto mockSchedule = new ScheduleDto(scheduleId, new PlaceDto(UUID.randomUUID(), "과학도서관"), "공부하기", 10, LocalDateTime.of(2024, 11, 15, 18, 0), 5, "늦으면 안됨", 2);
 
-        when(scheduleService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
+        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         when(scheduleService.showScheduleByScheduleId(userId, scheduleId)).thenReturn(mockSchedule);
 
         // when & then
@@ -95,7 +92,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.data.scheduleName").value("공부하기"))
                 .andDo(print());
 
-        verify(scheduleService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
+        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).showScheduleByScheduleId(userId, scheduleId);
     }
 
@@ -106,7 +103,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         UUID scheduleId = UUID.randomUUID();
         Long userId = 1L;
 
-        when(scheduleService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
+        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         doNothing().when(scheduleService).deleteSchedule(scheduleId, userId);
 
         // when & then
@@ -119,7 +116,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.message").value("OK"))
                 .andDo(print());
 
-        verify(scheduleService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
+        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).deleteSchedule(scheduleId, userId);
     }
 
@@ -141,7 +138,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 "점심 식단 확인하자."
         );
 
-        when(scheduleService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
+        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         doNothing().when(scheduleService).modifySchedule(userId, scheduleModDto);
 
         // when & then
@@ -155,7 +152,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.message").value("OK"))
                 .andDo(print());
 
-        verify(scheduleService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
+        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).modifySchedule(eq(userId), any(ScheduleModDto.class));
     }
 
@@ -179,7 +176,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 "늦으면 안됨"
         );
 
-        when(scheduleService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
+        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         doNothing().when(scheduleService).addSchedule(scheduleAddDto, userId);
 
         // when & then
@@ -193,7 +190,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.message").value("OK"))
                 .andDo(print());
 
-        verify(scheduleService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
+        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).addSchedule(any(ScheduleAddDto.class), eq(userId));
     }
 
@@ -204,7 +201,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         UUID scheduleId = UUID.randomUUID();
         Long userId = 1L;
 
-        when(scheduleService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
+        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         doNothing().when(scheduleService).checkIsStarted(scheduleId, userId);
 
         // when & then
@@ -217,7 +214,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.message").value("OK"))
                 .andDo(print());
 
-        verify(scheduleService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
+        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).checkIsStarted(scheduleId, userId);
     }
 
@@ -235,7 +232,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 new PreparationDto(preparationId2, "화장", 5, null)
         );
 
-        when(scheduleService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
+        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         when(scheduleService.getPreparations(userId, scheduleId)).thenReturn(mockPreparations);
 
         // when & then
@@ -250,7 +247,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.data[1].preparationName").value("화장"))
                 .andDo(print());
 
-        verify(scheduleService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
+        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).getPreparations(userId, scheduleId);
     }
 
