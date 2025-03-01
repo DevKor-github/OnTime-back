@@ -1,7 +1,6 @@
 package devkor.ontime_back.controller;
 
 import devkor.ontime_back.dto.*;
-import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.ScheduleService;
 import devkor.ontime_back.service.UserAuthService;
@@ -61,8 +60,7 @@ public class ScheduleController {
                                                                                         required = false,
                                                                                         example = "2024-11-18T20:00:00")
                                                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        Long userId = scheduleService.getUserIdFromToken(request);
-
+        Long userId = userAuthService.getUserIdFromToken(request);
         List<ScheduleDto> schedules = scheduleService.showSchedulesByPeriod(userId, startDate, endDate);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(schedules));
     }
@@ -96,9 +94,8 @@ public class ScheduleController {
                     example = "3fa85f64-5717-4562-b3fc-2c963f66afe5")
             @RequestParam UUID scheduleId) {
 
-        Long userId = scheduleService.getUserIdFromToken(request);
+        Long userId = userAuthService.getUserIdFromToken(request);
         ScheduleDto schedule = scheduleService.showScheduleByScheduleId(userId, scheduleId);
-
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(schedule));
     }
 
@@ -119,8 +116,7 @@ public class ScheduleController {
     })
     @DeleteMapping("/delete/{scheduleId}")
     public ResponseEntity<ApiResponseForm<Void>> deleteSchedule(HttpServletRequest request, @PathVariable UUID scheduleId) {
-        Long userId = scheduleService.getUserIdFromToken(request);
-
+        Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.deleteSchedule(scheduleId, userId);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
     }
@@ -145,8 +141,7 @@ public class ScheduleController {
     })
     @PutMapping("/modify")
     public ResponseEntity<ApiResponseForm<Void>> modifySchedule(HttpServletRequest request, @RequestBody ScheduleModDto scheduleModDto) {
-        Long userId = scheduleService.getUserIdFromToken(request);
-
+        Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.modifySchedule(userId, scheduleModDto);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
     }
@@ -171,8 +166,7 @@ public class ScheduleController {
     })
     @PostMapping("/add")
     public ResponseEntity<ApiResponseForm<Void>> addSchedule(HttpServletRequest request, @RequestBody ScheduleAddDto scheduleAddDto) {
-        Long userId = scheduleService.getUserIdFromToken(request);
-
+        Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.addSchedule(scheduleAddDto, userId);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
     }
@@ -194,8 +188,7 @@ public class ScheduleController {
     })
     @PatchMapping("/start/{scheduleId}")
     public ResponseEntity<ApiResponseForm<Void>> isStartedSchedule(HttpServletRequest request, @PathVariable UUID scheduleId) {
-        Long userId = scheduleService.getUserIdFromToken(request);
-
+        Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.checkIsStarted(scheduleId, userId);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
 
@@ -226,7 +219,6 @@ public class ScheduleController {
     public ResponseEntity<ApiResponseForm<List<LatenessHistoryResponse>>> getLatenessHistory(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         List<LatenessHistoryResponse> latenessHistory = scheduleService.getLatenessHistory(userId);
-
         String message = "지각 히스토리 조회 성공!";
         return ResponseEntity.ok(ApiResponseForm.success(latenessHistory, message));
     }
@@ -252,9 +244,8 @@ public class ScheduleController {
     })
     @GetMapping("/get/preparation/{scheduleId}")
     public ResponseEntity<ApiResponseForm<List<PreparationDto>>> getPreparation(HttpServletRequest request, @PathVariable UUID scheduleId) {
-        Long userId = scheduleService.getUserIdFromToken(request);
+        Long userId = userAuthService.getUserIdFromToken(request);
         List<PreparationDto> preparationDtoList = scheduleService.getPreparations(userId, scheduleId);
-
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(preparationDtoList));
     }
 
@@ -289,9 +280,7 @@ public class ScheduleController {
             @RequestBody FinishPreparationDto finishPreparationDto) {
 
         Long userId = userAuthService.getUserIdFromToken(request);
-
         scheduleService.finishSchedule(userId, finishPreparationDto);
-
         String message = "지각시간과 성실도점수가 성공적으로 업데이트 되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }

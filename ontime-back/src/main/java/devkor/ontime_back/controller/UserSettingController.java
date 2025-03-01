@@ -1,6 +1,5 @@
 package devkor.ontime_back.controller;
 
-import devkor.ontime_back.dto.ScheduleModDto;
 import devkor.ontime_back.dto.UserSettingUpdateDto;
 import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.UserAuthService;
@@ -82,9 +81,7 @@ public class UserSettingController {
     @PutMapping("/reset")
     public ResponseEntity<ApiResponseForm<?>> resetSetting(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
-
         userSettingService.resetSetting(userId);
-
         String message = "사용자 앱 설정이 성공적으로 초기화되었습니다! (soundVolume 50, 나머지 모두 true)";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }

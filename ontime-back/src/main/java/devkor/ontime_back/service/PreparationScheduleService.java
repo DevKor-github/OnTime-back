@@ -2,19 +2,18 @@ package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.PreparationDto;
 import devkor.ontime_back.entity.PreparationSchedule;
-import devkor.ontime_back.entity.PreparationUser;
 import devkor.ontime_back.entity.Schedule;
-import devkor.ontime_back.entity.User;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.PreparationScheduleRepository;
-import devkor.ontime_back.repository.PreparationUserRepository;
 import devkor.ontime_back.repository.ScheduleRepository;
 import devkor.ontime_back.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -23,33 +22,33 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
+@Slf4j
 public class PreparationScheduleService {
     private final PreparationScheduleRepository preparationScheduleRepository;
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public Long getUserIdFromToken(HttpServletRequest request) {
-        String accessToken = request.getHeader("Authorization").substring(7); // "Bearer "를 제외한 토큰
-        return jwtTokenProvider.extractUserId(accessToken).orElseThrow(() -> new RuntimeException("User ID not found in token"));
-    }
 
+    @Transactional
     public void makePreparationSchedules(Long userId, UUID scheduleId, List<PreparationDto> preparationDtoList) {
         handlePreparationSchedules(userId, scheduleId, preparationDtoList, false);
     }
 
+    @Transactional
     public void updatePreparationSchedules(Long userId, UUID scheduleId, List<PreparationDto> preparationDtoList) {
         handlePreparationSchedules(userId, scheduleId, preparationDtoList, true);
     }
 
-    private void handlePreparationSchedules(Long userId, UUID scheduleId, List<PreparationDto> preparationDtoList, boolean shouldDelete) {
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("Schedule not found with id: " + scheduleId));
+    @Transactional
+    protected void handlePreparationSchedules(Long userId, UUID scheduleId, List<PreparationDto> preparationDtoList, boolean shouldDelete) {
+        Schedule schedule = scheduleRepository.findByIdWithUser(scheduleId)
+                .orElseThrow(() -> new EntityNotFoundException("해당 ID의 일정을 찾을 수 없습니다: " + scheduleId));
 
         if (!schedule.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("User with ID " + userId + " is not authorized to modify this schedule.");
+            throw new AccessDeniedException("사용자가 해당 일정에 대한 권한이 없습니다.");
         }
 
         if (shouldDelete) {

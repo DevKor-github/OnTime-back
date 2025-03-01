@@ -3,15 +3,15 @@ package devkor.ontime_back.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 import java.util.UUID;
 
 @Getter
 @Entity
-@RequiredArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class FriendShip {
 
     @Id
@@ -25,19 +25,11 @@ public class FriendShip {
 
     private String acceptStatus; // "PENDING", "ACCEPTED", "REJECTED"
 
-    @Builder
-    public FriendShip(UUID friendShipId, Long requesterId, Long receiverId, String acceptStatus) {
-        this.friendShipId = friendShipId;
-        this.requesterId = requesterId;
-        this.receiverId = receiverId;
-        this.acceptStatus = acceptStatus;
-    }
-
-    public void setReceiverId(Long recieverId) {
+    public void updateReceiverId(Long recieverId) {
         this.receiverId = recieverId;
     }
 
-    public void setAcceptStatus(String acceptStatus) {
+    public void updateAcceptStatus(String acceptStatus) {
         this.acceptStatus = acceptStatus;
     }
 }

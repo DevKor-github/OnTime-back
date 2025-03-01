@@ -28,10 +28,8 @@ public class User {
     @Column(length = 30)
     private String name; // 이름
 
-    @Setter
     private Integer spareTime; // 여유시간
 
-    @Setter
     @Lob // 대용량 텍스트 필드
     @Column(columnDefinition = "TEXT") // 명시적으로 TEXT 타입으로 정의
     private String note; // 주의사항
@@ -52,7 +50,6 @@ public class User {
 
     private String refreshToken; // refreshToken
 
-    @Setter
     private String firebaseToken;
 
     private String socialLoginToken;
@@ -61,10 +58,10 @@ public class User {
     private UserSetting userSetting;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "requesterId", cascade = CascadeType.ALL)
-    private List<FriendShip> requestedFriendship = new ArrayList<>();
+    private List<FriendShip> requestedFriendship;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "receiverId", cascade = CascadeType.ALL)
-    private List<FriendShip> receivedFriendship = new ArrayList<>();
+    private List<FriendShip> receivedFriendship;
 
     public void updateAdditionalInfo(Integer spareTime, String note) {
         this.spareTime = spareTime;
@@ -79,10 +76,6 @@ public class User {
     // 비밀번호 암호화
     public void passwordEncode(PasswordEncoder passwordEncoder) {
         this.password = passwordEncoder.encode(this.password);
-    }
-
-    public void updateName(String updateName) {
-        this.name = updateName;
     }
 
     public void updatePassword(String updatePassword, PasswordEncoder passwordEncoder) {
@@ -105,7 +98,7 @@ public class User {
     }
 
     //여유 시간 업데이트
-    public void setSpareTime(Integer newSpareTime) { this.spareTime = newSpareTime; }
+    public void updateSpareTime(Integer newSpareTime) { this.spareTime = newSpareTime; }
 
     //유저세팅과 연결
     public void setUserSetting(UserSetting userSetting) {
@@ -124,5 +117,13 @@ public class User {
 
     public void setPunctualityScore(float punctualityScore) {
         this.punctualityScore = punctualityScore;
+    }
+
+    public void updateNote(String note) {
+        this.note = note;
+    }
+
+    public void updateFirebaseToken(String firebaseToken) {
+        this.firebaseToken = firebaseToken;
     }
 }

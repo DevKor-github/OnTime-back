@@ -90,8 +90,15 @@ public class LoggingAspect {
 
             // 정상 요청 로그 저장
             long timeTaken = System.currentTimeMillis() - beforeRequest;
-            ApiLog apiLog = new ApiLog(requestUrl, requestMethod, userId, clientIp,
-                    responseStatus, timeTaken);
+            ApiLog apiLog = ApiLog.builder().
+                    requestUrl(requestUrl).
+                    requestMethod(requestMethod).
+                    userId(userId).
+                    clientIp(clientIp).
+                    responseStatus(responseStatus).
+                    takenTime(timeTaken).
+                    build();
+
             apiLogRepository.save(apiLog);
 
             log.info("[Request Log] requestUrl: {}, requestMethod: {}, userId: {}, clientIp: {}, pathVariable: {}, requestBody: {}, responseStatus: {}, timeTaken: {}",
@@ -134,8 +141,15 @@ public class LoggingAspect {
                 requestUrl, requestMethod, userId, clientIp, exceptionName, exceptionMessage, responseStatus);
 
         // DB에 에러 로그 저장
-        ApiLog errorLog = new ApiLog(requestUrl, requestMethod, userId, clientIp,
-                responseStatus, 0); // 상태 코드와 시간은 예제로 설정
+        ApiLog errorLog = ApiLog.builder().
+                requestUrl(requestUrl).
+                requestMethod(requestMethod).
+                userId(userId).
+                clientIp(clientIp).
+                responseStatus(responseStatus).
+                takenTime(0).
+                build();
+         // 상태 코드와 시간은 예제로 설정
         apiLogRepository.save(errorLog);
     }
 

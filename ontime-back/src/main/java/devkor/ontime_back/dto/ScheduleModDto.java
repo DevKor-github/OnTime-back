@@ -1,17 +1,17 @@
 package devkor.ontime_back.dto;
 
-import devkor.ontime_back.entity.Place;
-import devkor.ontime_back.entity.User;
-import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 
-import java.sql.Time;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @ToString
 @Getter
+@Builder
+@AllArgsConstructor
 public class ScheduleModDto {
 
     private UUID scheduleId;

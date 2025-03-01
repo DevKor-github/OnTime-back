@@ -17,7 +17,6 @@ import java.util.UUID;
 @Table(
         indexes = {
                 @Index(name = "idx_schedule_user_id", columnList = "user_id"),
-                @Index(name = "idx_schedule_lateness_time", columnList = "latenessTime"),
                 @Index(name = "idx_schedule_time", columnList = "schedule_time")
         }
 )
@@ -48,7 +47,6 @@ public class Schedule {
 
     private Integer scheduleSpareTime; // 스케줄 별 여유시간
 
-    @Setter
     private Integer latenessTime; // 지각 시간 (NULL이면 약속 전, 0이면 약속 성공, N(양수)면 N분 지각)
 
     @Lob // 대용량 텍스트 필드
@@ -70,6 +68,10 @@ public class Schedule {
     }
 
     public void changePreparationSchedule() {this.isChange = true;}
+
+    public void updateLatenessTime(Integer latenessTime) {
+        this.latenessTime = latenessTime;
+    }
 }
 
 

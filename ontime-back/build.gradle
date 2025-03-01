@@ -56,6 +56,11 @@ dependencies {
 	// firebase
 	implementation 'com.google.firebase:firebase-admin:9.2.0'
 
+	// flyway
+	implementation 'org.flywaydb:flyway-mysql'
+
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
 }
 
 tasks.named('test') {

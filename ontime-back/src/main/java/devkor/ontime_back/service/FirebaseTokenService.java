@@ -8,24 +8,21 @@ import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.ErrorCode;
 import devkor.ontime_back.response.GeneralException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class FirebaseTokenService {
     private final UserRepository userRepository;
-    private final UserAuthService userAuthService;
-    private final NotificationService notificationService;
 
+    @Transactional
     public void registerFirebaseToken(Long userId, FirebaseTokenAddDto firebaseTokenAddDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        user.setFirebaseToken(firebaseTokenAddDto.getFirebaseToken());
+        user.updateFirebaseToken(firebaseTokenAddDto.getFirebaseToken());
         userRepository.save(user);
     }
 

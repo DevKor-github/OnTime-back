@@ -1,27 +1,25 @@
 package devkor.ontime_back.service;
 
-import com.google.api.Http;
 import devkor.ontime_back.dto.ChangePasswordDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserSignUpDto;
+import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.PreparationScheduleRepository;
 import devkor.ontime_back.repository.PreparationUserRepository;
 import devkor.ontime_back.repository.UserRepository;
-import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.repository.UserSettingRepository;
 import devkor.ontime_back.response.ErrorCode;
 import devkor.ontime_back.response.GeneralException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.NoSuchElementException;
 
@@ -98,8 +96,8 @@ public class UserAuthService {
     public User addInfo(Long id, UserAdditionalInfoDto userAdditionalInfoDto) throws Exception {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("존재하지 않는 유저 id입니다."));
-        user.setSpareTime(userAdditionalInfoDto.getSpareTime());
-        user.setNote(userAdditionalInfoDto.getNote());
+        user.updateSpareTime(userAdditionalInfoDto.getSpareTime());
+        user.updateNote(userAdditionalInfoDto.getNote());
         userRepository.save(user);
 
         return user;
@@ -131,8 +129,6 @@ public class UserAuthService {
     public Long deleteUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
-
-//        preparationUserRepository.clearNextPreparationByUserId(userId);
 
         userRepository.delete(user);
 

@@ -1,11 +1,7 @@
 package devkor.ontime_back.controller;
 
-import devkor.ontime_back.dto.CreateFriendshipLinkResponse;
-import devkor.ontime_back.dto.FriendDto;
-import devkor.ontime_back.dto.GetFriendshipRequesterResponse;
-import devkor.ontime_back.dto.UpdateAcceptStatusDto;
+import devkor.ontime_back.dto.*;
 import devkor.ontime_back.entity.User;
-import devkor.ontime_back.entity.GetFriendListResponse;
 import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.FriendshipService;
 import devkor.ontime_back.service.UserAuthService;
@@ -29,7 +25,6 @@ import java.util.UUID;
 public class FriendShipController {
 
     private final UserAuthService userAuthService;
-    private final UserService userService;
     private final FriendshipService friendShipService;
 
 

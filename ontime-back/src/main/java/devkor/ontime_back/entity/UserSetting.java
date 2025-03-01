@@ -2,11 +2,7 @@ package devkor.ontime_back.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
-import java.sql.Time;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter

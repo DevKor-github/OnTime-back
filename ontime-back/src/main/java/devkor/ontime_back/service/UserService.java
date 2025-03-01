@@ -1,7 +1,6 @@
 package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.UpdateSpareTimeDto;
-import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserOnboardingDto;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
@@ -71,7 +70,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저 id입니다."));
 
-        user.setSpareTime(updateSpareTimeDto.getNewSpareTime());
+        user.updateSpareTime(updateSpareTimeDto.getNewSpareTime());
 
         userRepository.save(user);
 

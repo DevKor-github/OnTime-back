@@ -8,6 +8,24 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      test_result: ${{ steps.run-tests.outcome }}  # 테스트 결과를 output으로 저장
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u$MYSQL_USER -p$MYSQL_PASSWORD"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
 
     steps:
       # 1. 코드 체크아웃
@@ -29,29 +47,58 @@ jobs:
       - name: Create Config Files
         run: |
           mkdir -p ontime-back/src/main/resources
+          mkdir -p ontime-back/src/main/resources/key
           echo "spring.application.name=${{ secrets.SPRING_APPLICATION_NAME }}" > ontime-back/src/main/resources/application.properties
-          echo "spring.datasource.url=${{ secrets.SPRING_DATASOURCE_URL }}" >> ontime-back/src/main/resources/application.properties
-          echo "spring.datasource.username=${{ secrets.SPRING_DATASOURCE_USERNAME }}" >> ontime-back/src/main/resources/application.properties
-          echo "spring.datasource.password=${{ secrets.SPRING_DATASOURCE_PASSWORD }}" >> ontime-back/src/main/resources/application.properties
-          echo "spring.datasource.driver-class-name=${{ secrets.SPRING_DATASOURCE_DRIVER_CLASS_NAME }}" >> ontime-back/src/main/resources/application.properties
-          echo "spring.jpa.hibernate.ddl-auto=${{ secrets.SPRING_JPA_HIBERNATE_DDL_AUTO }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.url=jdbc:mysql://localhost:3306/testdb?serverTimezone=UTC&useSSL=false" > ontime-back/src/test/resources/application.properties
+          echo "spring.datasource.username=testuser" >> ontime-back/src/test/resources/application.properties
+          echo "spring.datasource.password=testpass" >> ontime-back/src/test/resources/application.properties
+          echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/test/resources/application.properties
+          echo "spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect" >> ontime-back/src/test/resources/application.properties
+          echo "spring.jpa.hibernate.ddl-auto=update" >> ontime-back/src/test/resources/application.properties
+          echo "spring.sql.init.mode=always" >> ontime-back/src/test/resources/application.properties
           echo "jwt.secret.key=${{ secrets.JWT_SECRETKEY }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.access.expiration=${{ secrets.JWT_ACCESS_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.refresh.expiration=${{ secrets.JWT_REFRESH_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.access.header=${{ secrets.JWT_ACCESS_HEADER }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.refresh.header=${{ secrets.JWT_REFRESH_HEADER }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.google.client-id=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.google.client-secret=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.google.scope=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.google.redirect-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.google.authorization-grant-type=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.google.client-name=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.google.authorization-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.google.token-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.google.user-info-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.google.user-name-attribute=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.kakao.client-id=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.kakao.scope=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.kakao.redirect-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.kakao.authorization-grant-type=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.registration.kakao.client-name=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.kakao.authorization-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.kakao.token-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.kakao.user-info-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.security.oauth2.client.provider.kakao.user-name-attribute=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE }}" >> ontime-back/src/main/resources/application.properties
+          echo "apple.client.id=${{ secrets.APPLE_CLIENT_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "apple.client.secret=${{ secrets.APPLE_CLIENT_SECRET }}" >> ontime-back/src/main/resources/application.properties
+          echo "apple.login.key=${{ secrets.APPLE_LOGIN_KEY }}" >> ontime-back/src/main/resources/application.properties
+          echo "apple.team.id=${{ secrets.APPLE_TEAM_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "management.endpoints.web.exposure.include=health" >> ontime-back/src/main/resources/application.properties
+          echo "management.endpoint.health.show-details=always" >> ontime-back/src/main/resources/application.properties
+          echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
+          echo "${{ secrets.AUTHKEY_743M7R5W3W }}" > ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8
 
       # 5. Gradle 빌드 & JUnit 테스트 실행
       - name: Run Tests with Gradle
-        id: test
+        id: run-tests  # 실행 결과를 output으로 저장할 id 추가
         run: |
           cd ontime-back
           ./gradlew test
-        continue-on-error: true  # 실패해도 다음 스텝 실행 가능하도록 설정
 
   handle-failure:
     needs: test
-    if: failure()  # 이전 job이 실패한 경우 실행
+    if: needs.test.outputs.test_result == 'failure'  # test job의 output 값이 실패(failure)일 때 실행
     runs-on: ubuntu-latest
     steps:
       - name: Close PR

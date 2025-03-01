@@ -9,16 +9,14 @@ import devkor.ontime_back.repository.*;
 import devkor.ontime_back.response.ErrorCode;
 import devkor.ontime_back.response.GeneralException;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import jakarta.servlet.http.HttpServletRequest;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,12 +35,6 @@ public class ScheduleService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PreparationScheduleRepository preparationScheduleRepository;
     private final PreparationUserRepository preparationUserRepository;
-
-    // userId 추출
-    public Long getUserIdFromToken(HttpServletRequest request) {
-        String accessToken = request.getHeader("Authorization").substring(7); // "Bearer "를 제외한 토큰
-        return jwtTokenProvider.extractUserId(accessToken).orElseThrow(() -> new RuntimeException("token에서 userId가 추출되지 않습니다."));
-    }
 
     // scheduleId, userId를 통한 권한 확인
     private Schedule getScheduleWithAuthorization(UUID scheduleId, Long userId) {
@@ -163,7 +155,7 @@ public class ScheduleService {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new GeneralException(ErrorCode.SCHEDULE_NOT_FOUND));
 
-        schedule.setLatenessTime(latenessTime);
+        schedule.updateLatenessTime(latenessTime);
         scheduleRepository.save(schedule);
     }
 
@@ -178,18 +170,18 @@ public class ScheduleService {
         Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
 
         if (Boolean.TRUE.equals(schedule.getIsChange())) {
-            return preparationScheduleRepository.findBySchedule(schedule).stream()
+            return preparationScheduleRepository.findByScheduleWithNextPreparation(schedule).stream()
                     .map(preparationSchedule -> new PreparationDto(
-                            preparationSchedule.getPreparationId(),
+                            preparationSchedule.getPreparationScheduleId(),
                             preparationSchedule.getPreparationName(),
                             preparationSchedule.getPreparationTime(),
                             preparationSchedule.getNextPreparation() != null
-                                    ? preparationSchedule.getNextPreparation().getPreparationId()
+                                    ? preparationSchedule.getNextPreparation().getPreparationScheduleId()
                                     : null
                     ))
                     .collect(Collectors.toList());
         } else {
-            return preparationUserRepository.findByUser(schedule.getUser()).stream()
+            return preparationUserRepository.findByUserIdWithNextPreparation(schedule.getUser().getId()).stream()
                     .map(preparationUser -> new PreparationDto(
                             preparationUser.getPreparationId(),
                             preparationUser.getPreparationName(),

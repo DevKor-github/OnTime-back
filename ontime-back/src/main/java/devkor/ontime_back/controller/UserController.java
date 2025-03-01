@@ -1,9 +1,11 @@
 package devkor.ontime_back.controller;
 
-import devkor.ontime_back.dto.*;
+import devkor.ontime_back.dto.PunctualityScoreResponse;
+import devkor.ontime_back.dto.UpdateSpareTimeDto;
+import devkor.ontime_back.dto.UserInfoResponse;
+import devkor.ontime_back.dto.UserOnboardingDto;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.response.ApiResponseForm;
-import devkor.ontime_back.service.ScheduleService;
 import devkor.ontime_back.service.UserAuthService;
 import devkor.ontime_back.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,14 +15,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
@@ -29,7 +25,6 @@ public class UserController {
 
     private final UserService userService;
     private final UserAuthService userAuthService;
-    private final ScheduleService scheduleService;
 
     @Operation(
             summary = "성실도 점수 조회",
@@ -56,7 +51,6 @@ public class UserController {
     public ResponseEntity<ApiResponseForm<PunctualityScoreResponse>> getPunctualityScore(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         float punctualityScore = userService.getPunctualityScore(userId); // -1 or float 0~100 반환
-
         String message = "-1이면 성실도점수 초기화 직후의 상태. 0~100의 float 자료형이면 성실도 점수";
         return ResponseEntity.ok(ApiResponseForm.success(new PunctualityScoreResponse(punctualityScore), message));
     }
@@ -86,9 +80,7 @@ public class UserController {
     @PutMapping("/reset-punctuality") // 성실도 점수 초기화
     public ResponseEntity<ApiResponseForm<String>> resetPunctualityScore(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
-
         userService.resetPunctualityScore(userId);
-
         String message = "성실도 점수가 성공적으로 초기화 되었습니다! (초기화 이후 약속 수 <- 0, 초기화 이후 지각 수 <- 0, 성실도 점수 <- -1)";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }
@@ -119,9 +111,7 @@ public class UserController {
     @PutMapping("/spare-time")
     public ResponseEntity<ApiResponseForm<?>> updateSetting(HttpServletRequest request, @RequestBody UpdateSpareTimeDto updateSpareTimeDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
-
         userService.updateSpareTime(userId, updateSpareTimeDto);
-
         String message = "사용자 여유시간이 성공적으로 업데이트되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }
@@ -152,9 +142,7 @@ public class UserController {
     @PutMapping("/onboarding")
     public ResponseEntity<ApiResponseForm<?>> addInfo(HttpServletRequest request, @RequestBody UserOnboardingDto userOnboardingDto) throws Exception {
         Long userId = userAuthService.getUserIdFromToken(request);
-
         userService.onboarding(userId, userOnboardingDto);
-
         String message = "온보딩이 성공적으로 완료되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }
@@ -183,9 +171,7 @@ public class UserController {
     @GetMapping("/info")
     public ResponseEntity<ApiResponseForm<UserInfoResponse>> getUserInfo(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
-
         User user = userService.getUserInfo(userId);
-
         UserInfoResponse userInfoResponse = UserInfoResponse.builder()
                 .userId(user.getId())
                 .name(user.getName())
@@ -195,7 +181,6 @@ public class UserController {
                 .note(user.getNote())
                 .punctualityScore(user.getPunctualityScore())
                 .build();
-
         String message = "사용자 정보 조회 성공";
         return ResponseEntity.ok(ApiResponseForm.success(userInfoResponse, message));
     }

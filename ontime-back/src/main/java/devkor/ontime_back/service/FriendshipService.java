@@ -2,7 +2,6 @@ package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.FriendDto;
 import devkor.ontime_back.entity.FriendShip;
-import devkor.ontime_back.entity.GetFriendListResponse;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.FriendshipRepository;
 import devkor.ontime_back.repository.UserRepository;
@@ -51,7 +50,7 @@ public class FriendshipService {
 
 
         // UUID로 조회한 FriendShip 데이터에 수신자 ID 세팅
-        friendShip.setReceiverId(receiverId);
+        friendShip.updateReceiverId(receiverId);
         friendshipRepository.save(friendShip);
 
         // UUID로 조회한 FriendShip 데이터의 요청자 조회 및 반환
@@ -72,7 +71,7 @@ public class FriendshipService {
             throw new IllegalArgumentException("수신자 ID가 친구관계 ID와 매칭되지 않습니다.");
         }
 
-        friendShip.setAcceptStatus(acceptStatus);
+        friendShip.updateAcceptStatus(acceptStatus);
         friendshipRepository.save(friendShip);
     }
 

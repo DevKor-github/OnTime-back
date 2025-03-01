@@ -16,20 +16,3 @@ services:
 
     depends_on:
       - mysql # mysql 서비스가 실행된 이후에 backend를 실행
-
-  mysql:
-    image: mysql:8.0.34 # MySQL 8.0.34 이미지
-    container_name: mysql-container-ontime
-    environment:
-      MYSQL_DATABASE: ontime_db
-      MYSQL_USER: ontime
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      ONTIME_PASSWORD: ${ONTIME_PASSWORD}
-      ONTIME_HOST: ${ONTIME_HOST}
-    ports:
-      - "3307:3306" # 호스트의 3306 포트를 컨테이너의 3306 포트로 매핑
-    volumes:
-      - mysql_data:/var/lib/mysql # MySQL 데이터를 지속적으로 저장
-volumes:
-  mysql_data: # MySQL 데이터를 저장할 볼륨 정의

@@ -16,6 +16,9 @@ import java.util.UUID;
 @Repository
 public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
 
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.place WHERE s.scheduleId = :scheduleId")
+    Optional<Schedule> findByIdWithPlace(@Param("scheduleId")UUID scheduleId);
+
     // getScheduleWithAuthorization에서 Lazy Loading으로 인해 추가 SELECT 발생 가능 -> JOIN FETCH를 사용하여 Schedule과 User를 한 번의 쿼리로 조회
     @Query("SELECT s FROM Schedule s JOIN FETCH s.user WHERE s.scheduleId = :scheduleId")
     Optional<Schedule> findByIdWithUser(@Param("scheduleId") UUID scheduleId);

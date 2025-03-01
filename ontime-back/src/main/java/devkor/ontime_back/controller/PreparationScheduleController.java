@@ -3,6 +3,7 @@ package devkor.ontime_back.controller;
 import devkor.ontime_back.dto.PreparationDto;
 import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.PreparationScheduleService;
+import devkor.ontime_back.service.UserAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class PreparationScheduleController {
 
     private final PreparationScheduleService preparationScheduleService;
+    private final UserAuthService userAuthService;
 
     @Operation(
             summary = "스케줄별 준비과정 생성",
@@ -44,7 +46,7 @@ public class PreparationScheduleController {
     })
     @PostMapping("/create/{scheduleId}")
     public ResponseEntity<ApiResponseForm<Void>> createPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
-        Long userId = preparationScheduleService.getUserIdFromToken(request);
+        Long userId = userAuthService.getUserIdFromToken(request);
 
         preparationScheduleService.makePreparationSchedules(userId, scheduleId, preparationDtoList);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
@@ -69,7 +71,7 @@ public class PreparationScheduleController {
     })
     @PostMapping("/modify/{scheduleId}")
     public ResponseEntity<ApiResponseForm<Void>> modifyPreparationUser(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
-        Long userId = preparationScheduleService.getUserIdFromToken(request);
+        Long userId = userAuthService.getUserIdFromToken(request);
 
         preparationScheduleService.updatePreparationSchedules(userId, scheduleId, preparationDtoList);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));

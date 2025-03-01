@@ -15,13 +15,19 @@ import java.util.UUID;
 @Repository
 public interface PreparationUserRepository extends JpaRepository<PreparationUser, UUID> {
 
-    List<PreparationUser> findByUser(User user);
+    // user 객체를 생성하는 대신, userId로 preparationUser 가져오는 메서드 생성
+    @Query("SELECT pu FROM PreparationUser pu " +
+            "LEFT JOIN FETCH pu.nextPreparation " +
+            "WHERE pu.user.id = :userId")
+    List<PreparationUser> findByUserIdWithNextPreparation(@Param("userId") Long userId);
 
-    @Query("SELECT pu FROM PreparationUser pu WHERE pu.user = :user AND pu NOT IN " +
-            "(SELECT p.nextPreparation FROM PreparationUser p WHERE p.nextPreparation IS NOT NULL)")
-    Optional<PreparationUser> findFirstPreparationUserByUser(User user);
+    @Query("SELECT pu FROM PreparationUser pu " +
+            "LEFT JOIN FETCH pu.nextPreparation " +
+            "WHERE pu.user.id = :userId " +
+            "AND pu NOT IN (SELECT p.nextPreparation FROM PreparationUser p WHERE p.nextPreparation IS NOT NULL)")
+    Optional<PreparationUser> findFirstPreparationUserByUserIdWithNextPreparation(@Param("userId") Long userId);
 
-    void deleteByUser(User user); // 메서드 선언
+    void deleteByUser(User user);
 
     @Modifying
     @Query("UPDATE PreparationUser p SET p.nextPreparation = NULL WHERE p.user.id = :userId")

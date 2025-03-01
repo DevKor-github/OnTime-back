@@ -5,20 +5,16 @@ import com.google.firebase.messaging.Message;
 import devkor.ontime_back.entity.Schedule;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserSetting;
-import devkor.ontime_back.repository.ScheduleRepository;
-import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.repository.UserSettingRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class NotificationService {
 
     private final UserSettingRepository userSettingRepository;
@@ -48,10 +44,10 @@ public class NotificationService {
         System.out.println(user.getName() + "님 " + message + "\n약속: " + schedule); // 테스트용. 파이어베이스 확인되면 이 라인삭제해야함
 
         Message firebaseMessage = Message.builder()
-                        .putData("title", "약속 알림")
-                        .putData("content", user.getName() + "님 " + message + "\n약속: " + schedule)
-                        .setToken(firebaseToken)
-                        .build();
+                .putData("title", "약속 알림")
+                .putData("content", user.getName() + "님 " + message + "\n약속: " + schedule)
+                .setToken(firebaseToken)
+                .build();
 
         try {
             String response = FirebaseMessaging.getInstance().send(firebaseMessage);

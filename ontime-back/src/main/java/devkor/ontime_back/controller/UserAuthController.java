@@ -1,6 +1,8 @@
 package devkor.ontime_back.controller;
 
-import devkor.ontime_back.dto.*;
+import devkor.ontime_back.dto.ChangePasswordDto;
+import devkor.ontime_back.dto.UserInfoResponse;
+import devkor.ontime_back.dto.UserSignUpDto;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.ApiResponseForm;
@@ -16,8 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
-import java.util.HashMap;
 import java.util.Map;
 
 
@@ -26,7 +26,6 @@ import java.util.Map;
 public class UserAuthController {
 
     private final UserAuthService userAuthService;
-    private final UserRepository userRepository;
 
     @Operation(
             summary = "일반 회원가입 (회원가입 시 자동으로 로그인도 되어 헤더에 JWT토큰을 반환함)",
@@ -50,7 +49,6 @@ public class UserAuthController {
     @PostMapping("/sign-up")
     public ResponseEntity<ApiResponseForm<UserInfoResponse>> signUp(HttpServletRequest request, HttpServletResponse response, @RequestBody UserSignUpDto userSignUpDto) throws Exception {
         User user = userAuthService.signUp(request, response, userSignUpDto);
-
         String message = "회원가입이 성공적으로 완료되었습니다. 온보딩을 진행해주세요( /user/onboarding )";
         UserInfoResponse userSignUpResponse = UserInfoResponse.builder()
                 .userId(user.getId())
@@ -61,7 +59,6 @@ public class UserAuthController {
                 .note(user.getNote())
                 .punctualityScore(user.getPunctualityScore())
                 .build();
-
         return ResponseEntity.ok(ApiResponseForm.success(userSignUpResponse, message));
     }
 
@@ -110,9 +107,7 @@ public class UserAuthController {
     @PutMapping("/change-password")
     public ResponseEntity<ApiResponseForm<String>> changePassword(HttpServletRequest request, @RequestBody ChangePasswordDto changePasswordDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
-
         userAuthService.changePassword(userId, changePasswordDto);
-
         String message = "비밀번호가 성공적으로 변경되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }
@@ -143,7 +138,6 @@ public class UserAuthController {
     public ResponseEntity<ApiResponseForm<?>> deleteUser(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         userAuthService.deleteUser(userId);
-
         String message = "계정이 성공적으로 삭제되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }

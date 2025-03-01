@@ -1,13 +1,16 @@
 package devkor.ontime_back.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class ApiLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,12 +32,4 @@ public class ApiLog {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    public ApiLog(String requestUrl, String requestMethod, String userId, String clientIp, int responseStatus, long takenTime) {
-        this.requestUrl = requestUrl;
-        this.requestMethod = requestMethod;
-        this.userId = userId;
-        this.clientIp = clientIp;
-        this.responseStatus = responseStatus;
-        this.takenTime = takenTime;
-    }
 }
