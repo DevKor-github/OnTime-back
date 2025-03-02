@@ -61,7 +61,7 @@ jobs:
           mkdir -p ontime-back/src/main/resources
           mkdir -p ontime-back/src/main/resources/key
           echo "spring.application.name=${{ secrets.SPRING_APPLICATION_NAME }}" > ontime-back/src/main/resources/application.properties
-          echo "spring.datasource.url=jdbc:mysql://localhost:3306/test_db?serverTimezone=UTC&useSSL=false" >> ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/test_db?serverTimezone=UTC&useSSL=false" >> ontime-back/src/main/resources/application.properties
           echo "spring.datasource.username=test_user" >> ontime-back/src/main/resources/application.properties
           echo "spring.datasource.password=test_password" >> ontime-back/src/main/resources/application.properties
           echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/main/resources/application.properties
@@ -112,7 +112,14 @@ jobs:
         continue-on-error: true
         run: |
           cd ontime-back
-          ./gradlew test
+          ./gradlew test --stacktrace --info
+
+      - name: Upload Test Reports
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: ontime-back/build/reports/tests/test/
 
   handle-failure:
     needs: test
@@ -150,5 +157,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: "테스트가 실패했습니다. PR이 자동으로 닫혔습니다.\n자세한 실패 로그를 확인하고 수정한 후 다시 PR을 올려주세요!"
+              body: "실패하는 테스트코드가 있어 PR이 자동으로 닫혔습니다.\nGithub Action에서 자세한 실패 로그를 확인하고 코드를 수정한 뒤 PR을 올려주세요!"
             });
