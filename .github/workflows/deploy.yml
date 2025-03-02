@@ -13,10 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       # JDK 설치
-      - name: Set up JDK 21 # 실행 환경에서 사용 중인 JDK 확인 (java -version)
+      - name: Set up JDK 21 # build.gradle 버전 확인
         uses: actions/setup-java@v2
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
       # Gradle Wrapper 검증
       - name: Set up Gradle
