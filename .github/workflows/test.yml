@@ -118,6 +118,8 @@ jobs:
     needs: test
     if: needs.test.outputs.test_result == 'failure'  # test job의 output 값이 실패(failure)일 때 실행
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Close PR
         uses: octokit/request-action@v2.x
