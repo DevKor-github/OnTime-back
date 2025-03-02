@@ -54,6 +54,12 @@ jobs:
           echo "MySQL did not become ready in time!" >&2
           exit 1
 
+      - name: Check MySQL Connectivity
+        run: |
+          echo "Checking MySQL connection..."
+          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SHOW DATABASES;"
+
+
 
       # 5. 환경 변수 설정 파일 생성
       - name: Create Config Files
@@ -121,6 +127,7 @@ jobs:
           name: test-reports
           path: ontime-back/build/reports/tests/test/
 
+      
   handle-failure:
     needs: test
     if: needs.test.outputs.test_result == 'failure'  # test job의 output 값이 실패(failure)일 때 실행
