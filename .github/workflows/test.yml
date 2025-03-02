@@ -39,10 +39,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. 의존성 설치
+      # 3.0 그래들 권한 부여
+      - name: Grant execute permission for Gradle
+        run: chmod +x ./gradlew
+
+      # 3.1 의존성 설치
       - name: Install dependencies
         run: |
-          ./gradlew dependencies  # Gradle 예시, Maven이면 mvn install
+          ./gradlew dependencies
 
       # 4. MySQL 인스톨까지 대기
       - name: Wait for MySQL
@@ -60,7 +64,7 @@ jobs:
           exit 1
 
 
-      # 4. 환경 변수 설정 파일 생성
+      # 5. 환경 변수 설정 파일 생성
       - name: Create Config Files
         run: |
           mkdir -p ontime-back/src/main/resources
@@ -111,7 +115,7 @@ jobs:
           echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
           echo "${{ secrets.AUTHKEY_743M7R5W3W }}" > ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8
 
-      # 5. Gradle 빌드 & JUnit 테스트 실행
+      # 6. Gradle 빌드 & JUnit 테스트 실행
       - name: Run Tests with Gradle
         id: run-tests  # 실행 결과를 output으로 저장할 id 추가
         continue-on-error: true
