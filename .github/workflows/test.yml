@@ -39,14 +39,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3.0 그래들 권한 부여
-      - name: Grant execute permission for Gradle
-        run: chmod +x ./gradlew
-
-      # 3.1 의존성 설치
-      - name: Install dependencies
-        run: |
-          ./gradlew dependencies
+      # 3. Gradle Wrapper 검증
+      - name: Set up Gradle
+        uses: gradle/wrapper-validation-action@v1
 
       # 4. MySQL 인스톨까지 대기
       - name: Wait for MySQL
@@ -137,7 +132,7 @@ jobs:
           pull_number: ${{ github.event.pull_request.number }}
           state: closed
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment on PR
         uses: actions/github-script@v6
