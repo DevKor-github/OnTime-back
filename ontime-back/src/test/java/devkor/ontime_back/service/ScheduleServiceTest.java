@@ -1306,7 +1306,7 @@ class ScheduleServiceTest {
         assertThat(latenessHistory).hasSize(2)
                 .extracting("scheduleId", "scheduleName", "scheduleTime", "latenessTime")
                 .containsExactlyInAnyOrder(
-                        tuple(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"), "을사년 새해인줄 알았지?^^", LocalDateTime.of(2025, 1, 1, 0, 0), 3),
+                        tuple(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"), "을사년 새해", LocalDateTime.of(2025, 1, 1, 0, 0), 3),
                         tuple(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe6"), "생일파티", LocalDateTime.of(2025, 1, 12, 21, 0), 1)
                 );
     }
