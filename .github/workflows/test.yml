@@ -65,13 +65,13 @@ jobs:
           mkdir -p ontime-back/src/main/resources
           mkdir -p ontime-back/src/main/resources/key
           echo "spring.application.name=${{ secrets.SPRING_APPLICATION_NAME }}" > ontime-back/src/main/resources/application.properties
-          echo "spring.datasource.url=jdbc:mysql://localhost:3306/test_db?serverTimezone=UTC&useSSL=false" > ontime-back/src/test/resources/application.properties
-          echo "spring.datasource.username=test_user" >> ontime-back/src/test/resources/application.properties
-          echo "spring.datasource.password=test_password" >> ontime-back/src/test/resources/application.properties
-          echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/test/resources/application.properties
-          echo "spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect" >> ontime-back/src/test/resources/application.properties
-          echo "spring.jpa.hibernate.ddl-auto=update" >> ontime-back/src/test/resources/application.properties
-          echo "spring.sql.init.mode=always" >> ontime-back/src/test/resources/application.properties
+          echo "spring.datasource.url=jdbc:mysql://localhost:3306/test_db?serverTimezone=UTC&useSSL=false" > ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.username=test_user" >> ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.password=test_password" >> ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/main/resources/application.properties
+          echo "spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect" >> ontime-back/src/main/resources/application.properties
+          echo "spring.jpa.hibernate.ddl-auto=update" >> ontime-back/src/main/resources/application.properties
+          echo "spring.sql.init.mode=always" >> ontime-back/src/main/resources/application.properties
           echo "jwt.secret.key=${{ secrets.JWT_SECRETKEY }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.access.expiration=${{ secrets.JWT_ACCESS_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.refresh.expiration=${{ secrets.JWT_REFRESH_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
