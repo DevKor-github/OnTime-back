@@ -39,7 +39,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 4. MySQL 인스톨까지 대기
+      # 3. MySQL 인스톨까지 대기 및 연결상태 확인(디버깅용)
       - name: Wait for MySQL
         run: |
           echo "Waiting for MySQL to be ready..."
@@ -61,7 +61,7 @@ jobs:
 
 
 
-      # 5. 환경 변수 설정 파일 생성
+      # 4. 환경 변수 설정 파일 생성
       - name: Create Config Files
         run: |
           mkdir -p ontime-back/src/main/resources
@@ -112,20 +112,13 @@ jobs:
           echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
           echo "${{ secrets.AUTHKEY_743M7R5W3W }}" > ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8
 
-      # 6. Gradle 빌드 & JUnit 테스트 실행
+      # 5. Gradle 빌드 & JUnit 테스트 실행
       - name: Run Tests with Gradle
         id: run-tests  # 실행 결과를 output으로 저장할 id 추가
         continue-on-error: true
         run: |
           cd ontime-back
-          ./gradlew test --stacktrace --info
-
-      - name: Upload Test Reports
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: ontime-back/build/reports/tests/test/
+          ./gradlew test
 
       
   handle-failure:
@@ -164,5 +157,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: "실패하는 테스트코드가 있어 PR이 자동으로 닫혔습니다.\nGithub Action에서 자세한 실패 로그를 확인하고 코드를 수정한 뒤 PR을 올려주세요!"
+              body: "실패하는 테스트코드가 있어 PR이 자동으로 닫혔습니다.\nGithub Action에서 자세한 실패 로그를 확인하고 코드를 수정하세요."
             });
