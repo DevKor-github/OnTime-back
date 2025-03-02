@@ -120,6 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      issues: write
     steps:
       - name: Close PR
         uses: octokit/request-action@v2.x
