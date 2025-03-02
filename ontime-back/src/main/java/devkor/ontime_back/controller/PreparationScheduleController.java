@@ -70,7 +70,7 @@ public class PreparationScheduleController {
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PostMapping("/modify/{scheduleId}")
-    public ResponseEntity<ApiResponseForm<Void>> modifyPreparationUser(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
+    public ResponseEntity<ApiResponseForm<Void>> modifyPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
         preparationScheduleService.updatePreparationSchedules(userId, scheduleId, preparationDtoList);
