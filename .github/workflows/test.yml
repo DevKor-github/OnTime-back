@@ -141,10 +141,14 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.pulls.createReview({
+            const prNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (!prNumber) {
+              console.log("PR 번호를 찾을 수 없습니다.");
+              return;
+            }
+            github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
-              event: "COMMENT",
+              issue_number: prNumber,
               body: "테스트가 실패했습니다. PR이 자동으로 닫혔습니다.\n자세한 실패 로그를 확인하고 수정한 후 다시 PR을 올려주세요!"
-            })
+            });
