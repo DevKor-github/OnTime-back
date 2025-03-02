@@ -39,10 +39,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. Gradle Wrapper 검증
-      - name: Set up Gradle
-        uses: gradle/wrapper-validation-action@v1
-
       # 4. MySQL 인스톨까지 대기
       - name: Wait for MySQL
         run: |
