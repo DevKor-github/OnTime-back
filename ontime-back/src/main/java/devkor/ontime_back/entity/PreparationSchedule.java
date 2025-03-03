@@ -31,6 +31,7 @@ public class PreparationSchedule {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "next_preparation_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private PreparationSchedule nextPreparation;
 
     public void updateNextPreparation(PreparationSchedule nextPreparation) {
