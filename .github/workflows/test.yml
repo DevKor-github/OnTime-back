@@ -124,10 +124,8 @@ jobs:
       - name: Run Flyway Migration Manually
         run: |
           cd ontime-back
-          ./gradlew flywayMigrate \
-            -Dflyway.url=jdbc:mysql://127.0.0.1:3306/test_db?serverTimezone=UTC&useSSL=false \
-            -Dflyway.user=test_user \
-            -Dflyway.password=test_password
+          ./gradlew -Dflyway.url=jdbc:mysql://127.0.0.1:3306/test_db?serverTimezone=UTC&useSSL=false -Dflyway.user=test_user -Dflyway.password=test_password flywayMigrate
+
       
       - name: Verify Flyway Migrations
         run: |
