@@ -17,7 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
                 UserController.class,
                 ScheduleController.class,
                 FriendShipController.class,
-                PreparationUserController.class
+                PreparationUserController.class,
+                PreparationScheduleController.class
         }
 )
 public abstract class ControllerTestSupport {
@@ -42,6 +43,9 @@ public abstract class ControllerTestSupport {
 
     @MockBean
     protected PreparationUserService preparationUserService;
+
+    @MockBean
+    protected PreparationScheduleService preparationScheduleService;
 
     @MockBean
     protected UserRepository userRepository;
