@@ -57,7 +57,7 @@ jobs:
       - name: Check MySQL Connectivity
         run: |
           echo "Checking MySQL connection..."
-          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SHOW DATABASES;
+          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SHOW DATABASES;"
 
 
 
