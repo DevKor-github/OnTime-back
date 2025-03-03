@@ -55,10 +55,10 @@ public class PreparationUserService {
 
         while (current != null) {
             PreparationDto dto = new PreparationDto(
-                    current.getPreparationId(),
+                    current.getPreparationUserId(),
                     current.getPreparationName(),
                     current.getPreparationTime(),
-                    current.getNextPreparation() != null ? current.getNextPreparation().getPreparationId() : null
+                    current.getNextPreparation() != null ? current.getNextPreparation().getPreparationUserId() : null
             );
             preparationDtos.add(dto);
             current = current.getNextPreparation();

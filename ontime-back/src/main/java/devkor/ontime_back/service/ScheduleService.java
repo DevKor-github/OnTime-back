@@ -183,11 +183,11 @@ public class ScheduleService {
         } else {
             return preparationUserRepository.findByUserIdWithNextPreparation(schedule.getUser().getId()).stream()
                     .map(preparationUser -> new PreparationDto(
-                            preparationUser.getPreparationId(),
+                            preparationUser.getPreparationUserId(),
                             preparationUser.getPreparationName(),
                             preparationUser.getPreparationTime(),
                             preparationUser.getNextPreparation() != null
-                                    ? preparationUser.getNextPreparation().getPreparationId()
+                                    ? preparationUser.getNextPreparation().getPreparationUserId()
                                     : null
                     ))
                     .collect(Collectors.toList());
