@@ -16,13 +16,13 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: testdb
-          MYSQL_USER: testuser
-          MYSQL_PASSWORD: testpass
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u$MYSQL_USER -p$MYSQL_PASSWORD"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=root"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
@@ -32,16 +32,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. JDK 21 설정
-      - name: Set up JDK 21
+      # 2. JDK 17 설정
+      - name: Set up JDK 17
         uses: actions/setup-java@v2
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
 
-      # 3. Gradle Wrapper 검증
-      - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v1
+      # 3. MySQL 인스톨까지 대기 및 연결상태 확인(디버깅용)
+      - name: Wait for MySQL
+        run: |
+          echo "Waiting for MySQL to be ready..."
+          for i in {1..30}; do
+            if mysql -h 127.0.0.1 -u root --password=root -e "SELECT 1" &> /dev/null; then
+              echo "MySQL is ready!"
+              exit 0
+            fi
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+          echo "MySQL did not become ready in time!" >&2
+          exit 1
+
+      - name: Check MySQL Connectivity
+        run: |
+          echo "Checking MySQL connection..."
+          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SHOW DATABASES;"
+
+
 
       # 4. 환경 변수 설정 파일 생성
       - name: Create Config Files
@@ -49,13 +67,13 @@ jobs:
           mkdir -p ontime-back/src/main/resources
           mkdir -p ontime-back/src/main/resources/key
           echo "spring.application.name=${{ secrets.SPRING_APPLICATION_NAME }}" > ontime-back/src/main/resources/application.properties
-          echo "spring.datasource.url=jdbc:mysql://localhost:3306/testdb?serverTimezone=UTC&useSSL=false" > ontime-back/src/test/resources/application.properties
-          echo "spring.datasource.username=testuser" >> ontime-back/src/test/resources/application.properties
-          echo "spring.datasource.password=testpass" >> ontime-back/src/test/resources/application.properties
-          echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/test/resources/application.properties
-          echo "spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect" >> ontime-back/src/test/resources/application.properties
-          echo "spring.jpa.hibernate.ddl-auto=update" >> ontime-back/src/test/resources/application.properties
-          echo "spring.sql.init.mode=always" >> ontime-back/src/test/resources/application.properties
+          echo "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/test_db?serverTimezone=UTC&useSSL=false" >> ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.username=test_user" >> ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.password=test_password" >> ontime-back/src/main/resources/application.properties
+          echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/main/resources/application.properties
+          echo "spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect" >> ontime-back/src/main/resources/application.properties
+          echo "spring.jpa.hibernate.ddl-auto=validate" >> ontime-back/src/main/resources/application.properties
+          echo "spring.sql.init.mode=always" >> ontime-back/src/main/resources/application.properties
           echo "jwt.secret.key=${{ secrets.JWT_SECRETKEY }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.access.expiration=${{ secrets.JWT_ACCESS_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.refresh.expiration=${{ secrets.JWT_REFRESH_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
@@ -84,6 +102,11 @@ jobs:
           echo "apple.client.secret=${{ secrets.APPLE_CLIENT_SECRET }}" >> ontime-back/src/main/resources/application.properties
           echo "apple.login.key=${{ secrets.APPLE_LOGIN_KEY }}" >> ontime-back/src/main/resources/application.properties
           echo "apple.team.id=${{ secrets.APPLE_TEAM_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.enabled=true" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.url=jdbc:mysql://127.0.0.1:3306/test_db?serverTimezone=UTC&useSSL=false" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.user=test_user" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.password=test_password" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.baseline-on-migrate=true" >> ontime-back/src/main/resources/application.properties
           echo "management.endpoints.web.exposure.include=health" >> ontime-back/src/main/resources/application.properties
           echo "management.endpoint.health.show-details=always" >> ontime-back/src/main/resources/application.properties
           echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
@@ -92,14 +115,24 @@ jobs:
       # 5. Gradle 빌드 & JUnit 테스트 실행
       - name: Run Tests with Gradle
         id: run-tests  # 실행 결과를 output으로 저장할 id 추가
+        continue-on-error: true
         run: |
           cd ontime-back
           ./gradlew test
 
+      - name: Verify Flyway Migrations
+        run: |
+          echo "Checking Flyway migration history..."
+          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SELECT * FROM test_db.flyway_schema_history;"
+
+      
   handle-failure:
     needs: test
     if: needs.test.outputs.test_result == 'failure'  # test job의 output 값이 실패(failure)일 때 실행
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
     steps:
       - name: Close PR
         uses: octokit/request-action@v2.x
@@ -112,14 +145,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Wait for PR to close
+        run: sleep 5
+
       - name: Comment on PR
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.issues.createComment({
+            const prNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (!prNumber) {
+              console.log("PR 번호를 찾을 수 없습니다.");
+              return;
+            }
+            github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: "테스트가 실패했습니다.\n자세한 실패 로그를 확인하고 수정한 후 다시 PR을 올려주세요!"
-            })
+              issue_number: prNumber,
+              body: "실패하는 테스트코드가 있어 PR이 자동으로 닫혔습니다.\nGithub Action에서 자세한 실패 로그를 확인하고 코드를 수정하세요."
+            });

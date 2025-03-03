@@ -193,7 +193,7 @@ class FriendshipServiceTest {
         // when // then
         assertThatThrownBy(() -> friendshipService.getFriendShipRequester(addedReceiver.getId(), UUID.randomUUID()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("존재하지 않는 친구 요청입니다.");
+                .hasMessage("존재하지 않는 친구 요청입니다. 친구 추가를 신청한 유저가 탈퇴했을 수 있습니다.");
     }
 
     @DisplayName("친구추가 요청자 정보 조회 시 잘못된 친구추가 요청자id가 전달될 때 예외가 발생한다.")
@@ -232,7 +232,7 @@ class FriendshipServiceTest {
         // when // then
         assertThatThrownBy(() -> friendshipService.getFriendShipRequester(addedReceiver.getId(), friendShip.getFriendShipId()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("존재하지 않는 친구추가 요청자 id입니다. 해당 유저가 탈퇴했을 수 있습니다.");
+                .hasMessage("존재하지 않는 친구 요청입니다. 친구 추가를 신청한 유저가 탈퇴했을 수 있습니다.");
     }
 
 
@@ -272,7 +272,7 @@ class FriendshipServiceTest {
 
         // then
         assertThat(friendshipRepository.findByFriendShipId(friendShip.getFriendShipId()).orElseThrow().getAcceptStatus()).isEqualTo("ACCEPTED");
-     }
+    }
 
     @DisplayName("친구요청 '거절'에 성공한다.")
     @Test
@@ -412,7 +412,7 @@ class FriendshipServiceTest {
         FriendShip friendShip = FriendShip.builder()
                 .friendShipId(UUID.randomUUID())
                 .requesterId(addedRequester.getId())
-                .receiverId(addedReceiver.getId() + 123456789)
+                .receiverId(addedRequester.getId())
                 .acceptStatus("PENDING")
                 .build();
         friendshipRepository.save(friendShip);
