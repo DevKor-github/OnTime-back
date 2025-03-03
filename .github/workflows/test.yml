@@ -73,7 +73,7 @@ jobs:
           echo "spring.datasource.password=test_password" >> ontime-back/src/main/resources/application.properties
           echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/main/resources/application.properties
           echo "spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect" >> ontime-back/src/main/resources/application.properties
-          echo "spring.jpa.hibernate.ddl-auto=update" >> ontime-back/src/main/resources/application.properties
+          echo "spring.jpa.hibernate.ddl-auto=validate" >> ontime-back/src/main/resources/application.properties
           echo "spring.sql.init.mode=always" >> ontime-back/src/main/resources/application.properties
           echo "jwt.secret.key=${{ secrets.JWT_SECRETKEY }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.access.expiration=${{ secrets.JWT_ACCESS_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
@@ -107,7 +107,7 @@ jobs:
           echo "spring.flyway.url=jdbc:mysql://127.0.0.1:3306/test_db?serverTimezone=UTC&useSSL=false" >> ontime-back/src/main/resources/application.properties
           echo "spring.flyway.user=test_user" >> ontime-back/src/main/resources/application.properties
           echo "spring.flyway.password=test_password" >> ontime-back/src/main/resources/application.properties
-          # echo "spring.flyway.baseline-on-migrate=true" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.baseline-on-migrate=true" >> ontime-back/src/main/resources/application.propertie
           echo "management.endpoints.web.exposure.include=health" >> ontime-back/src/main/resources/application.properties
           echo "management.endpoint.health.show-details=always" >> ontime-back/src/main/resources/application.properties
           echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
@@ -120,6 +120,11 @@ jobs:
         run: |
           cd ontime-back
           ./gradlew test
+
+      - name: Verify Flyway Migrations
+        run: |
+          echo "Checking Flyway migration history..."
+          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SELECT * FROM test_db.flyway_schema_history;"
 
       
   handle-failure:
