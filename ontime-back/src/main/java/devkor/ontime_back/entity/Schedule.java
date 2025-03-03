@@ -32,6 +32,7 @@ public class Schedule {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "place_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private Place place;
 
     @Column(nullable = false, length = 30)
