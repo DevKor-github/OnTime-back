@@ -72,7 +72,7 @@ jobs:
           echo "spring.datasource.password=test_password" >> ontime-back/src/main/resources/application.properties
           echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> ontime-back/src/main/resources/application.properties
           echo "spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect" >> ontime-back/src/main/resources/application.properties
-          echo "spring.jpa.hibernate.ddl-auto=update" >> ontime-back/src/main/resources/application.properties
+          echo "spring.jpa.hibernate.ddl-auto=none" >> ontime-back/src/main/resources/application.properties
           echo "spring.sql.init.mode=always" >> ontime-back/src/main/resources/application.properties
           echo "jwt.secret.key=${{ secrets.JWT_SECRETKEY }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.access.expiration=${{ secrets.JWT_ACCESS_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
