@@ -120,17 +120,6 @@ jobs:
         run: |
           echo "Checking if test_db exists..."
           mysql -h 127.0.0.1 -u test_user --password=test_password -e "SHOW DATABASES;" | grep test_db || echo "test_db does not exist!"
-
-      - name: Run Flyway Migration Manually
-        run: |
-          cd ontime-back
-          ./gradlew -Dflyway.url=jdbc:mysql://127.0.0.1:3306/test_db?serverTimezone=UTC&useSSL=false -Dflyway.user=test_user -Dflyway.password=test_password flywayMigrate
-
-      
-      - name: Verify Flyway Migrations
-        run: |
-          echo "Checking Flyway migration history..."
-          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SELECT * FROM test_db.flyway_schema_history;"
       
       - name: Check Existing Tables
         run: |
@@ -160,6 +149,11 @@ jobs:
         run: |
           cd ontime-back
           ./gradlew test
+
+      - name: Verify Flyway Migrations
+        run: |
+          echo "Checking Flyway migration history..."
+          mysql -h 127.0.0.1 -u test_user --password=test_password -e "SELECT * FROM test_db.flyway_schema_history;"
 
       
   handle-failure:
