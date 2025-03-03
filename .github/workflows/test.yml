@@ -120,6 +120,12 @@ jobs:
         run: |
           echo "Checking if test_db exists..."
           mysql -h 127.0.0.1 -u test_user --password=test_password -e "SHOW DATABASES;" | grep test_db || echo "test_db does not exist!"
+
+      - name: Run Flyway Migration Manually
+        run: |
+          echo "Running Flyway migration manually..."
+          cd ontime-back
+          ./gradlew flywayMigrate
       
       - name: Verify Flyway Migrations
         run: |
