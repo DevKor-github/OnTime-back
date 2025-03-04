@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class ApiLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long ApiLogId;
+    private Long apiLogId;
 
     private String requestUrl;
 

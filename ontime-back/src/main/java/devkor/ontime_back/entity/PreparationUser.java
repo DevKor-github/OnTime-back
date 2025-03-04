@@ -17,7 +17,7 @@ import java.util.UUID;
 @Builder
 public class PreparationUser {
     @Id
-    private UUID preparationId;
+    private UUID preparationUserId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -31,6 +31,7 @@ public class PreparationUser {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "next_preparation_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private PreparationUser nextPreparation;
 
     public void updateNextPreparation(PreparationUser nextPreparation) {
