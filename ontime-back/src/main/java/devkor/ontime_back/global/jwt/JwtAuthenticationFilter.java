@@ -52,39 +52,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String accessToken = jwtTokenProvider.extractAccessToken(request).orElse(null);
             String refreshToken = jwtTokenProvider.extractRefreshToken(request).orElse(null);
+            log.info("accessToken: {}", accessToken);
+            log.info("refreshToken: {}", refreshToken);
 
             // accesstoken valid
             if (jwtTokenProvider.isTokenValid(accessToken)) {
-                log.info("checkAccessTokenAndAuthentication 실행");
+                log.info("1");
                 checkAccessTokenAndAuthentication(request, response, filterChain);
+                return;
             }
-
-            // accesstoken x or not valid refreshtoken o
-            if ((accessToken == null || !jwtTokenProvider.isTokenValid(accessToken)) && jwtTokenProvider.isTokenValid(refreshToken)) { // accessToken 만료 -> refreshToken 존재
+            // accesstoken not valid
+            if (accessToken != null && !jwtTokenProvider.isTokenValid(accessToken)) {
+                log.info("2");
                 checkRefreshTokenAndReIssueAccessToken(request, response, refreshToken, filterChain);
-                // accesstoken x
-                if(accessToken == null) {
-                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_REQUIRED", "AccessToken이 필요합니다.");
-                }
-                // accesstoken not valid
-                else {
-                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_EXPIRED", "AccessToken이 만료되었습니다.");
-                }
-            }
-
-            // accesstoken not valid or x refreshtoken not valid or x
-            if ((accessToken == null || !jwtTokenProvider.isTokenValid(accessToken)) &&
-                    (refreshToken == null || !jwtTokenProvider.isTokenValid(refreshToken))) {
-                // accesstoken not valid refreshtoken not valid
-                if((accessToken == null && refreshToken == null) || (accessToken == null && !jwtTokenProvider.isTokenValid(refreshToken)) || (!jwtTokenProvider.isTokenValid(accessToken) && refreshToken == null)) {
-                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "AUTHENTICATION_FAILED", "AccessToken과 RefreshToken이 유효하지 않습니다. 다시 로그인하세요.");
-                }
-                else {
-                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "REFRESH_TOKEN_EXPIRED", "RefreshToken이 만료되었습니다. 다시 로그인하세요.");
-                }
+                sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_EXPIRED", "AccessToken이 만료되었습니다.");
                 return;
             }
 
+            // refreshtoken valid
+            if (jwtTokenProvider.isTokenValid(refreshToken)) {
+                log.info("3");
+                checkRefreshTokenAndReIssueAccessToken(request, response, refreshToken, filterChain);
+                sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_ISSUED", "새로운 AccessToken이 발급되었습니다.");
+                return;
+            }
+
+            // refreshtoken not valid
+            if (refreshToken != null && !jwtTokenProvider.isTokenValid(refreshToken)) {
+                log.info("4");
+                sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "REFRESH_TOKEN_EXPIRED", "RefreshToken이 만료되었습니다. 다시 로그인하세요.");
+                return;
+            }
+
+            // accesstoken, refreshtoken empty
+            if(accessToken == null && refreshToken == null) {
+                log.info("5");
+                sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "AUTHENTICATION_FAILED", "AccessToken와 RefreshToken가 유효하지 않습니다.");
+                return;
+            }
 
         }
         catch (InvalidTokenException ex) {
