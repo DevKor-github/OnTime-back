@@ -1,3 +1,5 @@
+
+
 package devkor.ontime_back.global.jwt;
 
 import com.auth0.jwt.JWT;
@@ -158,7 +160,7 @@ public class JwtTokenProvider {
             return true;
         } catch (Exception e) {
             log.error("유효하지 않은 토큰입니다. {}", e.getMessage());
-            throw new InvalidTokenException("유효하지 않은 토큰입니다.");
+            return false;
         }
     }
 

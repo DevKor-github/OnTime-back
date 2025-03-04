@@ -1,3 +1,4 @@
+
 package devkor.ontime_back.global.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +17,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.HashMap;
+import java.util.Map;
 
 import jakarta.servlet.ServletException;
 
@@ -47,31 +50,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String accessToken= jwtTokenProvider.extractAccessToken(request) // header에서 refreshToken 추출
-                    .filter(jwtTokenProvider::isTokenValid)
-                    .orElse(null);
-            log.info("accesstoken check: " + accessToken);
+            String accessToken = jwtTokenProvider.extractAccessToken(request).orElse(null);
+            String refreshToken = jwtTokenProvider.extractRefreshToken(request).orElse(null);
 
-            String refreshToken = jwtTokenProvider.extractRefreshToken(request) // header에서 refreshToken 추출
-                    .filter(jwtTokenProvider::isTokenValid)
-                    .orElse(null);
-            log.info("refreshtoken check: " + refreshToken);
+            // accesstoken valid
+            if (jwtTokenProvider.isTokenValid(accessToken)) {
+                log.info("checkAccessTokenAndAuthentication 실행");
+                checkAccessTokenAndAuthentication(request, response, filterChain);
+            }
 
-            if (accessToken == null && refreshToken != null) { // accessToken 만료 -> refreshToken 존재
-                checkRefreshTokenAndReIssueAccessToken(response, refreshToken);
+            // accesstoken x or not valid refreshtoken o
+            if ((accessToken == null || !jwtTokenProvider.isTokenValid(accessToken)) && jwtTokenProvider.isTokenValid(refreshToken)) { // accessToken 만료 -> refreshToken 존재
+                checkRefreshTokenAndReIssueAccessToken(request, response, refreshToken, filterChain);
+                // accesstoken x
+                if(accessToken == null) {
+                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_REQUIRED", "AccessToken이 필요합니다.");
+                }
+                // accesstoken not valid
+                else {
+                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_EXPIRED", "AccessToken이 만료되었습니다.");
+                }
+            }
+
+            // accesstoken not valid or x refreshtoken not valid or x
+            if ((accessToken == null || !jwtTokenProvider.isTokenValid(accessToken)) &&
+                    (refreshToken == null || !jwtTokenProvider.isTokenValid(refreshToken))) {
+                // accesstoken not valid refreshtoken not valid
+                if((accessToken == null && refreshToken == null) || (accessToken == null && !jwtTokenProvider.isTokenValid(refreshToken)) || (!jwtTokenProvider.isTokenValid(accessToken) && refreshToken == null)) {
+                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "AUTHENTICATION_FAILED", "AccessToken과 RefreshToken이 유효하지 않습니다. 다시 로그인하세요.");
+                }
+                else {
+                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "REFRESH_TOKEN_EXPIRED", "RefreshToken이 만료되었습니다. 다시 로그인하세요.");
+                }
                 return;
             }
 
-            // accessToken이 유효하지 않은 경우 -> 401 Unauthorized 또는 403 Forbidden
-            if (accessToken != null && !jwtTokenProvider.isTokenValid(accessToken)) {
-                log.error("Invalid or missing access token.");
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or missing access token");
-                return; // 여기서 필터 체인 진행을 멈추고 401을 바로 반환
-            }
 
-            if (refreshToken == null) { // accessToken X: 403 에러 / accessToken O: 인증 성공
-                checkAccessTokenAndAuthentication(request, response, filterChain);
-            }
         }
         catch (InvalidTokenException ex) {
             handleInvalidTokenException(response, ex);
@@ -80,13 +94,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     // refreshToken로 검색 후 accessToken 재발급 후 전송
-    public void checkRefreshTokenAndReIssueAccessToken(HttpServletResponse response, String refreshToken) {
+    public void checkRefreshTokenAndReIssueAccessToken(HttpServletRequest request, HttpServletResponse response, String refreshToken, FilterChain filterChain) throws ServletException, IOException{
         userRepository.findByRefreshToken(refreshToken) // refreshToken으로 유저 찾기
                 .ifPresent(user -> {
                     String newAccessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId()); // accessToken 생성
                     log.info("New accessToken issued: " + newAccessToken); // 재발급된 accessToken 출력
                     jwtTokenProvider.sendAccessToken(response, newAccessToken); // accessToken 전송
-                    // jwtTokenProvider.sendAccessToken(response, jwtTokenProvider.createAccessToken(user.getEmail(), user.getId())); // accessToken 생성 후 전송
                 });
     }
 
@@ -158,6 +171,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // ObjectMapper를 사용하여 JSON 변환 후 응답에 기록
         ObjectMapper objectMapper = new ObjectMapper();
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+    }
+
+    private void sendErrorResponse(HttpServletResponse response, int status, String errorCode, String message) throws IOException {
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(status);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        ApiResponseForm<Void> errorResponse = ApiResponseForm.error(errorCode, message);
+
+        // 🔹 JSON 변환 후 응답으로 반환
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }
