@@ -57,21 +57,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // accesstoken valid
             if (jwtTokenProvider.isTokenValid(accessToken)) {
-                log.info("1");
                 checkAccessTokenAndAuthentication(request, response, filterChain);
                 return;
             }
             // accesstoken not valid
             if (accessToken != null && !jwtTokenProvider.isTokenValid(accessToken)) {
-                log.info("2");
-                checkRefreshTokenAndReIssueAccessToken(request, response, refreshToken, filterChain);
                 sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_EXPIRED", "AccessToken이 만료되었습니다.");
                 return;
             }
 
             // refreshtoken valid
-            if (jwtTokenProvider.isTokenValid(refreshToken)) {
-                log.info("3");
+            if (refreshToken != null && jwtTokenProvider.isTokenValid(refreshToken)) {
                 checkRefreshTokenAndReIssueAccessToken(request, response, refreshToken, filterChain);
                 sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCESS_TOKEN_ISSUED", "새로운 AccessToken이 발급되었습니다.");
                 return;
@@ -79,14 +75,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // refreshtoken not valid
             if (refreshToken != null && !jwtTokenProvider.isTokenValid(refreshToken)) {
-                log.info("4");
                 sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "REFRESH_TOKEN_EXPIRED", "RefreshToken이 만료되었습니다. 다시 로그인하세요.");
                 return;
             }
 
             // accesstoken, refreshtoken empty
             if(accessToken == null && refreshToken == null) {
-                log.info("5");
                 sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "AUTHENTICATION_FAILED", "AccessToken와 RefreshToken가 유효하지 않습니다.");
                 return;
             }
