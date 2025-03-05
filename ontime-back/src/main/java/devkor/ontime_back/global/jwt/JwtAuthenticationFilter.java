@@ -47,31 +47,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String accessToken= jwtTokenProvider.extractAccessToken(request) // header에서 refreshToken 추출
-                    .filter(jwtTokenProvider::isTokenValid)
+            String accessToken= jwtTokenProvider.extractAccessToken(request)
                     .orElse(null);
-            log.info("accesstoken check: " + accessToken);
 
-            String refreshToken = jwtTokenProvider.extractRefreshToken(request) // header에서 refreshToken 추출
-                    .filter(jwtTokenProvider::isTokenValid)
+            String refreshToken = jwtTokenProvider.extractRefreshToken(request)
                     .orElse(null);
-            log.info("refreshtoken check: " + refreshToken);
 
-            if (accessToken == null && refreshToken != null) { // accessToken 만료 -> refreshToken 존재
+            if (accessToken != null && jwtTokenProvider.isTokenValid(accessToken)) {
+                checkAccessTokenAndAuthentication(request, response, filterChain);
+                return;
+            }
+
+            if (refreshToken != null) {
                 checkRefreshTokenAndReIssueAccessToken(response, refreshToken);
                 return;
             }
 
-            // accessToken이 유효하지 않은 경우 -> 401 Unauthorized 또는 403 Forbidden
             if (accessToken != null && !jwtTokenProvider.isTokenValid(accessToken)) {
-                log.error("Invalid or missing access token.");
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or missing access token");
-                return; // 여기서 필터 체인 진행을 멈추고 401을 바로 반환
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid Access token.");
+                return;
             }
 
-            if (refreshToken == null) { // accessToken X: 403 에러 / accessToken O: 인증 성공
-                checkAccessTokenAndAuthentication(request, response, filterChain);
-            }
         }
         catch (InvalidTokenException ex) {
             handleInvalidTokenException(response, ex);
@@ -80,7 +76,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     // refreshToken로 검색 후 accessToken 재발급 후 전송
-    public void checkRefreshTokenAndReIssueAccessToken(HttpServletResponse response, String refreshToken) {
+    public void checkRefreshTokenAndReIssueAccessToken(HttpServletResponse response, String refreshToken) throws IOException {
+        if (!jwtTokenProvider.isTokenValid(refreshToken)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid Refresh token.");
+        }
+
         userRepository.findByRefreshToken(refreshToken) // refreshToken으로 유저 찾기
                 .ifPresent(user -> {
                     String newAccessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId()); // accessToken 생성
