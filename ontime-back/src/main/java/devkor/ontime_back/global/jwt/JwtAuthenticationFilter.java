@@ -31,7 +31,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final List<String> NO_CHECK_URLS = List.of("/login", "/swagger-ui", "/sign-up", "/v3/api-docs"); // "/login"으로 들어오는 요청은 Filter 작동 X
+    private static final List<String> NO_CHECK_URLS = List.of("/login", "/swagger-ui", "/sign-up", "/v3/api-docs", "/oauth2/google/registerOrLogin", "/oauth2/kakao/registerOrLogin", "/oauth2/apple/registerOrLogin");
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -70,8 +70,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 엑세스 토큰이 있고, 유효할 경우 checkAccessTokenAndAuthentication 메서드 호출해 권한정보 저장하고 스프링 시큐리티 필터체인 계속 진행
             if (accessToken != null && jwtTokenProvider.isAccessTokenValid(accessToken)) {
                 checkAccessTokenAndAuthentication(request, response, filterChain);
-            } else if (accessToken != null){ // 엑세스 토큰이 있는데 유효하지 않은 경우 InvalidAccessTokenException 발생
-                throw new InvalidAccessTokenException("Invalid Access token!~!");
             }
 
             // 엑세스 토큰이 없는 경우 EmptyAccessTokenException 발생
