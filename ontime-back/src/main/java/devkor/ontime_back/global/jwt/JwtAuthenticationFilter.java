@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.List;
 
 import jakarta.servlet.ServletException;
 
@@ -32,7 +33,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String NO_CHECK_URL = "/login"; // "/login"으로 들어오는 요청은 Filter 작동 X
+    private static final List<String> NO_CHECK_URLS = List.of("/login", "/swagger-ui", "/sign-up", "/v3/api-docs"); // "/login"으로 들어오는 요청은 Filter 작동 X
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -41,8 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String requestURI = request.getRequestURI();
         try {
-            if (request.getRequestURI().equals(NO_CHECK_URL)) {
+            if (NO_CHECK_URLS.stream().anyMatch(requestURI::startsWith)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -67,6 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid Access token.");
                 return;
             }
+
 
         }
         catch (InvalidTokenException ex) {
