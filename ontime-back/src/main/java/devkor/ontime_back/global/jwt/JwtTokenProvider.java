@@ -4,6 +4,8 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.InvalidAccessTokenException;
+import devkor.ontime_back.response.InvalidRefreshTokenException;
 import devkor.ontime_back.response.InvalidTokenException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -158,7 +160,29 @@ public class JwtTokenProvider {
             return true;
         } catch (Exception e) {
             log.error("유효하지 않은 토큰입니다. {}", e.getMessage());
-            return false;
+            throw new InvalidTokenException("유효하지 않은 토큰입니다.");
+        }
+    }
+
+    public boolean isAccessTokenValid(String token) {
+        try {
+            JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
+            log.info("유효한 엑세스 토큰입니다.");
+            return true;
+        } catch (Exception e) {
+            log.error("유효하지 않은 엑세스 토큰입니다. {}", e.getMessage());
+            throw new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다.");
+        }
+    }
+
+    public boolean isRefreshTokenValid(String token) {
+        try {
+            JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
+            log.info("유효한 리프레시 토큰입니다.");
+            return true;
+        } catch (Exception e) {
+            log.error("유효하지 않은 리프레시 토큰입니다. {}", e.getMessage());
+            throw new InvalidRefreshTokenException("유효하지 않은 리프레시 토큰입니다.");
         }
     }
 

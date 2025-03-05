@@ -3,9 +3,7 @@ package devkor.ontime_back.global.jwt;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
-import devkor.ontime_back.response.ApiResponseForm;
-import devkor.ontime_back.response.ErrorCode;
-import devkor.ontime_back.response.InvalidTokenException;
+import devkor.ontime_back.response.*;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.List;
 
 import jakarta.servlet.ServletException;
 
@@ -32,7 +31,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String NO_CHECK_URL = "/login"; // "/login"으로 들어오는 요청은 Filter 작동 X
+    private static final List<String> NO_CHECK_URLS = List.of("/login", "/swagger-ui", "/sign-up", "/v3/api-docs", "/**/additional-info"); // "/login"으로 들어오는 요청은 Filter 작동 X
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -41,8 +40,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String requestURI = request.getRequestURI();
         try {
-            if (request.getRequestURI().equals(NO_CHECK_URL)) {
+            if (NO_CHECK_URLS.stream().anyMatch(requestURI::startsWith)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -53,19 +53,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String refreshToken = jwtTokenProvider.extractRefreshToken(request)
                     .orElse(null);
 
-            if (refreshToken != null) {
-                checkRefreshTokenAndReIssueAccessToken(response, refreshToken);
+            // 리프레시 토큰이 있고, 유효할 경우 엑세스토큰 재발급
+            // 이때 조건절의 isRefreshTokenValid에서 토큰이 유효하지 않으면 InvalidRefreshTokenException 발생
+            if (refreshToken != null && jwtTokenProvider.isRefreshTokenValid(refreshToken)) {
+                // 리프레시토큰의 경우 토큰의 유효성 뿐만 아니라 DB에 등록되어 있는지도 확인해야 함
+                // reIssueAccessToken 메소드에서 DB를 확인해 등록된 리프레시 토큰이면 엑세스 토큰 재발급
+                // 이때 reIssueAccessToken 메소드에서 DB에 등록된 리프레시 토큰이 아니면 InvalidRefreshTokenException 발생
+                log.info("리프레시 토큰이 있고 유효한데 DB에 있는지는 아직 모름");
+                reIssueAccessToken(response, refreshToken);
                 return;
             }
 
-            if (accessToken != null && jwtTokenProvider.isTokenValid(accessToken)) {
+            // 리프레시 토큰이 있을 때의 처리는 위의 if문에서 처리하였음.
+            // 이제부터는 엑세스 토큰'만' 헤더에 담긴 요청만 생각하면 됨
+
+            // 엑세스 토큰이 있고, 유효할 경우 checkAccessTokenAndAuthentication 메서드 호출해 권한정보 저장하고 스프링 시큐리티 필터체인 계속 진행
+            if (accessToken != null && jwtTokenProvider.isAccessTokenValid(accessToken)) {
                 checkAccessTokenAndAuthentication(request, response, filterChain);
-                return;
+            } else if (accessToken != null){ // 엑세스 토큰이 있는데 유효하지 않은 경우 InvalidAccessTokenException 발생
+                throw new InvalidAccessTokenException("Invalid Access token!~!");
             }
 
-            if (accessToken != null && !jwtTokenProvider.isTokenValid(accessToken)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid Access token.");
-                return;
+            // 엑세스 토큰이 없는 경우 EmptyAccessTokenException 발생
+            // 엑세스 토큰 없고 리프레시 토큰 있는 경우는 첫번째 if문에서 처리하여서 고려하지 않아도 됨.
+            if (accessToken == null) {
+                throw new EmptyAccessTokenException("Empty Access token!~!");
             }
 
         }
@@ -75,27 +87,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     }
 
-    // refreshToken로 검색 후 accessToken 재발급 후 전송
-    public void checkRefreshTokenAndReIssueAccessToken(HttpServletResponse response, String refreshToken) throws IOException {
-        if (!jwtTokenProvider.isTokenValid(refreshToken)) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid Refresh token.");
-        }
-
-        userRepository.findByRefreshToken(refreshToken) // refreshToken으로 유저 찾기
-                .ifPresent(user -> {
-                    String newAccessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId()); // accessToken 생성
-                    log.info("New accessToken issued: " + newAccessToken); // 재발급된 accessToken 출력
-                    jwtTokenProvider.sendAccessToken(response, newAccessToken); // accessToken 전송
-                    // jwtTokenProvider.sendAccessToken(response, jwtTokenProvider.createAccessToken(user.getEmail(), user.getId())); // accessToken 생성 후 전송
-                });
+    // 리프레시 토큰이 DB에 있으면 엑세스 토큰을 재발급
+    // DB에 없으면 InvalidRefreshTokenException 발생
+    public void reIssueAccessToken(HttpServletResponse response, String refreshToken) throws IOException {
+        log.info("리프레시토큰이 유효하나 DB에 있는지는 모름. DB에서 찾아봐서 없으면 예외 발생할 것임.");
+        User user = userRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid Refresh token!~!"));
+        log.info("리프레시토큰이 DB에도 있음");
+        jwtTokenProvider.sendAccessToken(response, jwtTokenProvider.createAccessToken(user.getEmail(), user.getId()));
     }
 
-    // accessToken 확인 후 인증 확인
+    // accessToken으로 유저의 권한정보만 저장하고 인증 허가(스프링 시큐리티 필터체인 中 인증체인 통과해 다음 체인으로 이동)
     public void checkAccessTokenAndAuthentication(HttpServletRequest request, HttpServletResponse response,
                                                   FilterChain filterChain) throws ServletException, IOException {
         log.info("checkAccessTokenAndAuthentication() 호출");
         jwtTokenProvider.extractAccessToken(request)
-                .filter(jwtTokenProvider::isTokenValid)
                 .ifPresent(accessToken -> {
                     jwtTokenProvider.extractEmail(accessToken)
                             .ifPresent(email -> userRepository.findByEmail(email)
@@ -147,17 +153,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
+        log.info("InvalidTokenException 발생");
+
         // ErrorCode에서 정보를 가져옴
         ErrorCode errorCode = ErrorCode.UNAUTHORIZED;
 
-        // ErrorCode를 사용하여 ApiResponseForm 생성
-        ApiResponseForm<Void> errorResponse = ApiResponseForm.error(
-                errorCode.getCode(),
-                errorCode.getMessage()
-        );
+        if (ex instanceof InvalidRefreshTokenException) {
+            ApiResponseForm<Void> errorResponse = ApiResponseForm.refreshTokenInvalid(
+                    errorCode.getCode(),
+                    errorCode.getMessage()
+            );
 
-        // ObjectMapper를 사용하여 JSON 변환 후 응답에 기록
-        ObjectMapper objectMapper = new ObjectMapper();
-        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+            // ObjectMapper를 사용하여 JSON 변환 후 응답에 기록
+            ObjectMapper objectMapper = new ObjectMapper();
+            response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+        } else if (ex instanceof InvalidAccessTokenException) {
+            ApiResponseForm<Void> errorResponse = ApiResponseForm.accessTokenInvalid(
+                    errorCode.getCode(),
+                    errorCode.getMessage()
+            );
+
+            // ObjectMapper를 사용하여 JSON 변환 후 응답에 기록
+            ObjectMapper objectMapper = new ObjectMapper();
+            response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+        } else if (ex instanceof EmptyAccessTokenException) {
+            ApiResponseForm<Void> errorResponse = ApiResponseForm.accessTokenEmpty(
+                    errorCode.getCode(),
+                    errorCode.getMessage()
+            );
+
+            // ObjectMapper를 사용하여 JSON 변환 후 응답에 기록
+            ObjectMapper objectMapper = new ObjectMapper();
+            response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+        }
     }
 }
