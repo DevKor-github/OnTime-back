@@ -53,13 +53,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String refreshToken = jwtTokenProvider.extractRefreshToken(request)
                     .orElse(null);
 
-            if (accessToken != null && jwtTokenProvider.isTokenValid(accessToken)) {
-                checkAccessTokenAndAuthentication(request, response, filterChain);
+            if (refreshToken != null) {
+                checkRefreshTokenAndReIssueAccessToken(response, refreshToken);
                 return;
             }
 
-            if (refreshToken != null) {
-                checkRefreshTokenAndReIssueAccessToken(response, refreshToken);
+            if (accessToken != null && jwtTokenProvider.isTokenValid(accessToken)) {
+                checkAccessTokenAndAuthentication(request, response, filterChain);
                 return;
             }
 
