@@ -80,6 +80,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw new EmptyAccessTokenException("Empty Access token!~!");
             }
 
+
         }
         catch (InvalidTokenException ex) {
             handleInvalidTokenException(response, ex);
