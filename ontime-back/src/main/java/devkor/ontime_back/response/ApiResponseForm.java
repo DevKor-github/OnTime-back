@@ -33,6 +33,18 @@ public class ApiResponseForm<T> {
         return new ApiResponseForm<>("fail", code, message, null);  // 실패의 경우 data는 null로 처리
     }
 
+    public static <T> ApiResponseForm<T> accessTokenEmpty(String code, String message) {
+        return new ApiResponseForm<>("accessTokenEmpty", code, message, null);  // 실패의 경우 data는 null로 처리
+    }
+
+    public static <T> ApiResponseForm<T> accessTokenInvalid(String code, String message) {
+        return new ApiResponseForm<>("accessTokenInvalid", code, message, null);  // 실패의 경우 data는 null로 처리
+    }
+
+    public static <T> ApiResponseForm<T> refreshTokenInvalid(String code, String message) {
+        return new ApiResponseForm<>("refreshTokenInvalid", code, message, null);  // 실패의 경우 data는 null로 처리
+    }
+
     // 오류 응답을 위한 메서드
     public static <T> ApiResponseForm<T> error(String code, String message) {
         return new ApiResponseForm<>("error", code, message, null);  // 오류의 경우 data는 null로 처리
