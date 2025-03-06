@@ -67,7 +67,7 @@ jobs:
           echo "spring.flyway.baseline-on-migrate=true" >> ontime-back/src/main/resources/application.properties
           echo "management.endpoints.web.exposure.include=health" >> ontime-back/src/main/resources/application.properties
           echo "management.endpoint.health.show-details=always" >> ontime-back/src/main/resources/application.properties
-          echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
+          echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json
           
           echo "${{ secrets.AUTHKEY_743M7R5W3W }}" > ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8
       # Gradle 빌드
