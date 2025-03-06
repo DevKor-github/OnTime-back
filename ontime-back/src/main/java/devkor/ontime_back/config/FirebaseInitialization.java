@@ -20,9 +20,9 @@ public class FirebaseInitialization {
 //            FileInputStream serviceAccount =
 //                    new FileInputStream("C:/Users/junbeom/Desktop/24-2/Devkor/Ontime/ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json");
 
-            InputStream serviceAccount = getClass().getClassLoader().getResourceAsStream("ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json");
+            InputStream serviceAccount = getClass().getClassLoader().getResourceAsStream("ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json");
             if (serviceAccount == null) {
-                throw new FileNotFoundException("Resource not found: ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json");
+                throw new FileNotFoundException("Resource not found: ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json");
             }
 
             FirebaseOptions options = new FirebaseOptions.Builder()
