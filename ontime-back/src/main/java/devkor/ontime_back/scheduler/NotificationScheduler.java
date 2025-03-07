@@ -51,9 +51,13 @@ public class NotificationScheduler {
         LocalDateTime fiveMinutesLater = LocalDateTime.now().plusMinutes(5);
         int targetHour = fiveMinutesLater.getHour();
         int targetMinute = fiveMinutesLater.getMinute();
+        System.out.println("time now is:: " + targetHour + ":" + targetMinute);
 
         // 5분 후의 시각에 시작하는 약속 조회
         List<Schedule> schedulesStartingSoon = scheduleRepository.findSchedulesStartingAt(targetHour, targetMinute);
+        for(Schedule schedule : schedulesStartingSoon) {
+            System.out.println("5분뒤의 약속: " + schedule.getScheduleName());
+        }
 
         // 알림 전송
         notificationService.sendReminder(schedulesStartingSoon, "약속 5분 전입니다. 준비하세요.");
