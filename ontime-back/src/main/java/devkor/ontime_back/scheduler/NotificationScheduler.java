@@ -8,11 +8,15 @@ import org.springframework.stereotype.Component;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
 @Component
+@Transactional(readOnly = true)
 public class NotificationScheduler {
 
     private final NotificationService notificationService;
@@ -45,18 +49,19 @@ public class NotificationScheduler {
         notificationService.sendReminder(schedulesForToday, "오늘 예정된 약속이 있습니다.");
     }
 
-    // 매 분의 0초에 실행하여 5분 후 시작되는 약속 조회 및 알림 전송
     @Scheduled(cron = "0 * * * * *")  // 매 분의 0초에 실행
     public void sendFiveMinutesBeforeReminder() {
-        LocalDateTime fiveMinutesLater = LocalDateTime.now().plusMinutes(5);
-        int targetHour = fiveMinutesLater.getHour();
-        int targetMinute = fiveMinutesLater.getMinute();
-        System.out.println("time now is:: " + targetHour + ":" + targetMinute);
+        LocalDateTime baseTime = LocalDateTime.now().plusMinutes(5); // 현재 시간
+        LocalDateTime startTime = baseTime.withSecond(0).withNano(0); // 초와 나노초 제거 (분 단위로 설정)
+        LocalDateTime endTime = startTime.plusMinutes(1).minusNanos(1); // 다음 분의 직전까지
 
-        // 5분 후의 시각에 시작하는 약속 조회
-        List<Schedule> schedulesStartingSoon = scheduleRepository.findSchedulesStartingAt(targetHour, targetMinute);
+        System.out.println("5분 후 시간: " + baseTime);
+
+        // 5분 후의 scheduleTime과 일치하는 약속 조회
+        List<Schedule> schedulesStartingSoon = scheduleRepository.findSchedulesStartingAt(startTime, endTime);
+
         for(Schedule schedule : schedulesStartingSoon) {
-            System.out.println("5분뒤의 약속: " + schedule.getScheduleName());
+            System.out.println("5분 뒤의 약속: " + schedule.getScheduleName());
         }
 
         // 알림 전송

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -42,8 +43,9 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     List<Schedule> findSchedulesBetween(LocalDateTime start, LocalDateTime end);
 
     // 특정 시간에 시작하는 약속 조회 (예: 5분 후 약속)
-    @Query("SELECT s FROM Schedule s WHERE FUNCTION('HOUR', s.scheduleTime) = :hour AND FUNCTION('MINUTE', s.scheduleTime) = :minute")
-    List<Schedule> findSchedulesStartingAt(int hour, int minute);
+    @Query("SELECT s FROM Schedule s WHERE s.scheduleTime BETWEEN :startTime AND :endTime")
+    List<Schedule> findSchedulesStartingAt(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
 
     // 지각 히스토리 조회(페치조인을 했었는데 본 메서드를 사용하는 서비스메서드에서 user를 참조하지 않아서 필요없음)
     @Query("SELECT s FROM Schedule s WHERE s.user.id = :userId AND s.latenessTime > 0")
