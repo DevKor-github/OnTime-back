@@ -38,13 +38,9 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     @Query("SELECT s FROM Schedule s JOIN FETCH s.place WHERE s.user.id = :userId AND s.scheduleTime BETWEEN :startDate AND :endDate")
     List<Schedule> findAllByUserIdAndScheduleTimeBetween(@Param("userId") Long userId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // 특정 시간 범위 내에 시작되는 약속 조회 (예: 다음 날 또는 당일 약속)
+    // 특정 시간 범위 내에 시작되는 약속 조회
     @Query("SELECT s FROM Schedule s WHERE s.scheduleTime BETWEEN :start AND :end")
     List<Schedule> findSchedulesBetween(LocalDateTime start, LocalDateTime end);
-
-    // 특정 시간에 시작하는 약속 조회 (예: 5분 후 약속)
-    @Query("SELECT s FROM Schedule s WHERE s.scheduleTime BETWEEN :startTime AND :endTime")
-    List<Schedule> findSchedulesStartingAt(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 
 
     // 지각 히스토리 조회(페치조인을 했었는데 본 메서드를 사용하는 서비스메서드에서 user를 참조하지 않아서 필요없음)

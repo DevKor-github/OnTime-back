@@ -58,7 +58,7 @@ public class NotificationScheduler {
         System.out.println("5분 후 시간: " + baseTime);
 
         // 5분 후의 scheduleTime과 일치하는 약속 조회
-        List<Schedule> schedulesStartingSoon = scheduleRepository.findSchedulesStartingAt(startTime, endTime);
+        List<Schedule> schedulesStartingSoon = scheduleRepository.findSchedulesBetween(startTime, endTime);
 
         for(Schedule schedule : schedulesStartingSoon) {
             System.out.println("5분 뒤의 약속: " + schedule.getScheduleName());
