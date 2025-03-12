@@ -4,14 +4,13 @@ package devkor.ontime_back.service;
 import devkor.ontime_back.dto.*;
 import devkor.ontime_back.entity.*;
 import devkor.ontime_back.repository.*;
+import devkor.ontime_back.response.ErrorCode;
 import devkor.ontime_back.response.GeneralException;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -177,10 +176,12 @@ class ScheduleServiceTest {
                 .build();
         scheduleRepository.save(addedSchedule1);
 
-        // when & then
+
         assertThatThrownBy(() -> scheduleService.showScheduleByScheduleId(newUser2.getId(), addedSchedule1.getScheduleId()))
-                .isInstanceOf(AccessDeniedException.class)  // 예외 타입 검증
-                .hasMessage("사용자가 해당 일정에 대한 권한이 없습니다."); // 예외 메시지 검증
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
 
     }
 
@@ -220,8 +221,10 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.showScheduleByScheduleId(newUser.getId(), randomScheduleId))
-                .isInstanceOf(EntityNotFoundException.class)  // 예외 타입 검증
-                .hasMessage("해당 ID의 일정을 찾을 수 없습니다: " + randomScheduleId); // 예외 메시지 검증
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
     }
 
     @Test
@@ -699,9 +702,11 @@ class ScheduleServiceTest {
         scheduleRepository.save(addedSchedule1);
 
         // when & then
-        assertThatThrownBy(() -> scheduleService.deleteSchedule(addedSchedule1.getScheduleId(), newUser2.getId()))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("사용자가 해당 일정에 대한 권한이 없습니다.");
+        assertThatThrownBy(() -> scheduleService.showScheduleByScheduleId(newUser2.getId(), addedSchedule1.getScheduleId()))
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
 
         assertThat(scheduleRepository.findById(addedSchedule1.getScheduleId())).isPresent();
 
@@ -744,8 +749,10 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.deleteSchedule(randomScheduleId, newUser1.getId()))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("해당 ID의 일정을 찾을 수 없습니다: " + randomScheduleId);
+                .isInstanceOf(GeneralException.class)
+                .hasMessageContaining(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
 
     }
 
@@ -925,8 +932,10 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.modifySchedule(newUser2.getId(), scheduleModDto))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("사용자가 해당 일정에 대한 권한이 없습니다.");
+                .isInstanceOf(GeneralException.class)
+                .hasMessageContaining(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
 
         Schedule unchangedSchedule = scheduleRepository.findById(addedSchedule1.getScheduleId()).orElseThrow();
         assertThat(unchangedSchedule.getScheduleName()).isEqualTo("공부하기");
@@ -982,8 +991,10 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.modifySchedule(newUser.getId(), scheduleModDto))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("해당 ID의 일정을 찾을 수 없습니다: " + randomScheduleId);
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
 
     }
 
@@ -1116,8 +1127,10 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.addSchedule(scheduleAddDto, nonExistentUserId))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("해당 ID의 사용자를 찾을 수 없습니다: " + nonExistentUserId);
+                .isInstanceOf(GeneralException.class)
+                .hasMessageContaining(ErrorCode.USER_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_NOT_FOUND);
     }
 
     @Test
@@ -1209,8 +1222,10 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.checkIsStarted(addedSchedule1.getScheduleId(), newUser2.getId()))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("사용자가 해당 일정에 대한 권한이 없습니다.");
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
 
     }
 
@@ -1251,8 +1266,10 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.checkIsStarted(randomScheduleId, newUser1.getId()))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("해당 ID의 일정을 찾을 수 없습니다: " + randomScheduleId);
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
     }
 
     @DisplayName("지각 히스토리 조회에 성공한다")
@@ -1649,8 +1666,10 @@ class ScheduleServiceTest {
         // when & then
         UUID randomScheduleId = UUID.randomUUID();
         assertThatThrownBy(() -> scheduleService.getPreparations(newUser.getId(), randomScheduleId))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("해당 ID의 일정을 찾을 수 없습니다: " + randomScheduleId);
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
     }
 
     @Test
@@ -1713,7 +1732,9 @@ class ScheduleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> scheduleService.getPreparations(newUser2.getId(), addedSchedule1.getScheduleId()))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("사용자가 해당 일정에 대한 권한이 없습니다.");
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
     }
 }
