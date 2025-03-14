@@ -4,22 +4,20 @@ import devkor.ontime_back.dto.*;
 import devkor.ontime_back.entity.Place;
 import devkor.ontime_back.entity.Schedule;
 import devkor.ontime_back.entity.User;
-import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.*;
-import devkor.ontime_back.response.ErrorCode;
 import devkor.ontime_back.response.GeneralException;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static devkor.ontime_back.response.ErrorCode.*;
 
 @Service
 @Transactional(readOnly = true)
@@ -32,17 +30,16 @@ public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
     private final PlaceRepository placeRepository;
-    private final JwtTokenProvider jwtTokenProvider;
     private final PreparationScheduleRepository preparationScheduleRepository;
     private final PreparationUserRepository preparationUserRepository;
 
     // scheduleId, userId를 통한 권한 확인
     private Schedule getScheduleWithAuthorization(UUID scheduleId, Long userId) {
         Schedule schedule = scheduleRepository.findByIdWithUser(scheduleId)
-                .orElseThrow(() -> new EntityNotFoundException("해당 ID의 일정을 찾을 수 없습니다: " + scheduleId));
+                .orElseThrow(() -> new GeneralException(SCHEDULE_NOT_FOUND));
 
         if (!schedule.getUser().getId().equals(userId)) {
-            throw new AccessDeniedException("사용자가 해당 일정에 대한 권한이 없습니다.");
+            throw new GeneralException(UNAUTHORIZED_ACCESS);
         }
 
         return schedule;
@@ -50,6 +47,8 @@ public class ScheduleService {
 
     // 특정 기간의 약속 조회
     public List<ScheduleDto> showSchedulesByPeriod(Long userId, LocalDateTime startDate, LocalDateTime endDate) {
+        Integer userSpareTime = userRepository.findSpareTimeById(userId);
+
         List<Schedule> periodScheduleList;
         if (startDate == null && endDate != null) { // StartDate가 null인 경우, EndDate 이전의 일정 모두 반환
             periodScheduleList = scheduleRepository.findAllByUserIdAndScheduleTimeBefore(userId, endDate);
@@ -63,7 +62,12 @@ public class ScheduleService {
         }
 
         return periodScheduleList.stream()
-                .map(this::mapToDto)
+                .map(schedule -> {
+                    ScheduleDto scheduleDto = mapToDto(schedule);
+                    // schedule의 spareTime이 null이면 userSpareTime을 사용
+                    scheduleDto.setScheduleSpareTime(Optional.ofNullable(schedule.getScheduleSpareTime()).orElse(userSpareTime));
+                    return scheduleDto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -105,7 +109,7 @@ public class ScheduleService {
     @Transactional
     public void addSchedule(ScheduleAddDto scheduleAddDto, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("해당 ID의 사용자를 찾을 수 없습니다: " + userId));
+                .orElseThrow(() -> new GeneralException(USER_NOT_FOUND));
         Place place = placeRepository.findByPlaceName(scheduleAddDto.getPlaceName())
                 .orElseGet(() -> placeRepository.save(new Place(scheduleAddDto.getPlaceId(), scheduleAddDto.getPlaceName())));
 
@@ -153,7 +157,7 @@ public class ScheduleService {
         Integer latenessTime = finishPreparationDto.getLatenessTime();
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new GeneralException(ErrorCode.SCHEDULE_NOT_FOUND));
+                .orElseThrow(() -> new GeneralException(SCHEDULE_NOT_FOUND));
 
         schedule.updateLatenessTime(latenessTime);
         scheduleRepository.save(schedule);
@@ -201,7 +205,7 @@ public class ScheduleService {
                 schedule.getScheduleName(),
                 schedule.getMoveTime(),
                 schedule.getScheduleTime(),
-                schedule.getScheduleSpareTime(),
+                (schedule.getScheduleSpareTime() == null) ? schedule.getUser().getSpareTime() : schedule.getScheduleSpareTime(),
                 schedule.getScheduleNote(),
                 schedule.getLatenessTime()
         );

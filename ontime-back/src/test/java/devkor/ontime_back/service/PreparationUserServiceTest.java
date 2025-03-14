@@ -3,13 +3,13 @@ package devkor.ontime_back.service;
 import devkor.ontime_back.dto.PreparationDto;
 import devkor.ontime_back.entity.*;
 import devkor.ontime_back.repository.*;
-import jakarta.persistence.EntityNotFoundException;
+import devkor.ontime_back.response.ErrorCode;
+import devkor.ontime_back.response.GeneralException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -101,8 +101,10 @@ public class PreparationUserServiceTest {
 
         // when & then
         assertThatThrownBy(() -> preparationUserService.setFirstPreparationUser(userId, preparationDtoList))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("사용자 ID " + userId + "에 해당하는 사용자를 찾을 수 없습니다.");
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.USER_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_NOT_FOUND);
 
     }
 
@@ -154,8 +156,10 @@ public class PreparationUserServiceTest {
 
         // when & then
         assertThatThrownBy(() -> preparationUserService.updatePreparationUsers(userId, preparationDtoList))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("사용자 ID " + userId + "에 해당하는 사용자를 찾을 수 없습니다.");
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.USER_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.USER_NOT_FOUND);
 
     }
 
@@ -215,9 +219,13 @@ public class PreparationUserServiceTest {
 
         // when & then
         assertThatThrownBy(() -> preparationUserService.showAllPreparationUsers(userId))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("사용자 ID " + userId + "에 대한 시작 준비 단계를 찾을 수 없습니다.");
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.FIRST_PREPARATION_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FIRST_PREPARATION_NOT_FOUND);
+
     }
+
 
     @Test
     @DisplayName("기존 데이터를 삭제하지 않고 준비과정 설정을 성공한다.")

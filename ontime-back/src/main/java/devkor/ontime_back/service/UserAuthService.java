@@ -7,8 +7,6 @@ import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
-import devkor.ontime_back.repository.PreparationScheduleRepository;
-import devkor.ontime_back.repository.PreparationUserRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.repository.UserSettingRepository;
 import devkor.ontime_back.response.ErrorCode;
@@ -31,10 +29,8 @@ public class UserAuthService {
 
     private final UserRepository userRepository;
     private final UserSettingRepository userSettingRepository;
-    private final PreparationUserRepository preparationUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final PreparationScheduleRepository preparationScheduleRepository;
 
     // 엑세스토큰에서 UserId 추출
     public Long getUserIdFromToken(HttpServletRequest request) {

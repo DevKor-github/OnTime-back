@@ -2,6 +2,7 @@ package devkor.ontime_back;
 
 import devkor.ontime_back.entity.ApiLog;
 import devkor.ontime_back.repository.ApiLogRepository;
+import devkor.ontime_back.response.GeneralException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
@@ -131,7 +132,12 @@ public class LoggingAspect {
         String clientIp = request.getRemoteAddr();
 
         // exceptionName
-        String exceptionName = ex.getClass().getSimpleName();
+        String exceptionName;
+        if (ex instanceof GeneralException) {
+            exceptionName = ((GeneralException) ex).getErrorCode().name();
+        } else {
+            exceptionName = ex.getClass().getSimpleName();
+        };
         // exceptionMessage
         String exceptionMessage = ex.getMessage();
         // responseStatus

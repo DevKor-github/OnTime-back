@@ -3,13 +3,13 @@ package devkor.ontime_back.service;
 import devkor.ontime_back.dto.PreparationDto;
 import devkor.ontime_back.entity.*;
 import devkor.ontime_back.repository.*;
-import jakarta.persistence.EntityNotFoundException;
+import devkor.ontime_back.response.ErrorCode;
+import devkor.ontime_back.response.GeneralException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -277,10 +277,11 @@ public class PreparationScheduleServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() ->
-                preparationScheduleService.handlePreparationSchedules(userId, invalidScheduleId, preparationDtoList, false))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("해당 ID의 일정을 찾을 수 없습니다: " + invalidScheduleId);
+        assertThatThrownBy(() -> preparationScheduleService.handlePreparationSchedules(userId, invalidScheduleId, preparationDtoList, false))
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
     }
 
     @Test
@@ -333,10 +334,11 @@ public class PreparationScheduleServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() ->
-                preparationScheduleService.handlePreparationSchedules(newUser2.getId(), addedSchedule1.getScheduleId(), preparationDtoList, false))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("사용자가 해당 일정에 대한 권한이 없습니다");
+        assertThatThrownBy(() -> preparationScheduleService.handlePreparationSchedules(newUser2.getId(), addedSchedule1.getScheduleId(), preparationDtoList, false))
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
     }
 
 

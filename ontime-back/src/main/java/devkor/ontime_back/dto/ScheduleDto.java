@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @ToString
-@Getter
+@Data
 @NoArgsConstructor // 기본 생성자 추가
 @AllArgsConstructor // 모든 필드를 포함하는 생성자 추가
 public class ScheduleDto {
