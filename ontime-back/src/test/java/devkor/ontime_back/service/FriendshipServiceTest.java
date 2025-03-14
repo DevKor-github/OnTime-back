@@ -232,7 +232,7 @@ class FriendshipServiceTest {
         // when // then
         assertThatThrownBy(() -> friendshipService.getFriendShipRequester(addedReceiver.getId(), friendShip.getFriendShipId()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("존재하지 않는 친구 요청입니다. 친구 추가를 신청한 유저가 탈퇴했을 수 있습니다.");
+                .hasMessage("존재하지 않는 친구추가 요청자 id입니다. 해당 유저가 탈퇴했을 수 있습니다.");
     }
 
 

@@ -201,7 +201,7 @@ public class ScheduleService {
                 schedule.getScheduleName(),
                 schedule.getMoveTime(),
                 schedule.getScheduleTime(),
-                schedule.getScheduleSpareTime(),
+                (schedule.getScheduleSpareTime() == null) ? schedule.getUser().getSpareTime() : schedule.getScheduleSpareTime(),
                 schedule.getScheduleNote(),
                 schedule.getLatenessTime()
         );
