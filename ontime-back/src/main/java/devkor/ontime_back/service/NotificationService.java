@@ -41,17 +41,15 @@ public class NotificationService {
         User user = schedule.getUser();
         String firebaseToken = user.getFirebaseToken();
 
-        System.out.println(user.getName() + "님 " + message + "\n약속: " + schedule); // 테스트용. 파이어베이스 확인되면 이 라인삭제해야함
-
         Message firebaseMessage = Message.builder()
                 .putData("title", "약속 알림")
-                .putData("content", user.getName() + "님 " + message + "\n약속: " + schedule)
+                .putData("content", user.getName() + "님 " + message + "\n약속명: " + schedule.getScheduleName())
                 .setToken(firebaseToken)
                 .build();
 
         try {
             String response = FirebaseMessaging.getInstance().send(firebaseMessage);
-            System.out.println("Successfully sent message: " + response);
+            System.out.println("Firebase에 성공적으로 push notification 요청을 보냈으며, Firebase로부터 적절한 응답을 받았습니다 \n응답 내용:" + response);
         } catch (Exception e) {
             e.printStackTrace();
         }

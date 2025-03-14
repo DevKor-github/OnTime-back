@@ -23,6 +23,11 @@ bin/
 
 ### IntelliJ IDEA ###
 .idea
+../.idea/
+../.DS_Store
+.DS_Store
+src/.DS_Store
+src/main/.DS_Store
 *.iws
 *.iml
 *.ipr
