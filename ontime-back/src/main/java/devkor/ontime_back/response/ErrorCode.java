@@ -16,10 +16,10 @@ public enum ErrorCode {
     SERVICE_UNAVAILABLE("503", "Service Unavailable: The server is temporarily unable to handle the request.", HttpStatus.SERVICE_UNAVAILABLE),
 
     // 비즈니스 로직 오류 코드
-    USER_NOT_FOUND("1001", "User Not Found: The specified user does not exist in the system.", HttpStatus.BAD_REQUEST),
-    INVALID_INPUT("1002", "Invalid Input: The input provided is invalid or not in the expected format.", HttpStatus.BAD_REQUEST),
-    RESOURCE_ALREADY_EXISTS("1003", "Resource Already Exists: The resource you are trying to create already exists.", HttpStatus.BAD_REQUEST),
-    UNAUTHORIZED_ACCESS("1004", "Unauthorized Access: You do not have permission to perform this action.", HttpStatus.UNAUTHORIZED),
+    USER_NOT_FOUND("1001", "해당 ID의 사용자를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_INPUT("1002", "유효하지 않은 입력값입니다.", HttpStatus.BAD_REQUEST),
+    RESOURCE_ALREADY_EXISTS("1003", "생성하려는 리소스가 이미 존재합니다.", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED_ACCESS("1004", "해당 작업에 대한 권한이 없습니다.", HttpStatus.UNAUTHORIZED),
     EMAIL_ALREADY_EXIST("1005", "이미 존재하는 이메일입니다.", HttpStatus.BAD_REQUEST),
     NAME_ALREADY_EXIST("1006", "이미 존재하는 이름입니다.", HttpStatus.BAD_REQUEST),
     USER_SETTING_ALREADY_EXIST("1007", "이미 존재하는 userSettingId 입니다.", HttpStatus.BAD_REQUEST),
@@ -27,6 +27,8 @@ public enum ErrorCode {
     SAME_PASSWORD("1009", "새 비밀번호와 기존 비밀번호가 일치합니다.", HttpStatus.BAD_REQUEST),
     SCHEDULE_NOT_FOUND("1010", "해당 약속이 존재하지 않습니다.", HttpStatus.BAD_REQUEST),
     FIREBASE("1011", "FIREBASE로 메세지를 발송하였으나 오류가 발생했습니다.(유효하지 않은 토큰 등)", HttpStatus.BAD_REQUEST),
+    FIRST_PREPARATION_NOT_FOUND("1012", "해당 ID의 사용자의 준비과정을 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
+
 
     // 공통 오류 메시지
     UNEXPECTED_ERROR("1000", "Unexpected Error: An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR);

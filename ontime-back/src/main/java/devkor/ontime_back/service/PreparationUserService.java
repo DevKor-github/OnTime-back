@@ -7,6 +7,8 @@ import devkor.ontime_back.entity.User;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.PreparationUserRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.ErrorCode;
+import devkor.ontime_back.response.GeneralException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -16,19 +18,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static devkor.ontime_back.response.ErrorCode.*;
+
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class PreparationUserService {
     private final PreparationUserRepository preparationUserRepository;
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
     // 회원가입 시 디폴트 준비과정 세팅
     public void setFirstPreparationUser(Long userId, List<PreparationDto> preparationDtoList) {
         User user = userRepository.findById(userId).orElseThrow(() ->
-                new EntityNotFoundException("사용자 ID " + userId + "에 해당하는 사용자를 찾을 수 없습니다.")
+                new GeneralException(USER_NOT_FOUND)
         );
         handlePreparationUsers(user, preparationDtoList, false);
 
@@ -38,7 +41,7 @@ public class PreparationUserService {
     @Transactional
     public void updatePreparationUsers(Long userId, List<PreparationDto> preparationDtoList) {
         User user = userRepository.findById(userId).orElseThrow(() ->
-                new EntityNotFoundException("사용자 ID " + userId + "에 해당하는 사용자를 찾을 수 없습니다.")
+                new GeneralException(USER_NOT_FOUND)
         );
         handlePreparationUsers(user, preparationDtoList, true);
 
@@ -48,7 +51,7 @@ public class PreparationUserService {
     public List<PreparationDto> showAllPreparationUsers(Long userId) {
 
         PreparationUser firstPreparation = preparationUserRepository.findFirstPreparationUserByUserIdWithNextPreparation(userId)
-                .orElseThrow(() -> new EntityNotFoundException("사용자 ID " + userId + "에 대한 시작 준비 단계를 찾을 수 없습니다."));
+                .orElseThrow(() -> new GeneralException(FIRST_PREPARATION_NOT_FOUND));
 
         List<PreparationDto> preparationDtos = new ArrayList<>();
         PreparationUser current = firstPreparation;

@@ -7,11 +7,9 @@ import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.PreparationScheduleRepository;
 import devkor.ontime_back.repository.ScheduleRepository;
 import devkor.ontime_back.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
+import devkor.ontime_back.response.GeneralException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static devkor.ontime_back.response.ErrorCode.SCHEDULE_NOT_FOUND;
+import static devkor.ontime_back.response.ErrorCode.UNAUTHORIZED_ACCESS;
 
 @Service
 @Transactional(readOnly = true)
@@ -45,10 +46,10 @@ public class PreparationScheduleService {
     @Transactional
     protected void handlePreparationSchedules(Long userId, UUID scheduleId, List<PreparationDto> preparationDtoList, boolean shouldDelete) {
         Schedule schedule = scheduleRepository.findByIdWithUser(scheduleId)
-                .orElseThrow(() -> new EntityNotFoundException("해당 ID의 일정을 찾을 수 없습니다: " + scheduleId));
+                .orElseThrow(() -> new GeneralException(SCHEDULE_NOT_FOUND));
 
         if (!schedule.getUser().getId().equals(userId)) {
-            throw new AccessDeniedException("사용자가 해당 일정에 대한 권한이 없습니다.");
+            throw new GeneralException(UNAUTHORIZED_ACCESS);
         }
 
         if (shouldDelete) {
