@@ -9,7 +9,6 @@ import devkor.ontime_back.repository.*;
 import devkor.ontime_back.response.ErrorCode;
 import devkor.ontime_back.response.GeneralException;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -18,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -50,6 +50,8 @@ public class ScheduleService {
 
     // 특정 기간의 약속 조회
     public List<ScheduleDto> showSchedulesByPeriod(Long userId, LocalDateTime startDate, LocalDateTime endDate) {
+        Integer userSpareTime = userRepository.findSpareTimeById(userId);
+
         List<Schedule> periodScheduleList;
         if (startDate == null && endDate != null) { // StartDate가 null인 경우, EndDate 이전의 일정 모두 반환
             periodScheduleList = scheduleRepository.findAllByUserIdAndScheduleTimeBefore(userId, endDate);
@@ -63,7 +65,12 @@ public class ScheduleService {
         }
 
         return periodScheduleList.stream()
-                .map(this::mapToDto)
+                .map(schedule -> {
+                    ScheduleDto scheduleDto = mapToDto(schedule);
+                    // schedule의 spareTime이 null이면 userSpareTime을 사용
+                    scheduleDto.setScheduleSpareTime(Optional.ofNullable(schedule.getScheduleSpareTime()).orElse(userSpareTime));
+                    return scheduleDto;
+                })
                 .collect(Collectors.toList());
     }
 

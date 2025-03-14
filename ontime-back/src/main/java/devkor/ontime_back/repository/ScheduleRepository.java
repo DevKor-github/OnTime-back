@@ -29,13 +29,13 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     @Query("DELETE FROM Schedule s WHERE s.scheduleId = :scheduleId")
     void deleteByScheduleId(@Param("scheduleId") UUID scheduleId);
 
-    @Query("SELECT s FROM Schedule s JOIN FETCH s.place JOIN FETCH s.user WHERE s.user.id = :userId")
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.place WHERE s.user.id = :userId")
     List<Schedule> findAllByUserIdWithPlace(Long userId);
-    @Query("SELECT s FROM Schedule s JOIN FETCH s.place JOIN FETCH s.user WHERE s.user.id = :userId AND s.scheduleTime < :endDate")
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.place WHERE s.user.id = :userId AND s.scheduleTime < :endDate")
     List<Schedule> findAllByUserIdAndScheduleTimeBefore(@Param("userId") Long userId, @Param("endDate") LocalDateTime endDate);
-    @Query("SELECT s FROM Schedule s JOIN FETCH s.place JOIN FETCH s.user WHERE s.user.id = :userId AND s.scheduleTime > :startDate")
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.place WHERE s.user.id = :userId AND s.scheduleTime > :startDate")
     List<Schedule> findAllByUserIdAndScheduleTimeAfter(@Param("userId") Long userId, @Param("startDate") LocalDateTime startDate);
-    @Query("SELECT s FROM Schedule s JOIN FETCH s.place JOIN FETCH s.user WHERE s.user.id = :userId AND s.scheduleTime BETWEEN :startDate AND :endDate")
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.place WHERE s.user.id = :userId AND s.scheduleTime BETWEEN :startDate AND :endDate")
     List<Schedule> findAllByUserIdAndScheduleTimeBetween(@Param("userId") Long userId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // 특정 시간 범위 내에 시작되는 약속 조회
