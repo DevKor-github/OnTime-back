@@ -1,15 +1,21 @@
 package devkor.ontime_back.global.oauth.google;
-
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 import devkor.ontime_back.dto.OAuthGoogleRequestDto;
 import devkor.ontime_back.dto.OAuthGoogleUserDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserRepository;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -24,6 +30,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -35,25 +42,9 @@ public class GoogleLoginService {
     private static final String GOOGLE_USER_INFO_URL = "https://www.googleapis.com/userinfo/v2/me";
     private static final String GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke?token=";
 
+    @Value("${spring.security.oauth2.client.registration.google.client-id}")
+    private String clientId;
 
-
-    public OAuthGoogleUserDto getUserInfoFromAccessToken(String accessToken) {
-        RestTemplate restTemplate = new RestTemplate();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + accessToken);
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<OAuthGoogleUserDto> response = restTemplate.exchange(
-                GOOGLE_USER_INFO_URL,
-                org.springframework.http.HttpMethod.GET,
-                entity,
-                OAuthGoogleUserDto.class
-        );
-
-        return response.getBody();
-    }
     public Authentication handleLogin(OAuthGoogleRequestDto oAuthGoogleRequestDto, User user, HttpServletResponse response) throws IOException {
         user.updateSocialLoginToken(oAuthGoogleRequestDto.getRefreshToken());
 
@@ -98,6 +89,15 @@ public class GoogleLoginService {
                 .socialLoginToken(oAuthGoogleRequestDto.getRefreshToken())
                 .build();
 
+        UUID userSettingId = UUID.randomUUID();
+
+        UserSetting userSetting = UserSetting.builder()
+                .userSettingId(userSettingId)
+                .user(newUser)
+                .build();
+
+        newUser.setUserSetting(userSetting);
+
         User savedUser = userRepository.save(newUser);
 
         String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
@@ -121,6 +121,23 @@ public class GoogleLoginService {
         response.getWriter().flush();
 
         return authentication;
+    }
+
+    public GoogleIdToken.Payload verifyIdentityToken(String identityToken) throws Exception {
+        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                new NetHttpTransport(),
+                GsonFactory.getDefaultInstance())
+                .setAudience(Collections.singletonList(clientId)) // aud 확인
+                .build();
+
+        GoogleIdToken idToken = verifier.verify(identityToken); // Google의 공개 키를 사용하여 idToken 서명을 검증
+        if (idToken != null) {
+            GoogleIdToken.Payload payload = idToken.getPayload();
+            return payload;
+        } else {
+            log.info("유효하지 않은 idtoken 입니다.");
+            return null;
+        }
     }
 
     public boolean revokeToken(Long userId) {
