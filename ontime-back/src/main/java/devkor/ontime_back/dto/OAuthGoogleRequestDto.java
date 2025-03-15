@@ -4,6 +4,6 @@ import lombok.Getter;
 
 @Getter
 public class OAuthGoogleRequestDto {
-    private String accessToken;
+    private String idToken;
     private String refreshToken;
 }

@@ -3,18 +3,17 @@ package devkor.ontime_back.global.oauth.apple;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import devkor.ontime_back.dto.AppleTokenResponseDto;
-import devkor.ontime_back.dto.OAuthAppleRequestDto;
 import devkor.ontime_back.dto.OAuthAppleUserDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.global.jwt.JwtUtils;
 import devkor.ontime_back.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +21,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -39,10 +37,8 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
-import java.util.Optional;
+import java.time.Instant;
+import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -114,6 +110,15 @@ public class AppleLoginService {
                 .socialLoginToken(appleRefreshToken)
                 .build();
 
+        UUID userSettingId = UUID.randomUUID();
+
+        UserSetting userSetting = UserSetting.builder()
+                .userSettingId(userSettingId)
+                .user(newUser)
+                .build();
+
+        newUser.setUserSetting(userSetting);
+
         User savedUser = userRepository.save(newUser);
 
         String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
@@ -151,11 +156,16 @@ public class AppleLoginService {
         Claims tokenClaims = jwtUtils.getTokenClaims(identityToken, publicKey);
         // iss 확인
         if (!issuer.equals(tokenClaims.getIssuer())) {
-            throw new IllegalArgumentException("Invalid JWT: Issuer mismatch. Expected: " + issuer);
+            throw new IllegalArgumentException("유효하지 않은 JWT입니다. issuer가 일치하지 않습니다.");
         }
         // aud 확인
         if (!clientId.equals(tokenClaims.getAudience())) {
-            throw new IllegalArgumentException("Invalid JWT: Audience mismatch. Expected: " + clientId);
+            throw new IllegalArgumentException("유효하지 않은 JWT입니다. audience가 일치하지 않습니다.");
+        }
+        // exp(만료 시간) 확인
+        Date expiration = tokenClaims.getExpiration();
+        if (expiration == null || expiration.before(Date.from(Instant.now()))) {
+            throw new IllegalArgumentException("유효하지 않은 JWT입니다. 만료되었습니다.");
         }
 
         return tokenClaims;
