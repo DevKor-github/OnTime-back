@@ -5,6 +5,7 @@ import devkor.ontime_back.ControllerTestSupport;
 import devkor.ontime_back.TestSecurityConfig;
 import devkor.ontime_back.dto.ChangePasswordDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
+import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
@@ -43,18 +44,16 @@ class UserAuthControllerTest extends ControllerTestSupport {
                 .email("user@example.com")
                 .name("junbeom")
                 .password("password123")
-                .userSettingId(UUID.fromString("a304cde3-8ee9-4054-971a-300aacc2177c"))
                 .build();
 
-        User mockUser = User.builder()
-                .id(1L)
-                .email("user@example.com")
+        UserInfoResponse userSignupResponse = UserInfoResponse.builder()
+                .userId(1L)
                 .name("junbeom")
-                .password("password123")
+                .email("user@example.com")
                 .role(Role.USER)
                 .build();
 
-        when(userAuthService.signUp(any(HttpServletRequest.class), any(HttpServletResponse.class),any(UserSignUpDto.class))).thenReturn(mockUser);
+        when(userAuthService.signUp(any(HttpServletRequest.class), any(HttpServletResponse.class),any(UserSignUpDto.class))).thenReturn(userSignupResponse);
 
         // when // then
         mockMvc.perform(
