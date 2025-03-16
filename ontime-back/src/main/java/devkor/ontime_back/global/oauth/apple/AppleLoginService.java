@@ -11,6 +11,7 @@ import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.global.jwt.JwtUtils;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.InvalidTokenException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -156,16 +157,16 @@ public class AppleLoginService {
         Claims tokenClaims = jwtUtils.getTokenClaims(identityToken, publicKey);
         // iss 확인
         if (!issuer.equals(tokenClaims.getIssuer())) {
-            throw new IllegalArgumentException("유효하지 않은 JWT입니다. issuer가 일치하지 않습니다.");
+            throw new InvalidTokenException("유효하지 않은 JWT입니다. issuer가 일치하지 않습니다.");
         }
         // aud 확인
         if (!clientId.equals(tokenClaims.getAudience())) {
-            throw new IllegalArgumentException("유효하지 않은 JWT입니다. audience가 일치하지 않습니다.");
+            throw new InvalidTokenException("유효하지 않은 JWT입니다. audience가 일치하지 않습니다.");
         }
         // exp(만료 시간) 확인
         Date expiration = tokenClaims.getExpiration();
         if (expiration == null || expiration.before(Date.from(Instant.now()))) {
-            throw new IllegalArgumentException("유효하지 않은 JWT입니다. 만료되었습니다.");
+            throw new InvalidTokenException("유효하지 않은 JWT입니다. 만료되었습니다.");
         }
 
         return tokenClaims;
