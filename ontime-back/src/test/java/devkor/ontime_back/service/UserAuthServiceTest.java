@@ -1,8 +1,11 @@
 package devkor.ontime_back.service;
 
+import com.google.firebase.auth.UserInfo;
 import devkor.ontime_back.dto.ChangePasswordDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
+import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
+import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.repository.UserRepository;
@@ -18,11 +21,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collection;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 class UserAuthServiceTest {
@@ -49,39 +57,43 @@ class UserAuthServiceTest {
         userRepository.deleteAllInBatch();
     }
 
-    @DisplayName("회원정보를 받아 User테이블과 UserSetting테이블에 데이터를 생성하고 연관관계를 생성한다.(회원가입을 한다.)")
+    @DisplayName("회원가입에 성공해 유저정보가 성공적으로 저장된다.")
     @Test
     void signUp() throws Exception {
         // given
-        UserSignUpDto userSignUpDto = getUserSignUpDto("user@example.com", "password1234", "junbeom", "a304cde3-8ee9-4054-971a-300aacc2177c");
+        UserSignUpDto userSignUpDto = getUserSignUpDto("user@example.com", "password1234", "junbeom");
 
         // when
-        User addedUser = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse, userSignUpDto);
-        UserSetting userSetting = addedUser.getUserSetting();
+        UserInfoResponse userSignupResponse = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse, userSignUpDto);
 
         // then
-        assertThat(addedUser.getId()).isNotNull();
-        assertThat(addedUser)
-                .extracting("email", "name", "punctualityScore", "scheduleCountAfterReset", "latenessCountAfterReset")
-                .contains("user@example.com", "junbeom", -1f, 0, 0);
-        assertThat(passwordEncoder.matches("password1234", addedUser.getPassword())).isTrue();
-        assertThat(userSetting).isNotNull();
-        assertThat(userSetting.getUserSettingId())
-                .isEqualTo(UUID.fromString("a304cde3-8ee9-4054-971a-300aacc2177c"));
+        assertThat(userSignupResponse.getUserId()).isNotNull();
+        assertThat(userSignupResponse)
+                .extracting("email", "name", "spareTime", "note", "punctualityScore", "role")
+                .contains("user@example.com", "junbeom", null, null, -1f, Role.GUEST);
 
+        Optional<User> addedUser = userRepository.findById(userSignupResponse.getUserId());
+        assertThat(addedUser.isPresent()).isTrue();
+        User user = addedUser.get();
+        assertThat(user)
+                .extracting("email", "imageUrl", "name", "spareTime", "note", "punctualityScore", "scheduleCountAfterReset", "latenessCountAfterReset","role")
+                .contains("user@example.com", null, "junbeom", null, null, -1f, 0, 0, Role.GUEST);
+        assertThat(passwordEncoder.matches("password1234", user.getPassword())).isTrue();
+        assertThat(user.getRefreshToken()).isNotNull();
+        assertThat(user.getUserSetting()).isNotNull();
     }
 
     @DisplayName("이미 존재하는 이메일로 회원가입을 시도하는 경우 예외가 발생한다.")
     @Test
     void signUpWithExistingEmail() throws Exception {
         // given
-        UserSignUpDto userSignUpDto1 = getUserSignUpDto("user@example.com", "password1234", "junbeom", "a304cde3-8ee9-4054-971a-300aacc2177c");
+        UserSignUpDto userSignUpDto1 = getUserSignUpDto("user@example.com", "password1234", "junbeom");
 
-        UserSignUpDto userSignUpDto2 = getUserSignUpDto("user@example.com", "password1234", "junbeom2", "a304cde3-8ee9-4054-971a-300aacc2177d");
+        UserSignUpDto userSignUpDto2 = getUserSignUpDto("user@example.com", "password1234", "junbeom2");
 
         // when, then
-        User addedUser1 = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto1);
-        assertThat(addedUser1.getId()).isNotNull();
+        UserInfoResponse userSignupResponse = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto1);
+        assertThat(userSignupResponse.getUserId()).isNotNull();
 
         assertThatThrownBy(() -> userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto2))
                 .isInstanceOf(GeneralException.class)
@@ -92,34 +104,17 @@ class UserAuthServiceTest {
     @Test
     void signUpWithExistingName() throws Exception {
         // given
-        UserSignUpDto userSignUpDto1 = getUserSignUpDto("user@example.com", "password1234", "junbeom", "a304cde3-8ee9-4054-971a-300aacc2177c");
+        UserSignUpDto userSignUpDto1 = getUserSignUpDto("user@example.com", "password1234", "junbeom");
 
-        UserSignUpDto userSignUpDto2 = getUserSignUpDto("user2@example.com", "password1234", "junbeom", "a304cde3-8ee9-4054-971a-300aacc2177d");
+        UserSignUpDto userSignUpDto2 = getUserSignUpDto("user2@example.com", "password1234", "junbeom");
 
         // when, then
-        User addedUser1 = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto1);
-        assertThat(addedUser1.getId()).isNotNull();
+        UserInfoResponse userSignupResponse = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto1);
+        assertThat(userSignupResponse.getUserId()).isNotNull();
 
         assertThatThrownBy(() -> userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto2))
                 .isInstanceOf(GeneralException.class)
                 .hasMessage("이미 존재하는 이름입니다.");
-    }
-
-    @DisplayName("이미 존재하는 유저세팅ID로 회원가입을 시도하는 경우 예외가 발생한다.")
-    @Test
-    void signUpWithExistingUserSettingId() throws Exception {
-        // given
-        UserSignUpDto userSignUpDto1 = getUserSignUpDto("user@example.com", "password1234", "junbeom", "a304cde3-8ee9-4054-971a-300aacc2177c");
-
-        UserSignUpDto userSignUpDto2 = getUserSignUpDto("user2@example.com", "password1234", "junbeom2", "a304cde3-8ee9-4054-971a-300aacc2177c");
-
-        // when, then
-        User addedUser1 = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto1);
-        assertThat(addedUser1.getId()).isNotNull();
-
-        assertThatThrownBy(() -> userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse,userSignUpDto2))
-                .isInstanceOf(GeneralException.class)
-                .hasMessage("이미 존재하는 userSettingId 입니다.");
     }
 
     @DisplayName("(회원가입 직후) 유저의 추가정보 기입에 성공한다")
@@ -286,12 +281,11 @@ class UserAuthServiceTest {
 
 
 
-    private UserSignUpDto getUserSignUpDto(String email, String password, String name, String userSettingId) {
+    private UserSignUpDto getUserSignUpDto(String email, String password, String name) {
         UserSignUpDto userSignUpDto = UserSignUpDto.builder()
                 .email(email)
                 .password(password)
                 .name(name)
-                .userSettingId(UUID.fromString(userSettingId))
                 .build();
         return userSignUpDto;
     }

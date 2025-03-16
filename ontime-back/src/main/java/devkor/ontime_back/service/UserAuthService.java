@@ -2,6 +2,7 @@ package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.ChangePasswordDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
+import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
@@ -15,11 +16,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -41,42 +44,53 @@ public class UserAuthService {
 
     // 자체 로그인 회원가입
     @Transactional
-    public User signUp(HttpServletRequest request, HttpServletResponse response, UserSignUpDto userSignUpDto) throws Exception {
-
+    public UserInfoResponse signUp(HttpServletRequest request, HttpServletResponse response, UserSignUpDto userSignUpDto) throws Exception {
         if (userRepository.findByEmail(userSignUpDto.getEmail()).isPresent()) {
             throw new GeneralException(ErrorCode.EMAIL_ALREADY_EXIST);
         }
-
         if (userRepository.findByName(userSignUpDto.getName()).isPresent()) {
             throw new GeneralException(ErrorCode.NAME_ALREADY_EXIST);
         }
 
-        if (userSettingRepository.findByUserSettingId(userSignUpDto.getUserSettingId()).isPresent()) {
-            throw new GeneralException(ErrorCode.USER_SETTING_ALREADY_EXIST);
-        }
+        User user = createUserAndUserSetting(userSignUpDto);
+        createAndSendTokens(response, user);
 
+        return UserInfoResponse.builder()
+                .userId(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .spareTime(user.getSpareTime())
+                .note(user.getNote())
+                .punctualityScore(user.getPunctualityScore())
+                .build();
+    }
+
+    @NotNull
+    private User createUserAndUserSetting(UserSignUpDto userSignUpDto) {
         // 자체 로그인시, USER로 설정
         User user = User.builder()
                 .email(userSignUpDto.getEmail())
-                .password(userSignUpDto.getPassword())
+                .password(passwordEncoder.encode(userSignUpDto.getPassword()))
                 .name(userSignUpDto.getName())
                 .role(Role.GUEST)
                 .punctualityScore((float)-1)
                 .scheduleCountAfterReset(0)
                 .latenessCountAfterReset(0)
                 .build();
-        // 비밀번호 암호화 후 저장
-        user.passwordEncode(passwordEncoder);
 
         // 사용자 앱 설정 세팅(pk와 fk만 세팅, 나머지는 디폴트설정값(엔티티에 정의)으로 생성됨)
         UserSetting userSetting = UserSetting.builder()
-                .userSettingId(userSignUpDto.getUserSettingId())
+                .userSettingId(UUID.randomUUID())
                 .user(user)
                 .build();
 
         user.setUserSetting(userSetting);
         userRepository.save(user); //CASCADE옵션 덕분에 userRepository만 save해주면 됨(userSettingRepository는 save안해줘도 부모인 user를 따라 저장됨)
+        return user;
+    }
 
+    private void createAndSendTokens(HttpServletResponse response, User user) {
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
@@ -84,8 +98,6 @@ public class UserAuthService {
 
         user.updateRefreshToken(refreshToken);
         userRepository.saveAndFlush(user);
-
-        return user;
     }
 
     @Transactional
