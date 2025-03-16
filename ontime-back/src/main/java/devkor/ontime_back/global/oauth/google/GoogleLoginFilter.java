@@ -1,31 +1,23 @@
 package devkor.ontime_back.global.oauth.google;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import devkor.ontime_back.dto.OAuthGoogleRequestDto;
 import devkor.ontime_back.dto.OAuthGoogleUserDto;
-import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
-import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Optional;
 
 @Slf4j
@@ -45,21 +37,27 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
             throws AuthenticationException, IOException, ServletException {
         ObjectMapper objectMapper = new ObjectMapper();
         OAuthGoogleRequestDto oAuthGoogleRequestDto = objectMapper.readValue(request.getInputStream(), OAuthGoogleRequestDto.class);
-        OAuthGoogleUserDto oAuthGoogleUserInfo = googleLoginService.getUserInfoFromAccessToken(oAuthGoogleRequestDto.getAccessToken());
 
-        Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.GOOGLE, oAuthGoogleUserInfo.getId());
+        try {
+            GoogleIdToken.Payload googlePayload = googleLoginService.verifyIdentityToken(oAuthGoogleRequestDto.getIdToken());
+            String googleUserId = googlePayload.getSubject();
 
+            Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.GOOGLE, googleUserId);
 
-        if (existingUser.isPresent()) {
-            return googleLoginService.handleLogin(oAuthGoogleRequestDto, existingUser.get(), response);
-        } else {
-            return googleLoginService.handleRegister(oAuthGoogleRequestDto, oAuthGoogleUserInfo, response);
+            if (existingUser.isPresent()) {
+                return googleLoginService.handleLogin(oAuthGoogleRequestDto, existingUser.get(), response);
+            } else {
+                OAuthGoogleUserDto oAuthGoogleUserDto = new OAuthGoogleUserDto(googleUserId, (String) googlePayload.get("name"), (String) googlePayload.get("picture"), googlePayload.getEmail());
+                return googleLoginService.handleRegister(oAuthGoogleRequestDto, oAuthGoogleUserDto, response);
+            }
+
+        } catch (Exception e) {
+            log.error("Google 로그인 실패: {}", e.getMessage(), e);
+            throw new AuthenticationException("Google 로그인 실패") {};
         }
+
+
     }
-
-
-
-
 
     // 인증 성공 처리
     @Override
