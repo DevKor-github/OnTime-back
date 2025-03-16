@@ -33,7 +33,7 @@ public class UserAuthController {
                     description = "회원가입 요청 JSON 데이터",
                     required = true,
                     content = @Content(
-                            schema = @Schema(type = "object", example = "{\"email\": \"user@example.com\", \"password\": \"password123\", \"name\": \"junbeom\", \"userSettingId\": \"a304cde3-8ee9-4054-971a-300aacc2177c\"}")
+                            schema = @Schema(type = "object", example = "{\"email\": \"user@example.com\", \"password\": \"password123\", \"name\": \"junbeom\"}")
                     )
             )
     )
@@ -48,17 +48,8 @@ public class UserAuthController {
     })
     @PostMapping("/sign-up")
     public ResponseEntity<ApiResponseForm<UserInfoResponse>> signUp(HttpServletRequest request, HttpServletResponse response, @RequestBody UserSignUpDto userSignUpDto) throws Exception {
-        User user = userAuthService.signUp(request, response, userSignUpDto);
+        UserInfoResponse userSignUpResponse = userAuthService.signUp(request, response, userSignUpDto);
         String message = "회원가입이 성공적으로 완료되었습니다. 온보딩을 진행해주세요( /user/onboarding )";
-        UserInfoResponse userSignUpResponse = UserInfoResponse.builder()
-                .userId(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .spareTime(user.getSpareTime())
-                .note(user.getNote())
-                .punctualityScore(user.getPunctualityScore())
-                .build();
         return ResponseEntity.ok(ApiResponseForm.success(userSignUpResponse, message));
     }
 
