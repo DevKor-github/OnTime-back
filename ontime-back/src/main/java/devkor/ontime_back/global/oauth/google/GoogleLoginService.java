@@ -29,12 +29,12 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GoogleLoginService {
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -42,8 +42,19 @@ public class GoogleLoginService {
     private static final String GOOGLE_USER_INFO_URL = "https://www.googleapis.com/userinfo/v2/me";
     private static final String GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke?token=";
 
-    @Value("${spring.security.oauth2.client.registration.google.client-id}")
-    private String clientId;
+    private final List<String> validClientIds;
+
+    public GoogleLoginService(
+            JwtTokenProvider jwtTokenProvider,
+            UserRepository userRepository,
+            @Value("${google.web.client-id}") String webClientId,
+            @Value("${google.app.client-id}") String appClientId
+    ) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository = userRepository;
+        this.validClientIds = List.of(webClientId, appClientId);
+    }
+
 
     public Authentication handleLogin(OAuthGoogleRequestDto oAuthGoogleRequestDto, User user, HttpServletResponse response) throws IOException {
         user.updateSocialLoginToken(oAuthGoogleRequestDto.getRefreshToken());
@@ -127,7 +138,7 @@ public class GoogleLoginService {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                 new NetHttpTransport(),
                 GsonFactory.getDefaultInstance())
-                .setAudience(Collections.singletonList(clientId)) // aud 확인
+                .setAudience(validClientIds) // aud 확인
                 .build();
 
         GoogleIdToken idToken = verifier.verify(identityToken); // Google의 공개 키를 사용하여 idToken 서명을 검증
