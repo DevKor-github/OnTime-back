@@ -80,7 +80,8 @@ jobs:
           echo "jwt.refresh.expiration=${{ secrets.JWT_REFRESH_EXPIRATION }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.access.header=${{ secrets.JWT_ACCESS_HEADER }}" >> ontime-back/src/main/resources/application.properties
           echo "jwt.refresh.header=${{ secrets.JWT_REFRESH_HEADER }}" >> ontime-back/src/main/resources/application.properties
-          echo "spring.security.oauth2.client.registration.google.client-id=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "google.web.client-id = ${{ secrets.GOOGLE_WEB_CLIENT_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "google.app.client-id = ${{ secrets.GOOGLE_APP_CLIENT_ID }}" >> ontime-back/src/main/resources/application.properties
           echo "spring.security.oauth2.client.registration.google.client-secret=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET }}" >> ontime-back/src/main/resources/application.properties
           echo "spring.security.oauth2.client.registration.google.scope=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE }}" >> ontime-back/src/main/resources/application.properties
           echo "spring.security.oauth2.client.registration.google.redirect-uri=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI }}" >> ontime-back/src/main/resources/application.properties
