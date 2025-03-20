@@ -122,10 +122,14 @@ public class GoogleLoginService {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
+        String msg = savedUser.getRole().name().equals("GUEST") ? "유저의 ROLE이 GUEST이므로 온보딩API를 호출해 온보딩을 진행해야합니다." : "로그인에 성공하였습니다.";
+        // JSON 응답 생성
         String responseBody = String.format(
-                "{\"message\": \"%s\", \"role\": \"%s\"}",
-                "회원가입이 완료되었습니다. ROLE이 GUEST이므로 온보딩이 필요합니다.",
-                savedUser.getRole().name()
+                "{ \"status\": \"success\", \"code\": \"200\", \"message\": \"%s\", \"data\": { " +
+                        "\"userId\": %d, \"email\": \"%s\", \"name\": \"%s\", " +
+                        "\"spareTime\": %d, \"note\": %s, \"punctualityScore\": %f, \"role\": \"%s\" } }",
+                msg, savedUser.getId(), savedUser.getEmail(), savedUser.getName(),
+                savedUser.getSpareTime(), savedUser.getNote() != null ? "\"" + savedUser.getNote() + "\"" : null, savedUser.getPunctualityScore(), savedUser.getRole().name()
         );
 
         response.getWriter().write(responseBody);
