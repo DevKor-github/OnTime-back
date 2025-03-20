@@ -38,7 +38,7 @@ public class SocialAuthController {
                     content = @Content(
                             schema = @Schema(
                                     type = "object",
-                                    example = "{\n \"accessToken\": \"ya29.xxxxxxx\" }"
+                                    example = "{\n \"idToken\": \"eyJhbGxxxxxxx\" ,\n  \"refreshToken\": \"\"}}"
                             )
                     )
             )
