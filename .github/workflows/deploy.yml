@@ -13,10 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       # JDK 설치
-      - name: Set up JDK 21 # 실행 환경에서 사용 중인 JDK 확인 (java -version)
+      - name: Set up JDK 17 # build.gradle 버전 확인
         uses: actions/setup-java@v2
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
       # Gradle Wrapper 검증
       - name: Set up Gradle
@@ -61,9 +61,14 @@ jobs:
           echo "apple.client.secret=${{ secrets.APPLE_CLIENT_SECRET }}" >> ontime-back/src/main/resources/application.properties
           echo "apple.login.key=${{ secrets.APPLE_LOGIN_KEY }}" >> ontime-back/src/main/resources/application.properties
           echo "apple.team.id=${{ secrets.APPLE_TEAM_ID }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.enabled=true" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.url=${{ secrets.SPRING_FLYWAY_URL }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.user=${{ secrets.SPRING_FLYWAY_USER }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.password=${{ secrets.SPRING_FLYWAY_PASSWORD }}" >> ontime-back/src/main/resources/application.properties
+          echo "spring.flyway.baseline-on-migrate=true" >> ontime-back/src/main/resources/application.properties
           echo "management.endpoints.web.exposure.include=health" >> ontime-back/src/main/resources/application.properties
           echo "management.endpoint.health.show-details=always" >> ontime-back/src/main/resources/application.properties
-          echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" > ontime-back/src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json
+          echo "${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}" | base64 --decode > ontime-back/src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json
           
           echo "${{ secrets.AUTHKEY_743M7R5W3W }}" > ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8
       # Gradle 빌드
@@ -74,7 +79,7 @@ jobs:
       # 파일 위치 변경
       - name: Move file
         run: |
-          mv ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json ./ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
+          mv ontime-back/src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json ./ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json
           mv ontime-back/src/main/resources/application.properties ./application.properties
           mv ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8 ./AuthKey_743M7R5W3W.p8
           mv ontime-back/build/libs/ontime-back-0.0.1-SNAPSHOT.jar ./project.jar
@@ -87,7 +92,7 @@ jobs:
            host: ${{ secrets.EC2_HOST }}
            username: ${{ secrets.EC2_USER }}
            key: ${{ secrets.EC2_SSH_KEY }}
-           source: "./project.jar, ./docker-compose.yml, ./Dockerfile, ./ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json, ./application.properties, ./AuthKey_743M7R5W3W.p8"
+           source: "./project.jar, ./docker-compose.yml, ./Dockerfile, ./ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json, ./application.properties, ./AuthKey_743M7R5W3W.p8"
            target: "/home/ubuntu/OnTime-back"
            debug: true
   create-config-files:
@@ -104,7 +109,7 @@ jobs:
         debug: true
         script: |
           sudo mkdir -p /home/ubuntu/OnTime-back/ontime-back/src/main/resources/key
-          sudo mv /home/ubuntu/OnTime-back/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json /home/ubuntu/OnTime-back/ontime-back/src/main/resources/ontime-push-firebase-adminsdk-gnpxs-7d098872ff.json
+          sudo mv /home/ubuntu/OnTime-back/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json /home/ubuntu/OnTime-back/ontime-back/src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json
           sudo mv /home/ubuntu/OnTime-back/application.properties /home/ubuntu/OnTime-back/ontime-back/src/main/resources/application.properties
           sudo mv /home/ubuntu/OnTime-back/AuthKey_743M7R5W3W.p8 /home/ubuntu/OnTime-back/ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8
 
