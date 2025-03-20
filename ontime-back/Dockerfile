@@ -1,5 +1,6 @@
 FROM openjdk:17
-RUN apk add --no-cache tzdata && \
+RUN apt-get update && \
+    apt-get install -y tzdata && \
     ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone
 WORKDIR /app
