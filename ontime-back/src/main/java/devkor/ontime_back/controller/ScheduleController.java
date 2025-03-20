@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/schedule")
+@RequestMapping("/schedules")
 @RequiredArgsConstructor
 public class ScheduleController {
     private final ScheduleService scheduleService;
@@ -186,7 +186,7 @@ public class ScheduleController {
             @ApiResponse(responseCode = "200", description = "일정 추가 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PatchMapping("/start/{scheduleId}")
+    @PatchMapping("/{scheduleId}/status")
     public ResponseEntity<ApiResponseForm<Void>> isStartedSchedule(HttpServletRequest request, @PathVariable UUID scheduleId) {
         Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.checkIsStarted(scheduleId, userId);
