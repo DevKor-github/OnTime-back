@@ -22,7 +22,6 @@ import java.util.Map;
 
 
 @RestController
-@RequestMapping("/users/auth")
 @RequiredArgsConstructor
 public class UserAuthController {
 
@@ -47,7 +46,7 @@ public class UserAuthController {
             )),
             @ApiResponse(responseCode = "4XX", description = "회원가입 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(이메일이 이미 존재할 경우, 이름이 이미 존재할 경우 다르게 출력)")))
     })
-    @PostMapping("")
+    @PostMapping("/sign-up")
     public ResponseEntity<ApiResponseForm<UserInfoResponse>> signUp(HttpServletRequest request, HttpServletResponse response, @RequestBody UserSignUpDto userSignUpDto) throws Exception {
         UserInfoResponse userSignUpResponse = userAuthService.signUp(request, response, userSignUpDto);
         String message = "회원가입이 성공적으로 완료되었습니다. 온보딩을 진행해주세요( /user/onboarding )";
@@ -96,7 +95,7 @@ public class UserAuthController {
             )),
             @ApiResponse(responseCode = "4XX", description = "비밀번호 변경 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(기존 비밀번호가 틀린경우, 기존 비밀번호와 새 비밀번호가 같은 경우 다르게 출력)")))
     })
-    @PutMapping("/me/password")
+    @PutMapping("users/me/password")
     public ResponseEntity<ApiResponseForm<String>> changePassword(HttpServletRequest request, @RequestBody ChangePasswordDto changePasswordDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         userAuthService.changePassword(userId, changePasswordDto);
@@ -126,7 +125,7 @@ public class UserAuthController {
             )),
             @ApiResponse(responseCode = "4XX", description = "계정 삭제 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(토큰 오류 제외 비즈니스 로직 오류는 없음)")))
     })
-    @DeleteMapping("/user/delete")
+    @DeleteMapping("/users/me/delete")
     public ResponseEntity<ApiResponseForm<?>> deleteUser(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         userAuthService.deleteUser(userId);
