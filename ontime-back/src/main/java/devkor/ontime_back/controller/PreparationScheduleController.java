@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/preparationschedule")
+@RequestMapping("/preparation-schedules")
 @RequiredArgsConstructor
 public class PreparationScheduleController {
 
@@ -44,7 +44,7 @@ public class PreparationScheduleController {
             @ApiResponse(responseCode = "200", description = "스케줄 준비과정 생성 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PostMapping("/create/{scheduleId}")
+    @PostMapping("/{scheduleId}")
     public ResponseEntity<ApiResponseForm<Void>> createPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
@@ -69,7 +69,7 @@ public class PreparationScheduleController {
             @ApiResponse(responseCode = "200", description = "스케줄 준비과정 수정 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PostMapping("/modify/{scheduleId}")
+    @PutMapping("/{scheduleId}")
     public ResponseEntity<ApiResponseForm<Void>> modifyPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
