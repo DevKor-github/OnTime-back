@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,7 +42,7 @@ public class PreparationScheduleControllerTest extends ControllerTestSupport {
         doNothing().when(preparationScheduleService).makePreparationSchedules(eq(userId), eq(scheduleId), any());
 
         // when & then
-        mockMvc.perform(post("/preparationschedule/create/{scheduleId}", scheduleId)
+        mockMvc.perform(post("/preparation-schedules/{scheduleId}", scheduleId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(new ObjectMapper().writeValueAsString(preparationDtoList))
                         .with(csrf()))
@@ -71,7 +72,7 @@ public class PreparationScheduleControllerTest extends ControllerTestSupport {
         doNothing().when(preparationScheduleService).updatePreparationSchedules(eq(userId), eq(scheduleId), any());
 
         // when & then
-        mockMvc.perform(post("/preparationschedule/modify/{scheduleId}", scheduleId)
+        mockMvc.perform(put("/preparation-schedules/{scheduleId}", scheduleId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(new ObjectMapper().writeValueAsString(preparationDtoList))
                         .with(csrf()))
