@@ -69,17 +69,17 @@ public class SecurityConfig {
                         .frameOptions(frameOptions -> frameOptions.disable()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/css/**", "/images/**", "/js/**", "/favicon.ico", "/h2-console/**").permitAll()
-                        .requestMatchers("/health", "/oauth2/sign-up", "oauth2/success", "login/success", "/oauth2/google/registerOrLogin", "/oauth2/kakao/registerOrLogin", "/oauth2/apple/registerOrLogin", "/sign-up", "/*/additional-info").permitAll()
+                        .requestMatchers("/health", "/oauth2/sign-up", "oauth2/success", "login/success", "/oauth2/google/login", "/oauth2/kakao/login", "/oauth2/apple/login", "/sign-up", "/*/additional-info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-resources/**", "/webjars/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/health").permitAll() // 로드밸런서 연결 확인용 url
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new KakaoLoginFilter("/oauth2/kakao/registerOrLogin", jwtTokenProvider, userRepository),
+                .addFilterBefore(new KakaoLoginFilter("/oauth2/kakao/login", jwtTokenProvider, userRepository),
                         UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new GoogleLoginFilter("/oauth2/google/registerOrLogin", googleLoginService, userRepository),
+                .addFilterBefore(new GoogleLoginFilter("/oauth2/google/login", googleLoginService, userRepository),
                         UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new AppleLoginFilter("/oauth2/apple/registerOrLogin", appleLoginService, userRepository),
+                .addFilterBefore(new AppleLoginFilter("/oauth2/apple/login", appleLoginService, userRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(customJsonUsernamePasswordAuthenticationFilter(), LogoutFilter.class)
                 .addFilterBefore(jwtAuthenticationProcessingFilter(), CustomJsonUsernamePasswordAuthenticationFilter.class);
