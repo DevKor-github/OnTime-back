@@ -46,7 +46,7 @@ public class FirebaseTokenController {
             )),
             @ApiResponse(responseCode = "4XX", description = "FCM 토큰 저장 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PostMapping("/add")
+    @PostMapping("")
     public ResponseEntity<ApiResponseForm<String>> registerFirebaseToken(HttpServletRequest request, @RequestBody FirebaseTokenAddDto firebaseTokenAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 

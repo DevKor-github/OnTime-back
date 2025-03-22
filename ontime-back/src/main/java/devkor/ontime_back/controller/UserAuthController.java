@@ -95,7 +95,7 @@ public class UserAuthController {
             )),
             @ApiResponse(responseCode = "4XX", description = "비밀번호 변경 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(기존 비밀번호가 틀린경우, 기존 비밀번호와 새 비밀번호가 같은 경우 다르게 출력)")))
     })
-    @PutMapping("/change-password")
+    @PutMapping("users/me/password")
     public ResponseEntity<ApiResponseForm<String>> changePassword(HttpServletRequest request, @RequestBody ChangePasswordDto changePasswordDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         userAuthService.changePassword(userId, changePasswordDto);
@@ -125,7 +125,7 @@ public class UserAuthController {
             )),
             @ApiResponse(responseCode = "4XX", description = "계정 삭제 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(토큰 오류 제외 비즈니스 로직 오류는 없음)")))
     })
-    @DeleteMapping("/user/delete")
+    @DeleteMapping("/users/me/delete")
     public ResponseEntity<ApiResponseForm<?>> deleteUser(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         userAuthService.deleteUser(userId);

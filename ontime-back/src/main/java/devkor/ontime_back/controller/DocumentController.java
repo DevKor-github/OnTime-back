@@ -95,7 +95,7 @@ public class DocumentController {
             )),
             @ApiResponse(responseCode = "4XX", description = "개인정보처리방침 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/Ontime-Description")
+    @GetMapping("/ontime-description")
     public ResponseEntity<ApiResponseForm<?>> getOntimeDescription() {
         String terms = "온타임은 지각방지 어플리케이션으로 사용자분들이 바쁜 현대사회에서 여유를 찾을 수 있게 도와드립니다.";
         String message = "온타임 소개글 조회 성공";

@@ -19,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -47,7 +47,7 @@ public class UserController {
             )),
             @ApiResponse(responseCode = "4XX", description = "성실도 점수 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/punctuality-score") // 성실도 점수 조회
+    @GetMapping("/me/punctuality-score") // 성실도 점수 조회
     public ResponseEntity<ApiResponseForm<PunctualityScoreResponse>> getPunctualityScore(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         float punctualityScore = userService.getPunctualityScore(userId); // -1 or float 0~100 반환
@@ -77,7 +77,7 @@ public class UserController {
             )),
             @ApiResponse(responseCode = "4XX", description = "성실도 점수 초기화 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PutMapping("/reset-punctuality") // 성실도 점수 초기화
+    @PutMapping("/me/punctuality-score") // 성실도 점수 초기화
     public ResponseEntity<ApiResponseForm<String>> resetPunctualityScore(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         userService.resetPunctualityScore(userId);
@@ -108,7 +108,7 @@ public class UserController {
             )),
             @ApiResponse(responseCode = "4XX", description = "사용자 여유시간 업데이트 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PutMapping("/spare-time")
+    @PutMapping("/me/spare-time")
     public ResponseEntity<ApiResponseForm<?>> updateSetting(HttpServletRequest request, @RequestBody UpdateSpareTimeDto updateSpareTimeDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         userService.updateSpareTime(userId, updateSpareTimeDto);
@@ -139,7 +139,7 @@ public class UserController {
             )),
             @ApiResponse(responseCode = "4XX", description = "온보딩 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(토큰 오류 제외 비즈니스 로직 오류는 없음)")))
     })
-    @PutMapping("/onboarding")
+    @PutMapping("/me/onboarding")
     public ResponseEntity<ApiResponseForm<?>> addInfo(HttpServletRequest request, @RequestBody UserOnboardingDto userOnboardingDto) throws Exception {
         Long userId = userAuthService.getUserIdFromToken(request);
         userService.onboarding(userId, userOnboardingDto);
@@ -168,7 +168,7 @@ public class UserController {
             )),
             @ApiResponse(responseCode = "4XX", description = "사용자 정보 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/info")
+    @GetMapping("/me")
     public ResponseEntity<ApiResponseForm<UserInfoResponse>> getUserInfo(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
         User user = userService.getUserInfo(userId);

@@ -790,7 +790,6 @@ class ScheduleServiceTest {
         scheduleRepository.save(addedSchedule1);
 
         ScheduleModDto scheduleModDto = ScheduleModDto.builder()
-                .scheduleId(addedSchedule1.getScheduleId())
                 .scheduleName("친구랑 약속")
                 .scheduleTime(LocalDateTime.of(2025, 2, 24, 14, 0))
                 .moveTime(20)
@@ -802,7 +801,7 @@ class ScheduleServiceTest {
                 .build();
 
         // when
-        scheduleService.modifySchedule(newUser.getId(), scheduleModDto);
+        scheduleService.modifySchedule(newUser.getId(), addedSchedule1.getScheduleId(), scheduleModDto);
 
         // then
         Schedule updatedSchedule = scheduleRepository.findById(addedSchedule1.getScheduleId()).orElseThrow();
@@ -835,9 +834,9 @@ class ScheduleServiceTest {
                 .build();
         placeRepository.save(place1);
 
-
+        UUID scheduleId = UUID.fromString("023e4567-e89b-12d3-a456-426614170001");
         Schedule addedSchedule1 = Schedule.builder()
-                .scheduleId(UUID.fromString("023e4567-e89b-12d3-a456-426614170001"))
+                .scheduleId(scheduleId)
                 .scheduleName("공부하기")
                 .scheduleTime(LocalDateTime.of(2025, 2, 23, 7, 0))
                 .moveTime(10)
@@ -851,7 +850,6 @@ class ScheduleServiceTest {
         long beforePlaceCount = placeRepository.count();
 
         ScheduleModDto scheduleModDto = ScheduleModDto.builder()
-                .scheduleId(addedSchedule1.getScheduleId())
                 .scheduleName("공부하기")
                 .scheduleTime(LocalDateTime.of(2025, 2, 23, 7, 0))
                 .moveTime(10)
@@ -863,7 +861,7 @@ class ScheduleServiceTest {
                 .build();
 
         // when
-        scheduleService.modifySchedule(newUser.getId(), scheduleModDto);
+        scheduleService.modifySchedule(newUser.getId(), scheduleId, scheduleModDto);
 
         // then
         // DB에 저장 확인
@@ -919,7 +917,6 @@ class ScheduleServiceTest {
         scheduleRepository.save(addedSchedule1);
 
         ScheduleModDto scheduleModDto = ScheduleModDto.builder()
-                .scheduleId(addedSchedule1.getScheduleId())
                 .scheduleName("친구랑 약속")
                 .scheduleTime(LocalDateTime.of(2025, 2, 24, 14, 0)) // 시간 변경
                 .moveTime(20)
@@ -931,7 +928,7 @@ class ScheduleServiceTest {
                 .build();
 
         // when & then
-        assertThatThrownBy(() -> scheduleService.modifySchedule(newUser2.getId(), scheduleModDto))
+        assertThatThrownBy(() -> scheduleService.modifySchedule(newUser2.getId(), addedSchedule1.getScheduleId(), scheduleModDto))
                 .isInstanceOf(GeneralException.class)
                 .hasMessageContaining(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
                 .extracting("errorCode")
@@ -978,7 +975,6 @@ class ScheduleServiceTest {
         UUID randomScheduleId = UUID.fromString("023e4567-e89b-12d3-a456-426614170000");
 
         ScheduleModDto scheduleModDto = ScheduleModDto.builder()
-                .scheduleId(randomScheduleId)
                 .scheduleName("친구랑 약속")
                 .scheduleTime(LocalDateTime.of(2025, 2, 24, 14, 0)) // 시간 변경
                 .moveTime(20)
@@ -990,7 +986,7 @@ class ScheduleServiceTest {
                 .build();
 
         // when & then
-        assertThatThrownBy(() -> scheduleService.modifySchedule(newUser.getId(), scheduleModDto))
+        assertThatThrownBy(() -> scheduleService.modifySchedule(newUser.getId(), randomScheduleId, scheduleModDto))
                 .isInstanceOf(GeneralException.class)
                 .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
                 .extracting("errorCode")
@@ -1131,145 +1127,6 @@ class ScheduleServiceTest {
                 .hasMessageContaining(ErrorCode.USER_NOT_FOUND.getMessage())
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.USER_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("버튼을 눌러 isStarted 값을 true로 변경 성공한다.")
-    void checkIsStarted_success() {
-        // given
-        User newUser = User.builder()
-                .email("user@example.com")
-                .password(passwordEncoder.encode("password1234"))
-                .name("jinsuh")
-                .punctualityScore(-1f)
-                .scheduleCountAfterReset(0)
-                .latenessCountAfterReset(0)
-                .build();
-        userRepository.save(newUser);
-
-        Place place1 = Place.builder()
-                .placeId(UUID.fromString("70d460da-6a82-4c57-a285-567cdeda5601"))
-                .placeName("과학도서관")
-                .build();
-
-        placeRepository.save(place1);
-
-
-        Schedule addedSchedule1 = Schedule.builder()
-                .scheduleId(UUID.fromString("023e4567-e89b-12d3-a456-426614170001"))
-                .scheduleName("공부하기")
-                .scheduleTime(LocalDateTime.of(2025, 2, 23, 7, 0))
-                .moveTime(10)
-                .latenessTime(-1)
-                .isStarted(false)
-                .place(place1)
-                .user(newUser)
-                .build();
-
-        scheduleRepository.save(addedSchedule1);
-
-        // when
-        scheduleService.checkIsStarted(addedSchedule1.getScheduleId(), newUser.getId());
-
-        // then
-        Schedule updatedSchedule = scheduleRepository.findById(addedSchedule1.getScheduleId()).orElseThrow();
-        assertThat(updatedSchedule.getIsStarted()).isTrue();
-    }
-
-    @Test
-    @DisplayName("다른 사용자가 버튼을 눌러 isStarted 변경 시도 시 실패한다.")
-    void checkIsStarted_failByWrongUser() {
-        // given
-        User newUser1 = User.builder()
-                .email("user@example.com")
-                .password(passwordEncoder.encode("password1234"))
-                .name("jinsuh")
-                .punctualityScore(-1f)
-                .scheduleCountAfterReset(0)
-                .latenessCountAfterReset(0)
-                .build();
-        userRepository.save(newUser1);
-
-        User newUser2 = User.builder()
-                .email("user1@example.com")
-                .password(passwordEncoder.encode("password1235"))
-                .name("suhjin")
-                .punctualityScore(-1f)
-                .scheduleCountAfterReset(0)
-                .latenessCountAfterReset(0)
-                .build();
-        userRepository.save(newUser2);
-
-        Place place1 = Place.builder()
-                .placeId(UUID.fromString("70d460da-6a82-4c57-a285-567cdeda5601"))
-                .placeName("과학도서관")
-                .build();
-        placeRepository.save(place1);
-
-
-
-        Schedule addedSchedule1 = Schedule.builder()
-                .scheduleId(UUID.fromString("023e4567-e89b-12d3-a456-426614170001"))
-                .scheduleName("공부하기")
-                .scheduleTime(LocalDateTime.of(2025, 2, 23, 7, 0))
-                .moveTime(10)
-                .latenessTime(-1)
-                .place(place1)
-                .user(newUser1)
-                .build();
-
-        scheduleRepository.save(addedSchedule1);
-
-        // when & then
-        assertThatThrownBy(() -> scheduleService.checkIsStarted(addedSchedule1.getScheduleId(), newUser2.getId()))
-                .isInstanceOf(GeneralException.class)
-                .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
-
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 약속에서 버튼을 누를 경우 실패한다.")
-    void checkIsStarted_failByNonExistentSchedule() {
-        // given
-        User newUser1 = User.builder()
-                .email("user@example.com")
-                .password(passwordEncoder.encode("password1234"))
-                .name("jinsuh")
-                .punctualityScore(-1f)
-                .scheduleCountAfterReset(0)
-                .latenessCountAfterReset(0)
-                .build();
-        userRepository.save(newUser1);
-
-        Place place1 = Place.builder()
-                .placeId(UUID.fromString("70d460da-6a82-4c57-a285-567cdeda5601"))
-                .placeName("과학도서관")
-                .build();
-        placeRepository.save(place1);
-
-
-        Schedule addedSchedule1 = Schedule.builder()
-                .scheduleId(UUID.fromString("023e4567-e89b-12d3-a456-426614170001"))
-                .scheduleName("공부하기")
-                .scheduleTime(LocalDateTime.of(2025, 2, 23, 7, 0))
-                .moveTime(10)
-                .latenessTime(-1)
-                .place(place1)
-                .user(newUser1)
-                .build();
-
-        UUID randomScheduleId = UUID.fromString("023e4567-e89b-12d3-a456-426614170000");
-
-        scheduleRepository.save(addedSchedule1);
-
-        // when & then
-        assertThatThrownBy(() -> scheduleService.checkIsStarted(randomScheduleId, newUser1.getId()))
-                .isInstanceOf(GeneralException.class)
-                .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
     }
 
     @DisplayName("지각 히스토리 조회에 성공한다")

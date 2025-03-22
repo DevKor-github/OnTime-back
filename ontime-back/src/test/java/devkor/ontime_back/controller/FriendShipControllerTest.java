@@ -37,7 +37,7 @@ class FriendShipControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        post("/friends/link/create")
+                        post("/friends/links")
                                 .content("")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -65,7 +65,7 @@ class FriendShipControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        get("/friends/add-requester/" + UUID.randomUUID())
+                        get("/friends/" + UUID.randomUUID() + "/requests")
                                 .content("")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -88,7 +88,7 @@ class FriendShipControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        post("/friends/update-status/" + UUID.randomUUID())
+                        post("/friends/" + UUID.randomUUID() + "/approve")
                                 .content("{\"acceptStatus\": \"ACCEPTED\"}")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -108,7 +108,7 @@ class FriendShipControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        post("/friends/update-status/" + UUID.randomUUID())
+                        post("/friends/" + UUID.randomUUID() + "/approve")
                                 .content("{\"acceptStatus\": \"REJECTED\"}")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -142,7 +142,7 @@ class FriendShipControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        get("/friends/list")
+                        get("/friends")
                                 .content("")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )

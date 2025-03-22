@@ -84,7 +84,7 @@ class UserAuthControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        put("/change-password")
+                        put("/users/me/password")
                                 .content(objectMapper.writeValueAsString(changePasswordDto))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -104,7 +104,7 @@ class UserAuthControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        delete("/user/delete")
+                        delete("/users/me/delete")
                                 .content("{}")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )

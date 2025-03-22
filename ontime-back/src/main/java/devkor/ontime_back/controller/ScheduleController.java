@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/schedule")
+@RequestMapping("/schedules")
 @RequiredArgsConstructor
 public class ScheduleController {
     private final ScheduleService scheduleService;
@@ -50,7 +50,7 @@ public class ScheduleController {
                     )
             )
     })
-    @GetMapping("/show")
+    @GetMapping("")
     public ResponseEntity<ApiResponseForm<List<ScheduleDto>>> getPeriodSchedule(HttpServletRequest request,
                                                                                 @Parameter(description = "조회 시작 날짜 (ISO-8601 형식, 예: 2024-11-01T00:00:00)",
                                                                                         required = false,
@@ -86,13 +86,13 @@ public class ScheduleController {
                     )
             )
     })
-    @GetMapping("/show/id")
+    @GetMapping("/{scheduleId}")
     public ResponseEntity<ApiResponseForm<ScheduleDto>> getScheduleById(
             HttpServletRequest request,
             @Parameter(description = "조회할 스케줄 ID (UUID 형식)",
                     required = true,
                     example = "3fa85f64-5717-4562-b3fc-2c963f66afe5")
-            @RequestParam UUID scheduleId) {
+            @PathVariable UUID scheduleId) {
 
         Long userId = userAuthService.getUserIdFromToken(request);
         ScheduleDto schedule = scheduleService.showScheduleByScheduleId(userId, scheduleId);
@@ -114,7 +114,7 @@ public class ScheduleController {
             @ApiResponse(responseCode = "200", description = "일정 삭제 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @DeleteMapping("/delete/{scheduleId}")
+    @DeleteMapping("/{scheduleId}")
     public ResponseEntity<ApiResponseForm<Void>> deleteSchedule(HttpServletRequest request, @PathVariable UUID scheduleId) {
         Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.deleteSchedule(scheduleId, userId);
@@ -139,10 +139,10 @@ public class ScheduleController {
             @ApiResponse(responseCode = "200", description = "일정 수정 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PutMapping("/modify")
-    public ResponseEntity<ApiResponseForm<Void>> modifySchedule(HttpServletRequest request, @RequestBody ScheduleModDto scheduleModDto) {
+    @PutMapping("/{scheduleId}")
+    public ResponseEntity<ApiResponseForm<Void>> modifySchedule(HttpServletRequest request, @PathVariable UUID scheduleId, @RequestBody ScheduleModDto scheduleModDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
-        scheduleService.modifySchedule(userId, scheduleModDto);
+        scheduleService.modifySchedule(userId, scheduleId, scheduleModDto);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
     }
 
@@ -164,34 +164,11 @@ public class ScheduleController {
             @ApiResponse(responseCode = "200", description = "일정 추가 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PostMapping("/add")
+    @PostMapping("")
     public ResponseEntity<ApiResponseForm<Void>> addSchedule(HttpServletRequest request, @RequestBody ScheduleAddDto scheduleAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.addSchedule(scheduleAddDto, userId);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
-    }
-
-    // 시작 버튼 누름
-    @Operation(summary = "일정 시작 버튼 누름",
-            parameters = {
-                    @Parameter(
-                            name = "scheduleId",
-                            description = "시작할 일정의 ID",
-                            required = true,
-                            example = "3fa85f64-5717-4562-b3fc-2c963f66afe5"
-                    )
-            }
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "일정 추가 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
-            @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
-    })
-    @PatchMapping("/start/{scheduleId}")
-    public ResponseEntity<ApiResponseForm<Void>> isStartedSchedule(HttpServletRequest request, @PathVariable UUID scheduleId) {
-        Long userId = userAuthService.getUserIdFromToken(request);
-        scheduleService.checkIsStarted(scheduleId, userId);
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
-
     }
 
     @Operation(
@@ -242,7 +219,7 @@ public class ScheduleController {
             )),
             @ApiResponse(responseCode = "4XX", description = "준비과정 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/get/preparation/{scheduleId}")
+    @GetMapping("/{scheduleId}/preparation")
     public ResponseEntity<ApiResponseForm<List<PreparationDto>>> getPreparation(HttpServletRequest request, @PathVariable UUID scheduleId) {
         Long userId = userAuthService.getUserIdFromToken(request);
         List<PreparationDto> preparationDtoList = scheduleService.getPreparations(userId, scheduleId);
@@ -274,7 +251,7 @@ public class ScheduleController {
             )),
             @ApiResponse(responseCode = "4XX", description = "지각시간, 성실도점수 업데이트 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(스케줄ID에 해당하는 약속이 없을 때 Schedule Not Found 메세지 반환)")))
     })
-    @PutMapping("/finish") // 약속 준비 종료 이후 지각시간(Schedule 테이블), 성실도 점수(User 테이블) 업데이트
+    @PutMapping("/{scheduleId}/finish") // 약속 준비 종료 이후 지각시간(Schedule 테이블), 성실도 점수(User 테이블) 업데이트
     public ResponseEntity<ApiResponseForm<?>> finishSchedule(
             HttpServletRequest request,
             @RequestBody FinishPreparationDto finishPreparationDto) {

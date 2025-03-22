@@ -49,7 +49,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         when(scheduleService.showSchedulesByPeriod(userId, startDate, endDate)).thenReturn(mockSchedules);
 
         // when & then
-        mockMvc.perform(get("/schedule/show")
+        mockMvc.perform(get("/schedules")
                         .param("startDate", startDate.toString())
                         .param("endDate", endDate.toString())
                         .header("Authorization", "Bearer test-token")
@@ -80,8 +80,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         when(scheduleService.showScheduleByScheduleId(userId, scheduleId)).thenReturn(mockSchedule);
 
         // when & then
-        mockMvc.perform(get("/schedule/show/id")
-                        .param("scheduleId", scheduleId.toString())
+        mockMvc.perform(get("/schedules/{scheduleId}", scheduleId)
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -107,7 +106,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         doNothing().when(scheduleService).deleteSchedule(scheduleId, userId);
 
         // when & then
-        mockMvc.perform(delete("/schedule/delete/{scheduleId}", scheduleId)
+        mockMvc.perform(delete("/schedules/{scheduleId}", scheduleId)
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -126,8 +125,9 @@ class ScheduleControllerTest extends ControllerTestSupport {
         // given
         Long userId = 1L;
 
+        UUID scheduleId = UUID.randomUUID();
+
         ScheduleModDto scheduleModDto = new ScheduleModDto(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "애기능생활관",
                 "학식먹기",
@@ -139,10 +139,10 @@ class ScheduleControllerTest extends ControllerTestSupport {
         );
 
         when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
-        doNothing().when(scheduleService).modifySchedule(userId, scheduleModDto);
+        doNothing().when(scheduleService).modifySchedule(userId, scheduleId, scheduleModDto);
 
         // when & then
-        mockMvc.perform(put("/schedule/modify")
+        mockMvc.perform(put("/schedules/{scheduleId}", scheduleId)
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(scheduleModDto)))
@@ -153,7 +153,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andDo(print());
 
         verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
-        verify(scheduleService, times(1)).modifySchedule(eq(userId), any(ScheduleModDto.class));
+        verify(scheduleService, times(1)).modifySchedule(eq(userId), eq(scheduleId), any(ScheduleModDto.class));
     }
 
     @DisplayName("약속 추가를 성공한다.")
@@ -180,7 +180,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         doNothing().when(scheduleService).addSchedule(scheduleAddDto, userId);
 
         // when & then
-        mockMvc.perform(post("/schedule/add")
+        mockMvc.perform(post("/schedules")
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(scheduleAddDto)))
@@ -192,30 +192,6 @@ class ScheduleControllerTest extends ControllerTestSupport {
 
         verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
         verify(scheduleService, times(1)).addSchedule(any(ScheduleAddDto.class), eq(userId));
-    }
-
-    @DisplayName("약속 시작을 성공한다.")
-    @Test
-    void isStartedSchedule_success() throws Exception {
-        // given
-        UUID scheduleId = UUID.randomUUID();
-        Long userId = 1L;
-
-        when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
-        doNothing().when(scheduleService).checkIsStarted(scheduleId, userId);
-
-        // when & then
-        mockMvc.perform(patch("/schedule/start/{scheduleId}", scheduleId)
-                        .header("Authorization", "Bearer test-token")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("success"))
-                .andExpect(jsonPath("$.code").value("200"))
-                .andExpect(jsonPath("$.message").value("OK"))
-                .andDo(print());
-
-        verify(userAuthService, times(1)).getUserIdFromToken(any(HttpServletRequest.class));
-        verify(scheduleService, times(1)).checkIsStarted(scheduleId, userId);
     }
 
     @DisplayName("준비과정 조회를 성공한다.")
@@ -236,7 +212,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         when(scheduleService.getPreparations(userId, scheduleId)).thenReturn(mockPreparations);
 
         // when & then
-        mockMvc.perform(get("/schedule/get/preparation/{scheduleId}", scheduleId)
+        mockMvc.perform(get("/schedules/{scheduleId}/preparation", scheduleId)
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())  // HTTP 200 확인
@@ -268,7 +244,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        get("/schedule/lateness-history")
+                        get("/schedules/lateness-history")
                                 .content("")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -293,7 +269,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        put("/schedule/finish")
+                        put("/schedules/" + 1L + "/finish")
                                 .content(objectMapper.writeValueAsString(finishPreparationDto))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )

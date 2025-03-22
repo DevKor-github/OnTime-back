@@ -13,11 +13,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@OpenAPIDefinition(
-        servers = {
-                @Server(url = "https://ontime.devkor.club", description = "Production Server")
-        }
-)
+//@OpenAPIDefinition(
+//        servers = {
+//                @Server(url = "https://ontime.devkor.club", description = "Production Server")
+//        }
+//)
 public class SwaggerConfig {
     @Bean
     public OpenAPI openAPI() {

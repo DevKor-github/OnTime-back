@@ -89,8 +89,8 @@ public class ScheduleService {
 
     // schedule 수정
     @Transactional
-    public void modifySchedule(Long userId, ScheduleModDto scheduleModDto) {
-        Schedule schedule = getScheduleWithAuthorization(scheduleModDto.getScheduleId(), userId);
+    public void modifySchedule(Long userId, UUID scheduleId, ScheduleModDto scheduleModDto) {
+        Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
 
         Place place = placeRepository.findByPlaceName(scheduleModDto.getPlaceName())
                 .orElseGet(() -> placeRepository.save(new Place(scheduleModDto.getPlaceId(), scheduleModDto.getPlaceName())));
@@ -128,14 +128,6 @@ public class ScheduleService {
                 .build();
 
         scheduleRepository.save(schedule);
-    }
-
-    // schedule 시작
-    @Transactional
-    public void checkIsStarted(UUID scheduleId, Long userId) {
-        Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
-
-        schedule.startSchedule();
     }
 
     // 지각 히스토리 반환
