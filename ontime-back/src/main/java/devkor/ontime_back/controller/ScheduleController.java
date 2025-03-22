@@ -251,7 +251,7 @@ public class ScheduleController {
             )),
             @ApiResponse(responseCode = "4XX", description = "지각시간, 성실도점수 업데이트 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(스케줄ID에 해당하는 약속이 없을 때 Schedule Not Found 메세지 반환)")))
     })
-    @PutMapping("/finish") // 약속 준비 종료 이후 지각시간(Schedule 테이블), 성실도 점수(User 테이블) 업데이트
+    @PutMapping("/{scheduleId}/finish") // 약속 준비 종료 이후 지각시간(Schedule 테이블), 성실도 점수(User 테이블) 업데이트
     public ResponseEntity<ApiResponseForm<?>> finishSchedule(
             HttpServletRequest request,
             @RequestBody FinishPreparationDto finishPreparationDto) {

@@ -269,7 +269,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        put("/schedules/finish")
+                        put("/schedules/" + 1L + "/finish")
                                 .content(objectMapper.writeValueAsString(finishPreparationDto))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
