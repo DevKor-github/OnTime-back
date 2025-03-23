@@ -112,7 +112,12 @@ public class GoogleLoginService {
         User savedUser = userRepository.save(newUser);
 
         String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
-        jwtTokenProvider.sendAccessToken(response, accessToken);
+        String refreshToken = jwtTokenProvider.createRefreshToken();
+
+        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
+
+        savedUser.updateRefreshToken(refreshToken);
+        userRepository.save(savedUser);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser, null, Collections.singletonList(new SimpleGrantedAuthority(savedUser.getRole().name()))
@@ -122,7 +127,7 @@ public class GoogleLoginService {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        String msg = savedUser.getRole().name().equals("GUEST") ? "유저의 ROLE이 GUEST이므로 온보딩API를 호출해 온보딩을 진행해야합니다." : "로그인에 성공하였습니다.";
+        String msg = "회원가입에 성공하였습니다.";
         // JSON 응답 생성
         String responseBody = String.format(
                 "{ \"status\": \"success\", \"code\": \"200\", \"message\": \"%s\", \"data\": { " +
