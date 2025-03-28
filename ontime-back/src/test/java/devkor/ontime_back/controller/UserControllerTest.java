@@ -35,7 +35,7 @@ class UserControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        get("/user/punctuality-score")
+                        get("/users/me/punctuality-score")
                                 .content("{}")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -56,7 +56,7 @@ class UserControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        put("/user/reset-punctuality")
+                        put("/users/me/punctuality-score")
                                 .content("{}")
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -79,7 +79,7 @@ class UserControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        put("/user/spare-time")
+                        put("/users/me/spare-time")
                                 .content(objectMapper.writeValueAsString(updateSpareTimeDto))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -115,7 +115,7 @@ class UserControllerTest extends ControllerTestSupport {
 
         // when // then
         mockMvc.perform(
-                        put("/user/onboarding")
+                        put("/users/me/onboarding")
                                 .content(objectMapper.writeValueAsString(userOnboardingDto))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )

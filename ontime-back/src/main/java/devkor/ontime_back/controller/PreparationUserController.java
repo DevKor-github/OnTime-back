@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/preparationuser")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class PreparationUserController {
 
@@ -43,7 +43,7 @@ public class PreparationUserController {
             @ApiResponse(responseCode = "200", description = "사용자 준비과정 수정 완료", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n\"status\": \"success\",\n \"code\": \"200\",\n \"message\": \"OK\",\n \"data\": null\n }"))),
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PostMapping("/modify")
+    @PutMapping("/preparations")
     public ResponseEntity<ApiResponseForm<Void>> modifyPreparationUser(HttpServletRequest request, @RequestBody List<PreparationDto> preparationDtoList) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
@@ -65,7 +65,7 @@ public class PreparationUserController {
             )),
             @ApiResponse(responseCode = "4XX", description = "준비과정 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/show/all")
+    @GetMapping("/preparations")
     public ResponseEntity<ApiResponseForm<List<PreparationDto>>> getAllPreparationUser(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
 

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/user-setting")
+@RequestMapping("/users/me/settings")
 @RequiredArgsConstructor
 public class UserSettingController {
     private final UserAuthService userAuthService;
@@ -46,7 +46,7 @@ public class UserSettingController {
             )),
             @ApiResponse(responseCode = "4XX", description = "사용자 앱 설정 업데이트 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PutMapping("/update")
+    @PutMapping("")
     public ResponseEntity<ApiResponseForm<?>> updateSetting(HttpServletRequest request, @RequestBody UserSettingUpdateDto userSettingUpdateDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
