@@ -212,7 +212,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         when(scheduleService.getPreparations(userId, scheduleId)).thenReturn(mockPreparations);
 
         // when & then
-        mockMvc.perform(get("/schedules/{scheduleId}/preparation", scheduleId)
+        mockMvc.perform(get("/schedules/{scheduleId}/preparations", scheduleId)
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())  // HTTP 200 확인
