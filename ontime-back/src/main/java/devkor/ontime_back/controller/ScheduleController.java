@@ -219,7 +219,7 @@ public class ScheduleController {
             )),
             @ApiResponse(responseCode = "4XX", description = "준비과정 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/{scheduleId}/preparation")
+    @GetMapping("/{scheduleId}/preparations")
     public ResponseEntity<ApiResponseForm<List<PreparationDto>>> getPreparation(HttpServletRequest request, @PathVariable UUID scheduleId) {
         Long userId = userAuthService.getUserIdFromToken(request);
         List<PreparationDto> preparationDtoList = scheduleService.getPreparations(userId, scheduleId);
