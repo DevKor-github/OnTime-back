@@ -50,7 +50,7 @@ public class FriendShipController {
             )),
             @ApiResponse(responseCode = "4XX", description = "친구추가 링크 생성 및 반환 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PostMapping("/link/create") // 친구 추가 링크 생성
+    @PostMapping("/links") // 친구 추가 링크 생성
     public ResponseEntity<ApiResponseForm<CreateFriendshipLinkResponse>> createFriendShipLink(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
@@ -84,7 +84,7 @@ public class FriendShipController {
             )),
             @ApiResponse(responseCode = "4XX", description = "친구추가 요청자 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/add-requester/{uuid}") // 친구 추가 요청자 조회
+    @GetMapping("/{uuid}/requests") // 친구 추가 요청자 조회
     public ResponseEntity<ApiResponseForm<GetFriendshipRequesterResponse>> getFriendShipRequester(HttpServletRequest request, @PathVariable String uuid) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
@@ -121,7 +121,7 @@ public class FriendShipController {
             )),
             @ApiResponse(responseCode = "4XX", description = "친구추가 수락상태 업데이트 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @PostMapping("/update-status/{uuid}") // 친구 추가 요청 수락
+    @PostMapping("/{uuid}/approve") // 친구 추가 요청 수락
     public ResponseEntity<ApiResponseForm<String>> updateAcceptStatus(HttpServletRequest request, @PathVariable String uuid, @RequestBody UpdateAcceptStatusDto updateAcceptStatusDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
@@ -154,7 +154,7 @@ public class FriendShipController {
             )),
             @ApiResponse(responseCode = "4XX", description = "친구 목록 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
-    @GetMapping("/list") // 친구 목록 조회
+    @GetMapping("") // 친구 목록 조회
     public ResponseEntity<ApiResponseForm<GetFriendListResponse>> getFriendList(HttpServletRequest request) {
         Long userId = userAuthService.getUserIdFromToken(request);
 

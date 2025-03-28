@@ -14,8 +14,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ScheduleModDto {
 
-    private UUID scheduleId;
-
     private UUID placeId;
 
     private String placeName;

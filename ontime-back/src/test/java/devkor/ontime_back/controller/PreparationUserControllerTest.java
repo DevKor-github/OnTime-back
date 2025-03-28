@@ -1,6 +1,5 @@
 package devkor.ontime_back.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import devkor.ontime_back.ControllerTestSupport;
 import devkor.ontime_back.TestSecurityConfig;
 import devkor.ontime_back.dto.PreparationDto;
@@ -15,9 +14,8 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,7 +39,7 @@ public class PreparationUserControllerTest extends ControllerTestSupport {
         when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
 
         // when & then
-        mockMvc.perform(post("/preparationuser/modify")
+        mockMvc.perform(put("/users/preparations")
                         .header("Authorization", "Bearer test-token")
                         .content(objectMapper.writeValueAsString(preparationDtoList))
                         .contentType(MediaType.APPLICATION_JSON))
@@ -74,7 +72,7 @@ public class PreparationUserControllerTest extends ControllerTestSupport {
         when(preparationUserService.showAllPreparationUsers(userId)).thenReturn(preparationDtoList);
 
         // when & then
-        mockMvc.perform(get("/preparationuser/show/all")
+        mockMvc.perform(get("/users/preparations")
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
