@@ -39,7 +39,7 @@ public class PreparationUserControllerTest extends ControllerTestSupport {
         when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
 
         // when & then
-        mockMvc.perform(put("/preparation-users")
+        mockMvc.perform(put("/users/preparations")
                         .header("Authorization", "Bearer test-token")
                         .content(objectMapper.writeValueAsString(preparationDtoList))
                         .contentType(MediaType.APPLICATION_JSON))
@@ -72,7 +72,7 @@ public class PreparationUserControllerTest extends ControllerTestSupport {
         when(preparationUserService.showAllPreparationUsers(userId)).thenReturn(preparationDtoList);
 
         // when & then
-        mockMvc.perform(get("/preparation-users")
+        mockMvc.perform(get("/users/preparations")
                         .header("Authorization", "Bearer test-token")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())

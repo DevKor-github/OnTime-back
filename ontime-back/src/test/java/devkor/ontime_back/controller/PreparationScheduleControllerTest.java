@@ -42,7 +42,7 @@ public class PreparationScheduleControllerTest extends ControllerTestSupport {
         doNothing().when(preparationScheduleService).makePreparationSchedules(eq(userId), eq(scheduleId), any());
 
         // when & then
-        mockMvc.perform(post("/preparation-schedules/{scheduleId}", scheduleId)
+        mockMvc.perform(post("/schedules/{scheduleId}/preparations", scheduleId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(new ObjectMapper().writeValueAsString(preparationDtoList))
                         .with(csrf()))
@@ -72,7 +72,7 @@ public class PreparationScheduleControllerTest extends ControllerTestSupport {
         doNothing().when(preparationScheduleService).updatePreparationSchedules(eq(userId), eq(scheduleId), any());
 
         // when & then
-        mockMvc.perform(put("/preparation-schedules/{scheduleId}", scheduleId)
+        mockMvc.perform(put("/schedules/{scheduleId}/preparations", scheduleId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(new ObjectMapper().writeValueAsString(preparationDtoList))
                         .with(csrf()))
