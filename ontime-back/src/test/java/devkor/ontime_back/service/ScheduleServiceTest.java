@@ -47,6 +47,8 @@ class ScheduleServiceTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private NotificationScheduleRepository notificationScheduleRepository;
 
     @AfterEach
     void tearDown() {
@@ -647,8 +649,13 @@ class ScheduleServiceTest {
                 .place(place1)
                 .user(newUser)
                 .build();
-
+        NotificationSchedule notificationSchedule = NotificationSchedule.builder()
+                .notificationTime(LocalDateTime.of(2025, 2, 23, 6, 55))
+                .isSent(false)
+                .schedule(addedSchedule1)
+                .build();
         scheduleRepository.save(addedSchedule1);
+        notificationScheduleRepository.save(notificationSchedule);
 
         // when
         scheduleService.deleteSchedule(addedSchedule1.getScheduleId(), newUser.getId());
@@ -799,6 +806,12 @@ class ScheduleServiceTest {
                 .scheduleSpareTime(5)
                 .latenessTime(10)
                 .build();
+        NotificationSchedule notificationSchedule = NotificationSchedule.builder()
+                .notificationTime(LocalDateTime.of(2025, 2, 23, 6, 55))
+                .isSent(false)
+                .schedule(addedSchedule1)
+                .build();
+        notificationScheduleRepository.save(notificationSchedule);
 
         // when
         scheduleService.modifySchedule(newUser.getId(), addedSchedule1.getScheduleId(), scheduleModDto);
@@ -859,6 +872,12 @@ class ScheduleServiceTest {
                 .scheduleSpareTime(5)
                 .latenessTime(10)
                 .build();
+        NotificationSchedule notificationSchedule = NotificationSchedule.builder()
+                .notificationTime(LocalDateTime.of(2025, 2, 23, 6, 55))
+                .isSent(false)
+                .schedule(addedSchedule1)
+                .build();
+        notificationScheduleRepository.save(notificationSchedule);
 
         // when
         scheduleService.modifySchedule(newUser.getId(), scheduleId, scheduleModDto);
