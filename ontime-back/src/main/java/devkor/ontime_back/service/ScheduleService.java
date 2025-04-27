@@ -26,6 +26,7 @@ import static devkor.ontime_back.response.ErrorCode.*;
 public class ScheduleService {
 
     private final UserService userService;
+    private final NotificationService notificationService;
 
     private final ScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
@@ -128,6 +129,8 @@ public class ScheduleService {
                 .build();
 
         scheduleRepository.save(schedule);
+
+        notificationService.scheduleReminder(schedule);
     }
 
     // 지각 히스토리 반환
