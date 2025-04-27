@@ -97,7 +97,7 @@ public class ScheduleService {
     private void cancleAndDeleteNotification(NotificationSchedule notification) {
         notificationService.cancelScheduledNotification(notification.getId());
         notificationScheduleRepository.delete(notification);
-        log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName()t);
+        log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName());
     }
 
     // schedule 수정
