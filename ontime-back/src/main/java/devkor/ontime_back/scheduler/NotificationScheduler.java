@@ -48,24 +48,5 @@ public class NotificationScheduler {
         List<Schedule> schedulesForToday = scheduleRepository.findSchedulesBetween(startOfToday, endOfToday);
         notificationService.sendReminder(schedulesForToday, "오늘 예정된 약속이 있습니다.");
     }
-
-//    @Scheduled(cron = "0 * * * * *")  // 매 분의 0초에 실행
-//    public void sendFiveMinutesBeforeReminder() {
-//        LocalDateTime baseTime = LocalDateTime.now().plusMinutes(5); // 현재 시간
-//        LocalDateTime startTime = baseTime.withSecond(0).withNano(0); // 초와 나노초 제거 (분 단위로 설정)
-//        LocalDateTime endTime = startTime.plusMinutes(1).minusNanos(1); // 다음 분의 직전까지
-//
-//        System.out.println("5분 후 시간: " + baseTime);
-//
-//        // 5분 후의 scheduleTime과 일치하는 약속 조회
-//        List<Schedule> schedulesStartingSoon = scheduleRepository.findSchedulesBetween(startTime, endTime);
-//
-//        for(Schedule schedule : schedulesStartingSoon) {
-//            System.out.println("5분 뒤의 약속: " + schedule.getScheduleName());
-//        }
-//
-//        // 알림 전송
-//        notificationService.sendReminder(schedulesStartingSoon, "약속 5분 전입니다. 준비하세요.");
-//    }
 }
 
