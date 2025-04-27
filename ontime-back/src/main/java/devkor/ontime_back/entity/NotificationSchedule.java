@@ -45,4 +45,8 @@ public class NotificationSchedule {
     public void markAsUnsent() {
         this.isSent = false;
     }
+
+    public void disconnectSchedule() {
+        this.schedule = null;
+    }
 }

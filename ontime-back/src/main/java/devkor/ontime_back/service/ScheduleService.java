@@ -89,15 +89,17 @@ public class ScheduleService {
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
 
         cancleAndDeleteNotification(notification);
-
+        notificationScheduleRepository.flush();
         preparationScheduleRepository.deleteBySchedule(schedule);
         scheduleRepository.deleteByScheduleId(scheduleId);
     }
 
     private void cancleAndDeleteNotification(NotificationSchedule notification) {
+        log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName());
+        notification.disconnectSchedule();
         notificationService.cancelScheduledNotification(notification.getId());
         notificationScheduleRepository.delete(notification);
-        log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName());
+        log.info("알림 삭제 완료");
     }
 
     // schedule 수정
