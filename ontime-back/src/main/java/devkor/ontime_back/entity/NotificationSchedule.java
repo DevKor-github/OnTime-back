@@ -31,4 +31,10 @@ public class NotificationSchedule {
         this.isSent = isSent;
         this.schedule = schedule;
     }
+
+    public void changeStatusToSent() {
+        if(Boolean.FALSE.equals(this.isSent)) {
+            this.isSent = true;
+        }
+    }
 }
