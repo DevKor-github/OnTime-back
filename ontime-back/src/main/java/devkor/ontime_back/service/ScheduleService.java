@@ -1,6 +1,7 @@
 package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.*;
+import devkor.ontime_back.entity.NotificationSchedule;
 import devkor.ontime_back.entity.Place;
 import devkor.ontime_back.entity.Schedule;
 import devkor.ontime_back.entity.User;
@@ -33,6 +34,7 @@ public class ScheduleService {
     private final PlaceRepository placeRepository;
     private final PreparationScheduleRepository preparationScheduleRepository;
     private final PreparationUserRepository preparationUserRepository;
+    private final NotificationScheduleRepository notificationScheduleRepository;
 
     // scheduleId, userId를 통한 권한 확인
     private Schedule getScheduleWithAuthorization(UUID scheduleId, Long userId) {
@@ -127,10 +129,16 @@ public class ScheduleService {
                 .isStarted(false)
                 .latenessTime(-1)
                 .build();
-
         scheduleRepository.save(schedule);
 
-        notificationService.scheduleReminder(schedule);
+        NotificationSchedule notification = NotificationSchedule.builder()
+                .notificationTime(schedule.getScheduleTime().minusMinutes(5)) // 차후 알림보내야하는 시각으로 수정 필요
+                .isSent(false)
+                .schedule(schedule)
+                .build();
+        notificationScheduleRepository.save(notification);
+
+        notificationService.scheduleReminder(notification);
     }
 
     // 지각 히스토리 반환
