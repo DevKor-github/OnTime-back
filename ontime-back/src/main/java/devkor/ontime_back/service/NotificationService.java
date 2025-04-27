@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 
 @Slf4j
 @Service
@@ -28,6 +30,7 @@ public class NotificationService {
     private final UserSettingRepository userSettingRepository;
     private final TaskScheduler taskScheduler;
     private final NotificationScheduleRepository notificationScheduleRepository;
+    private final ConcurrentHashMap<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     public void scheduleReminder(NotificationSchedule notificationSchedule) {
         LocalDateTime reminderTime = notificationSchedule.getNotificationTime();
@@ -37,13 +40,23 @@ public class NotificationService {
             return;
         }
 
-        taskScheduler.schedule(
-                () -> {
-                    sendReminder(notificationSchedule, "약속 5분 전 입니다");
-                },
+        ScheduledFuture<?> future = taskScheduler.schedule(
+                () -> sendReminder(notificationSchedule, "약속 5분 전입니다"),
                 Date.from(reminderTime.atZone(ZoneId.systemDefault()).toInstant())
         );
+
+        scheduledTasks.put(notificationSchedule.getId(), future);
+
         log.info("스케줄 등록 완료 {} ({})", notificationSchedule.getSchedule().getScheduleName(), reminderTime);
+    }
+
+    public void cancelScheduledNotification(Long notificationId) {
+        ScheduledFuture<?> future = scheduledTasks.get(notificationId);
+        if (future != null && !future.isCancelled()) {
+            future.cancel(true);
+            scheduledTasks.remove(notificationId);
+            log.info("스케줄 취소 완료: notificationId={}", notificationId);
+        }
     }
 
     @Transactional
