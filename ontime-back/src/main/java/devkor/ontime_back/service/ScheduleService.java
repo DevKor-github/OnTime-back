@@ -97,6 +97,7 @@ public class ScheduleService {
     private void cancleAndDeleteNotification(NotificationSchedule notification) {
         notificationService.cancelScheduledNotification(notification.getId());
         notificationScheduleRepository.delete(notification);
+        log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName()t);
     }
 
     // schedule 수정
@@ -120,16 +121,17 @@ public class ScheduleService {
 
         NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
-
-        updateAndRescheduleNotification(scheduleModDto, notification);
+        LocalDateTime newNotificationTime = scheduleModDto.getScheduleTime().minusMinutes(5);
+        updateAndRescheduleNotification(newNotificationTime, notification);
     }
 
-    private void updateAndRescheduleNotification(ScheduleModDto scheduleModDto, NotificationSchedule notification) {
+    private void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
         notificationService.cancelScheduledNotification(notification.getId());
-        notification.updateNotificationTime(scheduleModDto.getScheduleTime().minusMinutes(5));
+        notification.updateNotificationTime(newNotificationTime);
         notification.markAsUnsent();
         notificationScheduleRepository.save(notification);
         notificationService.scheduleReminder(notification);
+        log.info("{}에 대한 알림정보 업데이트되고 스케줄링 계획도 리스케줄됨", notification.getSchedule().getScheduleName());
     }
 
     // schedule 추가
