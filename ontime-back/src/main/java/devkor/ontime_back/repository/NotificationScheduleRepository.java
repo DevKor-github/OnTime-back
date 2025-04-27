@@ -18,5 +18,5 @@ public interface NotificationScheduleRepository extends JpaRepository<Notificati
             "WHERE n.notificationTime > :now AND n.isSent = false")
     List<NotificationSchedule> findAllWithScheduleAndUser(LocalDateTime now);
 
-    Optional<NotificationSchedule> findByScheduleId(UUID scheduleId);
+    Optional<NotificationSchedule> findByScheduleScheduleId(UUID scheduleId);
 }

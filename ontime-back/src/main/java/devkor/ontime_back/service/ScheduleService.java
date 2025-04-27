@@ -85,7 +85,7 @@ public class ScheduleService {
     @Transactional
     public void deleteSchedule(UUID scheduleId, Long userId) {
         Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
-        NotificationSchedule notification = notificationScheduleRepository.findByScheduleId(scheduleId)
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
 
         cancleAndDeleteNotification(notification);
@@ -118,7 +118,7 @@ public class ScheduleService {
         scheduleRepository.save(schedule);
 
 
-        NotificationSchedule notification = notificationScheduleRepository.findByScheduleId(scheduleId)
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
 
         updateAndRescheduleNotification(scheduleModDto, notification);
