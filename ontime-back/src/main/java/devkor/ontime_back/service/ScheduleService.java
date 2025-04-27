@@ -85,9 +85,18 @@ public class ScheduleService {
     @Transactional
     public void deleteSchedule(UUID scheduleId, Long userId) {
         Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleId(scheduleId)
+                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
+
+        cancleAndDeleteNotification(notification);
 
         preparationScheduleRepository.deleteBySchedule(schedule);
         scheduleRepository.deleteByScheduleId(scheduleId);
+    }
+
+    private void cancleAndDeleteNotification(NotificationSchedule notification) {
+        notificationService.cancelScheduledNotification(notification.getId());
+        notificationScheduleRepository.delete(notification);
     }
 
     // schedule 수정
@@ -106,6 +115,21 @@ public class ScheduleService {
                 scheduleModDto.getScheduleSpareTime(),
                 scheduleModDto.getLatenessTime(),
                 scheduleModDto.getScheduleNote());
+        scheduleRepository.save(schedule);
+
+
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleId(scheduleId)
+                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
+
+        updateAndRescheduleNotification(scheduleModDto, notification);
+    }
+
+    private void updateAndRescheduleNotification(ScheduleModDto scheduleModDto, NotificationSchedule notification) {
+        notificationService.cancelScheduledNotification(notification.getId());
+        notification.updateNotificationTime(scheduleModDto.getScheduleTime().minusMinutes(5));
+        notification.markAsUnsent();
+        notificationScheduleRepository.save(notification);
+        notificationService.scheduleReminder(notification);
     }
 
     // schedule 추가

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface NotificationScheduleRepository extends JpaRepository<NotificationSchedule, Long> {
@@ -15,4 +17,6 @@ public interface NotificationScheduleRepository extends JpaRepository<Notificati
             "JOIN FETCH s.user " +
             "WHERE n.notificationTime > :now AND n.isSent = false")
     List<NotificationSchedule> findAllWithScheduleAndUser(LocalDateTime now);
+
+    Optional<NotificationSchedule> findByScheduleId(UUID scheduleId);
 }

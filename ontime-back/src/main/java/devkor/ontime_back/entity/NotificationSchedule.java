@@ -37,4 +37,12 @@ public class NotificationSchedule {
             this.isSent = true;
         }
     }
+
+    public void updateNotificationTime(LocalDateTime localDateTime) {
+        this.notificationTime = localDateTime;
+    }
+
+    public void markAsUnsent() {
+        this.isSent = false;
+    }
 }
