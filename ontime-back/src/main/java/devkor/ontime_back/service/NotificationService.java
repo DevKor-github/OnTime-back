@@ -11,6 +11,8 @@ import devkor.ontime_back.repository.UserSettingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 @Slf4j
+@EnableAsync
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -59,6 +62,7 @@ public class NotificationService {
         }
     }
 
+    @Async
     @Transactional
     public void sendReminder(NotificationSchedule notificationSchedule, String message) {
         Long userId = notificationSchedule.getSchedule().getUser().getId();
