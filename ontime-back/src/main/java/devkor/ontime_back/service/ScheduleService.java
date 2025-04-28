@@ -1,6 +1,7 @@
 package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.*;
+import devkor.ontime_back.entity.NotificationSchedule;
 import devkor.ontime_back.entity.Place;
 import devkor.ontime_back.entity.Schedule;
 import devkor.ontime_back.entity.User;
@@ -26,12 +27,14 @@ import static devkor.ontime_back.response.ErrorCode.*;
 public class ScheduleService {
 
     private final UserService userService;
+    private final NotificationService notificationService;
 
     private final ScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
     private final PlaceRepository placeRepository;
     private final PreparationScheduleRepository preparationScheduleRepository;
     private final PreparationUserRepository preparationUserRepository;
+    private final NotificationScheduleRepository notificationScheduleRepository;
 
     // scheduleId, userId를 통한 권한 확인
     private Schedule getScheduleWithAuthorization(UUID scheduleId, Long userId) {
@@ -82,9 +85,21 @@ public class ScheduleService {
     @Transactional
     public void deleteSchedule(UUID scheduleId, Long userId) {
         Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
+                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
 
+        cancleAndDeleteNotification(notification);
+        notificationScheduleRepository.flush();
         preparationScheduleRepository.deleteBySchedule(schedule);
         scheduleRepository.deleteByScheduleId(scheduleId);
+    }
+
+    private void cancleAndDeleteNotification(NotificationSchedule notification) {
+        log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName());
+        notification.disconnectSchedule();
+        notificationService.cancelScheduledNotification(notification.getId());
+        notificationScheduleRepository.delete(notification);
+        log.info("알림 삭제 완료");
     }
 
     // schedule 수정
@@ -103,6 +118,24 @@ public class ScheduleService {
                 scheduleModDto.getScheduleSpareTime(),
                 scheduleModDto.getLatenessTime(),
                 scheduleModDto.getScheduleNote());
+        scheduleRepository.save(schedule);
+
+
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
+                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
+        LocalDateTime newNotificationTime = scheduleModDto.getScheduleTime().minusMinutes(5);
+        updateAndRescheduleNotification(newNotificationTime, notification);
+    }
+
+    private void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
+        if(newNotificationTime == notification.getNotificationTime()) return;
+
+        notificationService.cancelScheduledNotification(notification.getId());
+        notification.updateNotificationTime(newNotificationTime);
+        notification.markAsUnsent();
+        notificationScheduleRepository.save(notification);
+        notificationService.scheduleReminder(notification);
+        log.info("{}에 대한 알림정보 업데이트되고 스케줄링 계획도 리스케줄됨", notification.getSchedule().getScheduleName());
     }
 
     // schedule 추가
@@ -126,8 +159,16 @@ public class ScheduleService {
                 .isStarted(false)
                 .latenessTime(-1)
                 .build();
-
         scheduleRepository.save(schedule);
+
+        NotificationSchedule notification = NotificationSchedule.builder()
+                .notificationTime(schedule.getScheduleTime().minusMinutes(5)) // 차후 알림보내야하는 시각으로 수정 필요
+                .isSent(false)
+                .schedule(schedule)
+                .build();
+        notificationScheduleRepository.save(notification);
+
+        notificationService.scheduleReminder(notification);
     }
 
     // 지각 히스토리 반환

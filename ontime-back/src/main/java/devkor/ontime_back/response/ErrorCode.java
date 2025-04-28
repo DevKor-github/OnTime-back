@@ -28,10 +28,10 @@ public enum ErrorCode {
     SCHEDULE_NOT_FOUND("1010", "해당 약속이 존재하지 않습니다.", HttpStatus.BAD_REQUEST),
     FIREBASE("1011", "FIREBASE로 메세지를 발송하였으나 오류가 발생했습니다.(유효하지 않은 토큰 등)", HttpStatus.BAD_REQUEST),
     FIRST_PREPARATION_NOT_FOUND("1012", "해당 ID의 사용자의 준비과정을 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
-
+    NOTIFICATION_NOT_FOUND("1013", "알림을 찾을 수 없습니다.", HttpStatus.BAD_REQUEST ),
 
     // 공통 오류 메시지
-    UNEXPECTED_ERROR("1000", "Unexpected Error: An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR);
+    UNEXPECTED_ERROR("1000", "Unexpected Error: An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR),;
 
     private final String code;
     private final String message;
