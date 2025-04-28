@@ -128,6 +128,8 @@ public class ScheduleService {
     }
 
     private void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
+        if(newNotificationTime == notification.getNotificationTime()) return;
+
         notificationService.cancelScheduledNotification(notification.getId());
         notification.updateNotificationTime(newNotificationTime);
         notification.markAsUnsent();
