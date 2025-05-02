@@ -149,15 +149,11 @@ public class LoggingAspect {
                 .build();
     }
 
-    // Exception 매핑
-    private static final Map<Class<? extends Exception>, Integer> EXCEPTION_STATUS_MAP = Map.of(
-            IllegalArgumentException.class, 400,
-            AccessDeniedException.class, 403,
-            MethodArgumentNotValidException.class, 422
-    );
-
     private int mapExceptionToStatusCode(Exception e) {
-        return EXCEPTION_STATUS_MAP.getOrDefault(e.getClass(), 500);
+        if (e instanceof GeneralException ge) {
+            return ge.getErrorCode().getCode();
+        }
+        return 500;
     }
 
 }
