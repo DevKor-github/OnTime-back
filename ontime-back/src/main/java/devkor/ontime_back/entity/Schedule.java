@@ -1,5 +1,6 @@
 package devkor.ontime_back.entity;
 
+import devkor.ontime_back.dto.ScheduleModDto;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.OnDelete;
@@ -54,14 +55,14 @@ public class Schedule {
     @Column(columnDefinition = "TEXT") // 명시적으로 TEXT 타입으로 정의
     private String scheduleNote; // 스케줄 별 주의사항
 
-    public void updateSchedule(Place place, String scheduleName, Integer moveTime, LocalDateTime scheduleTime, Integer scheduleSpareTime, Integer latenessTime, String scheduleNote) {
+    public void updateSchedule(Place place, ScheduleModDto scheduleModDto) {
         this.place = place;
-        this.scheduleName = scheduleName;
-        this.moveTime = moveTime;
-        this.scheduleTime = scheduleTime;
-        this.scheduleSpareTime = scheduleSpareTime;
-        this.latenessTime = latenessTime;
-        this.scheduleNote = scheduleNote;
+        this.scheduleName = scheduleModDto.getScheduleName();
+        this.moveTime = scheduleModDto.getMoveTime();
+        this.scheduleTime = scheduleModDto.getScheduleTime();
+        this.scheduleSpareTime = scheduleModDto.getScheduleSpareTime();
+        this.latenessTime = scheduleModDto.getLatenessTime();
+        this.scheduleNote = scheduleModDto.getScheduleNote();
     }
 
     public void startSchedule() {

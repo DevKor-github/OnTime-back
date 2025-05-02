@@ -1,10 +1,7 @@
 package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.*;
-import devkor.ontime_back.entity.NotificationSchedule;
-import devkor.ontime_back.entity.Place;
-import devkor.ontime_back.entity.Schedule;
-import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.*;
 import devkor.ontime_back.repository.*;
 import devkor.ontime_back.response.GeneralException;
 import lombok.RequiredArgsConstructor;
@@ -88,13 +85,12 @@ public class ScheduleService {
         NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
 
-        cancleAndDeleteNotification(notification);
+        cancelAndDeleteNotification(notification);
         notificationScheduleRepository.flush();
-        preparationScheduleRepository.deleteBySchedule(schedule);
         scheduleRepository.deleteByScheduleId(scheduleId);
     }
 
-    private void cancleAndDeleteNotification(NotificationSchedule notification) {
+    private void cancelAndDeleteNotification(NotificationSchedule notification) {
         log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName());
         notification.disconnectSchedule();
         notificationService.cancelScheduledNotification(notification.getId());
@@ -110,14 +106,8 @@ public class ScheduleService {
         Place place = placeRepository.findByPlaceName(scheduleModDto.getPlaceName())
                 .orElseGet(() -> placeRepository.save(new Place(scheduleModDto.getPlaceId(), scheduleModDto.getPlaceName())));
 
-        schedule.updateSchedule(
-                place,
-                scheduleModDto.getScheduleName(),
-                scheduleModDto.getMoveTime(),
-                scheduleModDto.getScheduleTime(),
-                scheduleModDto.getScheduleSpareTime(),
-                scheduleModDto.getLatenessTime(),
-                scheduleModDto.getScheduleNote());
+        schedule.updateSchedule(place, scheduleModDto);
+
         scheduleRepository.save(schedule);
 
 
@@ -146,19 +136,7 @@ public class ScheduleService {
         Place place = placeRepository.findByPlaceName(scheduleAddDto.getPlaceName())
                 .orElseGet(() -> placeRepository.save(new Place(scheduleAddDto.getPlaceId(), scheduleAddDto.getPlaceName())));
 
-        Schedule schedule = Schedule.builder()
-                .scheduleId(scheduleAddDto.getScheduleId())
-                .user(user)
-                .place(place)
-                .scheduleName(scheduleAddDto.getScheduleName())
-                .moveTime(scheduleAddDto.getMoveTime())
-                .scheduleTime(scheduleAddDto.getScheduleTime())
-                .scheduleSpareTime(scheduleAddDto.getScheduleSpareTime())
-                .scheduleNote(scheduleAddDto.getScheduleNote())
-                .isChange(false)
-                .isStarted(false)
-                .latenessTime(-1)
-                .build();
+        Schedule schedule = scheduleAddDto.toEntity(user, place);
         scheduleRepository.save(schedule);
 
         NotificationSchedule notification = NotificationSchedule.builder()
