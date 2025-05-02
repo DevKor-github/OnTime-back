@@ -1,9 +1,12 @@
 package devkor.ontime_back;
 
+import devkor.ontime_back.dto.RequestInfoDto;
 import devkor.ontime_back.entity.ApiLog;
 import devkor.ontime_back.repository.ApiLogRepository;
 import devkor.ontime_back.response.GeneralException;
+import devkor.ontime_back.service.ApiLogService;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -13,48 +16,36 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.annotation.Annotation;
+import java.util.Map;
 
 
 @Slf4j
 @Aspect
 @Component
+@RequiredArgsConstructor
 public class LoggingAspect {
 
-    private final ApiLogRepository apiLogRepository;
-
-    public LoggingAspect(ApiLogRepository apiLogRepository) {
-        this.apiLogRepository = apiLogRepository;
-    }
-
+    private final ApiLogService apiLogService;
+    private static final String NO_PARAMS = "No Params";
+    private static final String NO_BODY = "No Body";
 
     @Pointcut("bean(*Controller)")
     private void allRequest() {}
 
     @Around("allRequest()")
     public Object logRequest(ProceedingJoinPoint joinPoint) throws Throwable {
-
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-
-        // requestUrl
-        String requestUrl = request.getRequestURI();
-        // requestMethod
-        String requestMethod = request.getMethod();
-        // userId
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = (authentication != null && authentication.isAuthenticated())
-                ? authentication.getName() // 인증된 사용자의 이름 (주로 ID로 사용됨)
-                : "Anonymous";
-        // clientIp
-        String clientIp = request.getRemoteAddr();
+        RequestInfoDto requestInfoDto = extractRequestInfo();
 
         // requestTime
         long beforeRequest = System.currentTimeMillis();
@@ -91,21 +82,14 @@ public class LoggingAspect {
 
             // 정상 요청 로그 저장
             long timeTaken = System.currentTimeMillis() - beforeRequest;
-            ApiLog apiLog = ApiLog.builder().
-                    requestUrl(requestUrl).
-                    requestMethod(requestMethod).
-                    userId(userId).
-                    clientIp(clientIp).
-                    responseStatus(responseStatus).
-                    takenTime(timeTaken).
-                    build();
 
-            apiLogRepository.save(apiLog);
+            ApiLog apiLog = buildApiLog(requestInfoDto, responseStatus, timeTaken);
+            apiLogService.saveLog(apiLog);
 
             log.info("[Request Log] requestUrl: {}, requestMethod: {}, userId: {}, clientIp: {}, pathVariable: {}, requestBody: {}, responseStatus: {}, timeTaken: {}",
-                    requestUrl, requestMethod, userId, clientIp,
-                    pathVariable != null ? pathVariable : "No Params",
-                    requestBody != null ? requestBody : "No Body",
+                    requestInfoDto.getRequestUrl(), requestInfoDto.getRequestMethod(), requestInfoDto.getUserId(), requestInfoDto.getClientIp(),
+                    pathVariable != null ? pathVariable : NO_PARAMS,
+                    requestBody != null ? requestBody : NO_BODY,
                     responseStatus, timeTaken);
 
             return result;
@@ -117,19 +101,7 @@ public class LoggingAspect {
 
     @AfterThrowing(pointcut = "allRequest()", throwing = "ex")
     public void logException(JoinPoint joinPoint, Exception ex) {
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-
-        // requestUrl
-        String requestUrl = request.getRequestURI();
-        // requestMethod
-        String requestMethod = request.getMethod();
-        // userId
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = (authentication != null && authentication.isAuthenticated())
-                ? authentication.getName() // 인증된 사용자의 이름 (주로 ID로 사용됨)
-                : "Anonymous";
-        // clientIp
-        String clientIp = request.getRemoteAddr();
+        RequestInfoDto requestInfoDto = extractRequestInfo();
 
         // exceptionName
         String exceptionName;
@@ -144,32 +116,44 @@ public class LoggingAspect {
         int responseStatus = mapExceptionToStatusCode(ex);
 
         log.error("[Error Log] requestUrl: {}, requestMethod: {}, userId: {}, clientIp: {}, exception: {}, message: {}, responseStatus: {}",
-                requestUrl, requestMethod, userId, clientIp, exceptionName, exceptionMessage, responseStatus);
+                requestInfoDto.getRequestUrl(), requestInfoDto.getRequestMethod(), requestInfoDto.getUserId(), requestInfoDto.getClientIp(), exceptionName, exceptionMessage, responseStatus);
 
-        // DB에 에러 로그 저장
-        ApiLog errorLog = ApiLog.builder().
-                requestUrl(requestUrl).
-                requestMethod(requestMethod).
-                userId(userId).
-                clientIp(clientIp).
-                responseStatus(responseStatus).
-                takenTime(0).
-                build();
-         // 상태 코드와 시간은 예제로 설정
-        apiLogRepository.save(errorLog);
+        ApiLog errorLog = buildApiLog(requestInfoDto, responseStatus, 0);
+        apiLogService.saveLog(errorLog);
+    }
+
+    // requestinfo 추출
+    private RequestInfoDto extractRequestInfo() {
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+
+        String requestUrl = request.getRequestURI();
+        String requestMethod = request.getMethod();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = (authentication != null && authentication.isAuthenticated())
+                ? authentication.getName()
+                : "Anonymous";
+        String clientIp = request.getRemoteAddr();
+
+        return new RequestInfoDto(requestUrl, requestMethod, userId, clientIp);
+    }
+
+    // apilog 생성
+    private ApiLog buildApiLog(RequestInfoDto info, int responseStatus, long timeTaken) {
+        return ApiLog.builder()
+                .requestUrl(info.getRequestUrl())
+                .requestMethod(info.getRequestMethod())
+                .userId(info.getUserId())
+                .clientIp(info.getClientIp())
+                .responseStatus(responseStatus)
+                .takenTime(timeTaken)
+                .build();
     }
 
     private int mapExceptionToStatusCode(Exception e) {
-        if (e instanceof IllegalArgumentException) {
-            return 400; // Bad Request
-        } else if (e instanceof org.springframework.security.access.AccessDeniedException) {
-            return 403; // Forbidden
-        } else if (e instanceof org.springframework.web.bind.MethodArgumentNotValidException) {
-            return 422; // Unprocessable Entity
-        } else {
-            return 500; // Internal Server Error
+        if (e instanceof GeneralException ge) {
+            return ge.getErrorCode().getCode();
         }
+        return 500;
     }
-
 
 }
