@@ -87,8 +87,6 @@ public class ScheduleService {
 
         cancelAndDeleteNotification(notification);
         notificationScheduleRepository.flush();
-        preparationScheduleRepository.deleteBySchedule(schedule);
-        preparationScheduleRepository.flush();
         scheduleRepository.deleteByScheduleId(scheduleId);
     }
 
