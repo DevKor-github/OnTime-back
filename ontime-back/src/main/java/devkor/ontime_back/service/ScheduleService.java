@@ -6,6 +6,7 @@ import devkor.ontime_back.repository.*;
 import devkor.ontime_back.response.GeneralException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,26 +82,16 @@ public class ScheduleService {
     // schedule 삭제
     @Transactional
     public void deleteSchedule(UUID scheduleId, Long userId) {
-        Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
+        getScheduleWithAuthorization(scheduleId, userId);
         NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
-
-        cancelAndDeleteNotification(notification);
-        notificationScheduleRepository.flush();
         scheduleRepository.deleteByScheduleId(scheduleId);
-    }
-
-    private void cancelAndDeleteNotification(NotificationSchedule notification) {
-        log.info("{}에 대한 알림 취소 및 삭제 됨", notification.getSchedule().getScheduleName());
-        notification.disconnectSchedule();
-        notificationService.cancelScheduledNotification(notification.getId());
-        notificationScheduleRepository.delete(notification);
-        log.info("알림 삭제 완료");
     }
 
     // schedule 수정
     @Transactional
     public void modifySchedule(Long userId, UUID scheduleId, ScheduleModDto scheduleModDto) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new GeneralException(USER_NOT_FOUND));
         Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
 
         Place place = placeRepository.findByPlaceName(scheduleModDto.getPlaceName())
@@ -110,10 +101,9 @@ public class ScheduleService {
 
         scheduleRepository.save(schedule);
 
-
         NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
-        LocalDateTime newNotificationTime = scheduleModDto.getScheduleTime().minusMinutes(5);
+        LocalDateTime newNotificationTime = getNotificationTime(schedule, user);
         updateAndRescheduleNotification(newNotificationTime, notification);
     }
 
@@ -139,14 +129,28 @@ public class ScheduleService {
         Schedule schedule = scheduleAddDto.toEntity(user, place);
         scheduleRepository.save(schedule);
 
+        LocalDateTime notificationTime = getNotificationTime(schedule, user);
+
         NotificationSchedule notification = NotificationSchedule.builder()
-                .notificationTime(schedule.getScheduleTime().minusMinutes(5)) // 차후 알림보내야하는 시각으로 수정 필요
+                .notificationTime(notificationTime)
                 .isSent(false)
                 .schedule(schedule)
                 .build();
         notificationScheduleRepository.save(notification);
 
         notificationService.scheduleReminder(notification);
+    }
+
+    private LocalDateTime getNotificationTime(Schedule schedule, User user) {
+        Integer preparationTime = calculatePreparationTime(schedule, user);
+        Integer moveTime = schedule.getMoveTime();
+        Integer spareTime = schedule.getScheduleSpareTime() == null ? user.getSpareTime() : schedule.getScheduleSpareTime();
+        return schedule.getScheduleTime().minusMinutes(preparationTime + moveTime + spareTime);
+    }
+
+    private Integer calculatePreparationTime(Schedule schedule, User user) {
+        List<PreparationDto> preparationDtos = getPreparations(user.getId(), schedule.getScheduleId());
+        return preparationDtos.stream().map(PreparationDto::getPreparationTime).reduce(0, Integer::sum);
     }
 
     // 지각 히스토리 반환
