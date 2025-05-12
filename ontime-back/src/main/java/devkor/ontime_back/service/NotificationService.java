@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 @Slf4j
-@EnableAsync
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

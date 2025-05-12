@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponseForm<Void>> handleInvalidTokenException(InvalidTokenException ex, HttpServletRequest request) {
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponseForm.error("401", ex.getMessage()));
+                .body(ApiResponseForm.error(401, ex.getMessage()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(), request.getMethod(), (request.getUserPrincipal() != null) ? request.getUserPrincipal().getName() : "Anonymous", request.getRemoteAddr(), "HttpMessageNotReadableException", "요청 형식이 올바르지 않습니다.", 400);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponseForm.error("400", "요청 형식이 올바르지 않습니다."));
+                .body(ApiResponseForm.error(400, "요청 형식이 올바르지 않습니다."));
     }
 
 }
