@@ -47,6 +47,9 @@ public class Schedule {
 
     private Boolean isStarted; // 버튼누름여부
 
+    @Enumerated(EnumType.STRING)
+    private DoneStatus doneStatus;
+
     private Integer scheduleSpareTime; // 스케줄 별 여유시간
 
     private Integer latenessTime; // 지각 시간 (NULL이면 약속 전, 0이면 약속 성공, N(양수)면 N분 지각)
@@ -73,6 +76,17 @@ public class Schedule {
 
     public void updateLatenessTime(Integer latenessTime) {
         this.latenessTime = latenessTime;
+
+        if (latenessTime > 0) {
+            this.doneStatus = DoneStatus.LATE;
+        } else if (latenessTime == 0) {
+            this.doneStatus = DoneStatus.NORMAL;
+        } else if (latenessTime == -1) {
+            this.doneStatus = DoneStatus.NOT_ENDED;
+        }
+        else {
+            this.doneStatus = DoneStatus.ABNORMAL;
+        }
     }
 }
 
