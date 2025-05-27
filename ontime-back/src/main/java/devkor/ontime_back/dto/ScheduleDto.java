@@ -1,5 +1,6 @@
 package devkor.ontime_back.dto;
 
+import devkor.ontime_back.entity.DoneStatus;
 import devkor.ontime_back.entity.Place;
 import devkor.ontime_back.entity.User;
 import jakarta.persistence.*;
@@ -22,5 +23,6 @@ public class ScheduleDto {
     private Integer scheduleSpareTime;
     private String scheduleNote;
     private Integer latenessTime;
+    private DoneStatus doneStatus;
 
 }
