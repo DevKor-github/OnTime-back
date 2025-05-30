@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import devkor.ontime_back.ControllerTestSupport;
 import devkor.ontime_back.TestSecurityConfig;
 import devkor.ontime_back.dto.*;
+import devkor.ontime_back.entity.DoneStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,8 +43,8 @@ class ScheduleControllerTest extends ControllerTestSupport {
         LocalDateTime endDate = LocalDateTime.of(2024, 11, 18, 20, 0);
 
         List<ScheduleDto> mockSchedules = List.of(
-                new ScheduleDto(UUID.randomUUID(), new PlaceDto(UUID.randomUUID(), "과학도서관"), "공부하기", 10, startDate, 5, "늦으면 안됨", 2),
-                new ScheduleDto(UUID.randomUUID(), new PlaceDto(UUID.randomUUID(), "중식당"), "가족행사", 15, startDate.plusHours(2), 10, "생신", 0)
+                new ScheduleDto(UUID.randomUUID(), new PlaceDto(UUID.randomUUID(), "과학도서관"), "공부하기", 10, startDate, 5, "늦으면 안됨", 2, DoneStatus.NORMAL),
+                new ScheduleDto(UUID.randomUUID(), new PlaceDto(UUID.randomUUID(), "중식당"), "가족행사", 15, startDate.plusHours(2), 10, "생신", 0, DoneStatus.NORMAL)
         );
         when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         when(scheduleService.showSchedulesByPeriod(userId, startDate, endDate)).thenReturn(mockSchedules);
@@ -74,7 +75,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
         Long userId = 1L;
         UUID scheduleId = UUID.randomUUID();
 
-        ScheduleDto mockSchedule = new ScheduleDto(scheduleId, new PlaceDto(UUID.randomUUID(), "과학도서관"), "공부하기", 10, LocalDateTime.of(2024, 11, 15, 18, 0), 5, "늦으면 안됨", 2);
+        ScheduleDto mockSchedule = new ScheduleDto(scheduleId, new PlaceDto(UUID.randomUUID(), "과학도서관"), "공부하기", 10, LocalDateTime.of(2024, 11, 15, 18, 0), 5, "늦으면 안됨", 2, DoneStatus.NOT_ENDED);
 
         when(userAuthService.getUserIdFromToken(any(HttpServletRequest.class))).thenReturn(userId);
         when(scheduleService.showScheduleByScheduleId(userId, scheduleId)).thenReturn(mockSchedule);

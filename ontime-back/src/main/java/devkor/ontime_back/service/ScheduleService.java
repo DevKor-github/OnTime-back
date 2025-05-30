@@ -222,7 +222,8 @@ public class ScheduleService {
                 schedule.getScheduleTime(),
                 (schedule.getScheduleSpareTime() == null) ? schedule.getUser().getSpareTime() : schedule.getScheduleSpareTime(),
                 schedule.getScheduleNote(),
-                schedule.getLatenessTime()
+                schedule.getLatenessTime(),
+                schedule.getDoneStatus()
         );
     }
 

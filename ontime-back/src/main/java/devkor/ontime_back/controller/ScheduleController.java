@@ -30,7 +30,7 @@ public class ScheduleController {
 
 
     // 오늘의 약속 조회
-    @Operation(summary = "사용자의 툭정 기간 일정 조회",
+    @Operation(summary = "사용자의 특정 기간 일정 조회",
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "기간 JSON 데이터 (startDate와 endDate는 둘 다 선택 사항)"
             )
