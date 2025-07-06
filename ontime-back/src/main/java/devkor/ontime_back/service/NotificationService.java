@@ -43,7 +43,7 @@ public class NotificationService {
         }
 
         ScheduledFuture<?> future = taskScheduler.schedule(
-                () -> sendReminder(notificationSchedule, "약속 5분 전입니다"),
+                () -> sendReminder(notificationSchedule, "준비 시작해야 합니다.(현재 시각: 약속시각 - (여유시간 + 이동시간 + 총준비시간) )"),
                 Date.from(reminderTime.atZone(ZoneId.systemDefault()).toInstant())
         );
 
