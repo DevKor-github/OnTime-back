@@ -107,7 +107,7 @@ public class ScheduleService {
         updateAndRescheduleNotification(newNotificationTime, notification);
     }
 
-    private void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
+    public void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
         if(newNotificationTime == notification.getNotificationTime()) return;
 
         notificationService.cancelScheduledNotification(notification.getId());

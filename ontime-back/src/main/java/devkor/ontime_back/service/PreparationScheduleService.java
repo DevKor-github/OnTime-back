@@ -99,8 +99,6 @@ public class PreparationScheduleService {
         LocalDateTime notificationTime = scheduleService.getNotificationTime(schedule, schedule.getUser());
         log.info("Notification Time(변경된): " + notificationTime);
 
-        notification.changeNotificationTime(notificationTime);
-
-        notificationScheduleRepository.save(notification);
+        scheduleService.updateAndRescheduleNotification(notificationTime, notification);
     }
 }

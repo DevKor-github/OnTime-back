@@ -68,7 +68,8 @@ public class NotificationService {
 
         if (userId != null) {
             UserSetting userSetting = userSettingRepository.findByUserId(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("No UserSetting found in schedule's user"));// Repository 메서드 가정
+                    .orElseThrow(() -> new IllegalArgumentException("No UserSetting found in schedule's user"));
+            log.debug("사용자 알림 전송 설정 여부: " + userSetting.getIsNotificationsEnabled());
 
             if (Boolean.TRUE.equals(userSetting.getIsNotificationsEnabled())) {
                 sendNotificationToUser(notificationSchedule.getSchedule(), message);
