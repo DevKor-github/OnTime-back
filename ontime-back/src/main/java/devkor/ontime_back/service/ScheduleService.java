@@ -141,7 +141,7 @@ public class ScheduleService {
         notificationService.scheduleReminder(notification);
     }
 
-    private LocalDateTime getNotificationTime(Schedule schedule, User user) {
+    public LocalDateTime getNotificationTime(Schedule schedule, User user) {
         Integer preparationTime = calculatePreparationTime(schedule, user);
         Integer moveTime = schedule.getMoveTime();
         Integer spareTime = schedule.getScheduleSpareTime() == null ? user.getSpareTime() : schedule.getScheduleSpareTime();

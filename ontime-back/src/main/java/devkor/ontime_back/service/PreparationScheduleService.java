@@ -1,9 +1,12 @@
 package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.PreparationDto;
+import devkor.ontime_back.entity.NotificationSchedule;
 import devkor.ontime_back.entity.PreparationSchedule;
 import devkor.ontime_back.entity.Schedule;
+import devkor.ontime_back.entity.User;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
+import devkor.ontime_back.repository.NotificationScheduleRepository;
 import devkor.ontime_back.repository.PreparationScheduleRepository;
 import devkor.ontime_back.repository.ScheduleRepository;
 import devkor.ontime_back.repository.UserRepository;
@@ -13,24 +16,26 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static devkor.ontime_back.response.ErrorCode.SCHEDULE_NOT_FOUND;
-import static devkor.ontime_back.response.ErrorCode.UNAUTHORIZED_ACCESS;
+import static devkor.ontime_back.response.ErrorCode.*;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
 public class PreparationScheduleService {
+    private final ScheduleService scheduleService;
     private final PreparationScheduleRepository preparationScheduleRepository;
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final NotificationScheduleRepository notificationScheduleRepository;
 
 
     @Transactional
@@ -87,5 +92,15 @@ public class PreparationScheduleService {
                 });
 
         preparationScheduleRepository.saveAll(preparationSchedules);
+
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
+                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
+
+        LocalDateTime notificationTime = scheduleService.getNotificationTime(schedule, schedule.getUser());
+        log.info("Notification Time(변경된): " + notificationTime);
+
+        notification.changeNotificationTime(notificationTime);
+
+        notificationScheduleRepository.save(notification);
     }
 }

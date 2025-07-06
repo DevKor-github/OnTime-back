@@ -52,4 +52,8 @@ public class NotificationSchedule {
     public void disconnectSchedule() {
         this.schedule = null;
     }
+
+    public void changeNotificationTime(LocalDateTime notificationTime) {
+        this.notificationTime = notificationTime;
+    }
 }
