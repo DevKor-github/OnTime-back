@@ -38,6 +38,9 @@ public class PreparationScheduleServiceTest {
     private UserRepository userRepository;
 
     @Autowired
+    private NotificationScheduleRepository notificationScheduleRepository;
+
+    @Autowired
     private PreparationScheduleService preparationScheduleService;
 
     @Autowired
@@ -63,6 +66,7 @@ public class PreparationScheduleServiceTest {
                 .punctualityScore(-1f)
                 .scheduleCountAfterReset(0)
                 .latenessCountAfterReset(0)
+                .spareTime(5)
                 .build();
         userRepository.save(newUser);
 
@@ -82,6 +86,12 @@ public class PreparationScheduleServiceTest {
                 .user(newUser)
                 .build();
         scheduleRepository.save(addedSchedule1);
+
+        NotificationSchedule notificationSchedule = NotificationSchedule.builder()
+                .schedule(addedSchedule1)
+                .notificationTime(LocalDateTime.of(2025, 1, 1, 0, 0))
+                .build();
+        notificationScheduleRepository.save(notificationSchedule);
 
         UUID preparationSchedule1Id = UUID.randomUUID();
         UUID preparationSchedule2Id = UUID.randomUUID();
@@ -112,6 +122,7 @@ public class PreparationScheduleServiceTest {
                 .punctualityScore(-1f)
                 .scheduleCountAfterReset(0)
                 .latenessCountAfterReset(0)
+                .spareTime(5)
                 .build();
         userRepository.save(newUser);
 
@@ -131,6 +142,12 @@ public class PreparationScheduleServiceTest {
                 .user(newUser)
                 .build();
         scheduleRepository.save(addedSchedule1);
+
+        NotificationSchedule notificationSchedule = NotificationSchedule.builder()
+                .schedule(addedSchedule1)
+                .notificationTime(LocalDateTime.of(2025, 1, 1, 0, 0))
+                .build();
+        notificationScheduleRepository.save(notificationSchedule);
 
         PreparationSchedule preparationSchedule3 = preparationScheduleRepository.save(new PreparationSchedule(
                 UUID.randomUUID(), addedSchedule1, "화장", 10, null));
@@ -168,6 +185,7 @@ public class PreparationScheduleServiceTest {
                 .punctualityScore(-1f)
                 .scheduleCountAfterReset(0)
                 .latenessCountAfterReset(0)
+                .spareTime(5)
                 .build();
         userRepository.save(newUser);
 
@@ -187,6 +205,12 @@ public class PreparationScheduleServiceTest {
                 .user(newUser)
                 .build();
         scheduleRepository.save(addedSchedule1);
+
+        NotificationSchedule notificationSchedule = NotificationSchedule.builder()
+                .schedule(addedSchedule1)
+                .notificationTime(LocalDateTime.of(2025, 1, 1, 0, 0))
+                .build();
+        notificationScheduleRepository.save(notificationSchedule);
 
         UUID preparationSchedule1Id = UUID.randomUUID();
         UUID preparationSchedule2Id = UUID.randomUUID();
@@ -217,6 +241,7 @@ public class PreparationScheduleServiceTest {
                 .punctualityScore(-1f)
                 .scheduleCountAfterReset(0)
                 .latenessCountAfterReset(0)
+                .spareTime(5)
                 .build();
         userRepository.save(newUser);
 
@@ -236,6 +261,12 @@ public class PreparationScheduleServiceTest {
                 .user(newUser)
                 .build();
         scheduleRepository.save(addedSchedule1);
+
+        NotificationSchedule notificationSchedule = NotificationSchedule.builder()
+                .schedule(addedSchedule1)
+                .notificationTime(LocalDateTime.of(2025, 1, 1, 0, 0))
+                .build();
+        notificationScheduleRepository.save(notificationSchedule);
 
         PreparationSchedule preparationSchedule3 = preparationScheduleRepository.save(new PreparationSchedule(
                 UUID.randomUUID(), addedSchedule1, "화장", 10, null));
