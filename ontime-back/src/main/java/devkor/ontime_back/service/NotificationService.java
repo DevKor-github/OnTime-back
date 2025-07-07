@@ -43,7 +43,7 @@ public class NotificationService {
         }
 
         ScheduledFuture<?> future = taskScheduler.schedule(
-                () -> sendReminder(notificationSchedule, "약속 5분 전입니다"),
+                () -> sendReminder(notificationSchedule, "준비 시작해야 합니다.(현재 시각: 약속시각 - (여유시간 + 이동시간 + 총준비시간) )"),
                 Date.from(reminderTime.atZone(ZoneId.systemDefault()).toInstant())
         );
 
@@ -68,7 +68,8 @@ public class NotificationService {
 
         if (userId != null) {
             UserSetting userSetting = userSettingRepository.findByUserId(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("No UserSetting found in schedule's user"));// Repository 메서드 가정
+                    .orElseThrow(() -> new IllegalArgumentException("No UserSetting found in schedule's user"));
+            log.debug("사용자 알림 전송 설정 여부: " + userSetting.getIsNotificationsEnabled());
 
             if (Boolean.TRUE.equals(userSetting.getIsNotificationsEnabled())) {
                 sendNotificationToUser(notificationSchedule.getSchedule(), message);

@@ -107,7 +107,7 @@ public class ScheduleService {
         updateAndRescheduleNotification(newNotificationTime, notification);
     }
 
-    private void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
+    public void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
         if(newNotificationTime == notification.getNotificationTime()) return;
 
         notificationService.cancelScheduledNotification(notification.getId());
@@ -141,7 +141,7 @@ public class ScheduleService {
         notificationService.scheduleReminder(notification);
     }
 
-    private LocalDateTime getNotificationTime(Schedule schedule, User user) {
+    public LocalDateTime getNotificationTime(Schedule schedule, User user) {
         Integer preparationTime = calculatePreparationTime(schedule, user);
         Integer moveTime = schedule.getMoveTime();
         Integer spareTime = schedule.getScheduleSpareTime() == null ? user.getSpareTime() : schedule.getScheduleSpareTime();
