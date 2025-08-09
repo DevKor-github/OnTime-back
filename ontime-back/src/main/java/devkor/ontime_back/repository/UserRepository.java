@@ -23,4 +23,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u.spareTime FROM User u WHERE u.id = :id")
     Integer findSpareTimeById(Long id);
+
+    Optional<Object> findByAccessToken(String token);
 }

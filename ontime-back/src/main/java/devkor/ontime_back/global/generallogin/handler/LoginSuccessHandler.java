@@ -39,7 +39,7 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
                     // 수정된 부분: 응답 헤더에 AccessToken, RefreshToken 실어서 응답
                     jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
 
-                    // 수정된 부분: RefreshToken을 User 엔티티에 업데이트 후 저장
+                    user.updateAccessToken(accessToken);
                     user.updateRefreshToken(refreshToken);
                     userRepository.saveAndFlush(user);
 
