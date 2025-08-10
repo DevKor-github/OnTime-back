@@ -48,6 +48,8 @@ public class User {
 
     private String socialId; // 로그인한 소셜 타입의 식별자 값 (일반 로그인인 경우 null)
 
+    private String accessToken; // accessToken
+
     private String refreshToken; // refreshToken
 
     private String firebaseToken;
@@ -125,5 +127,9 @@ public class User {
 
     public void updateFirebaseToken(String firebaseToken) {
         this.firebaseToken = firebaseToken;
+    }
+
+    public void updateAccessToken(String accessToken) {
+        this.accessToken = accessToken;
     }
 }
