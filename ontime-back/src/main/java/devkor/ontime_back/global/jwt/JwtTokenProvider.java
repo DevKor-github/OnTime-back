@@ -166,6 +166,8 @@ public class JwtTokenProvider {
 
     public boolean isAccessTokenValid(String token) {
         try {
+            userRepository.findByAccessToken(token)
+                    .orElseThrow(() -> new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다."));
             JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
             log.info("유효한 엑세스 토큰입니다.");
             return true;
