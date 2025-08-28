@@ -55,9 +55,11 @@ public class JwtTokenProvider {
     // accessToken 생성
     public String createAccessToken(String email, Long userId) {
         Date now = new Date();
+        log.info("expiresAt: {}", new Date(now.getTime() + accessTokenExpirationPeriod));
         return JWT.create()
                 .withSubject(ACCESS_TOKEN_SUBJECT)
                 .withExpiresAt(new Date(now.getTime() + accessTokenExpirationPeriod))
+                .withJWTId(UUID.randomUUID().toString())
                 .withClaim(EMAIL_CLAIM, email)
                 .withClaim(USER_ID_CLAIM, userId)
                 .sign(Algorithm.HMAC512(secretKey));
