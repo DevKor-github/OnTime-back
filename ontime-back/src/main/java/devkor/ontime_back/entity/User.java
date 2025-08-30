@@ -48,8 +48,10 @@ public class User {
 
     private String socialId; // 로그인한 소셜 타입의 식별자 값 (일반 로그인인 경우 null)
 
+    @Lob
     private String accessToken; // accessToken
 
+    @Lob
     private String refreshToken; // refreshToken
 
     private String firebaseToken;
