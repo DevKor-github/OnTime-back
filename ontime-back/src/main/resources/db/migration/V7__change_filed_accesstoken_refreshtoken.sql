@@ -1,0 +1,3 @@
+ALTER TABLE `user`
+  MODIFY COLUMN `access_token` LONGTEXT NULL,
+  MODIFY COLUMN `refresh_token` LONGTEXT NULL;
