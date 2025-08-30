@@ -1,2 +1,2 @@
-ALTER TABLE `user`
-    MODIFY COLUMN `access_token` TEXT;
+ALTER TABLE user
+    MODIFY COLUMN access_token TEXT;
