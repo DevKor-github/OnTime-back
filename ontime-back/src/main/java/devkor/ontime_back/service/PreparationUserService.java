@@ -33,6 +33,10 @@ public class PreparationUserService {
         User user = userRepository.findById(userId).orElseThrow(() ->
                 new GeneralException(USER_NOT_FOUND)
         );
+        boolean exists = preparationUserRepository.existsByUser(user);
+        if (exists) {
+            throw new GeneralException(PREPARATION_ALREADY_EXISTS);
+        }
         handlePreparationUsers(user, preparationDtoList, false);
 
     }
