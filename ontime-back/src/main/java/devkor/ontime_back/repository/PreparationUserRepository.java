@@ -32,4 +32,6 @@ public interface PreparationUserRepository extends JpaRepository<PreparationUser
     @Modifying
     @Query("UPDATE PreparationUser p SET p.nextPreparation = NULL WHERE p.user.id = :userId")
     void clearNextPreparationByUserId(@Param("userId") Long userId);
+
+    boolean existsByUser(User user);
 }
