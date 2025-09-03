@@ -23,6 +23,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.core.authority.mapping.NullAuthoritiesMapper;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 
@@ -93,7 +94,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         User user = userRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new InvalidRefreshTokenException("Invalid Refresh token!~!"));
         log.info("리프레시토큰이 DB에도 있음");
-        jwtTokenProvider.sendAccessToken(response, jwtTokenProvider.createAccessToken(user.getEmail(), user.getId()));
+
+        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
+
+        user.updateAccessToken(accessToken);
+        jwtTokenProvider.sendAccessToken(response, accessToken);
+        userRepository.saveAndFlush(user);
     }
 
     // accessToken으로 유저의 권한정보만 저장하고 인증 허가(스프링 시큐리티 필터체인 中 인증체인 통과해 다음 체인으로 이동)
