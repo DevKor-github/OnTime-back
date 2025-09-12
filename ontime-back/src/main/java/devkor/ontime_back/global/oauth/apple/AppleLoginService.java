@@ -123,7 +123,12 @@ public class AppleLoginService {
         User savedUser = userRepository.save(newUser);
 
         String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
-        jwtTokenProvider.sendAccessToken(response, accessToken);
+        String refreshToken = jwtTokenProvider.createRefreshToken();
+
+        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
+
+        savedUser.updateRefreshToken(refreshToken);
+        userRepository.save(savedUser);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser, null, Collections.singletonList(new SimpleGrantedAuthority(savedUser.getRole().name()))
