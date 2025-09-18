@@ -1,6 +1,7 @@
 package devkor.ontime_back.dto;
 
 import devkor.ontime_back.entity.Role;
+import devkor.ontime_back.entity.SocialType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,4 +19,5 @@ public class UserInfoResponse {
     public String note;
     public Float punctualityScore;
     public Role role;
+    public SocialType socialType;
 }
