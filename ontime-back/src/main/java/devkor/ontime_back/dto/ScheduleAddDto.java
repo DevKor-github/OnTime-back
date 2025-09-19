@@ -1,5 +1,6 @@
 package devkor.ontime_back.dto;
 
+import devkor.ontime_back.entity.DoneStatus;
 import devkor.ontime_back.entity.Place;
 import devkor.ontime_back.entity.Schedule;
 import devkor.ontime_back.entity.User;
@@ -40,6 +41,7 @@ public class ScheduleAddDto {
                 .scheduleSpareTime(this.scheduleSpareTime)
                 .latenessTime(-1)
                 .scheduleNote(this.scheduleNote)
+                .doneStatus(DoneStatus.NOT_ENDED)
                 .build();
     }
 }
