@@ -180,6 +180,7 @@ public class UserController {
                 .spareTime(user.getSpareTime())
                 .note(user.getNote())
                 .punctualityScore(user.getPunctualityScore())
+                .socialType(user.getSocialType())
                 .build();
         String message = "사용자 정보 조회 성공";
         return ResponseEntity.ok(ApiResponseForm.success(userInfoResponse, message));
