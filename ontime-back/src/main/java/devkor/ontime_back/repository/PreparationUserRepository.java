@@ -34,4 +34,6 @@ public interface PreparationUserRepository extends JpaRepository<PreparationUser
     void clearNextPreparationByUserId(@Param("userId") Long userId);
 
     boolean existsByUser(User user);
+
+    List<PreparationUser> findByUser(User user);
 }
