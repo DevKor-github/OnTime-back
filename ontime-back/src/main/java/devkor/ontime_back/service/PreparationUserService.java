@@ -78,6 +78,7 @@ public class PreparationUserService {
     protected void handlePreparationUsers(User user, List<PreparationDto> preparationDtoList, boolean shouldDeleteExisting) {
         if (shouldDeleteExisting) {
             preparationUserRepository.deleteByUser(user);
+            preparationUserRepository.flush();
         }
 
         Map<UUID, PreparationUser> preparationMap = new HashMap<>();
@@ -97,6 +98,7 @@ public class PreparationUserService {
                 .collect(Collectors.toList());
 
         preparationUserRepository.saveAll(preparationUsers);
+        preparationUserRepository.flush();
 
         preparationDtoList.stream()
                 .filter(dto -> dto.getNextPreparationId() != null)
