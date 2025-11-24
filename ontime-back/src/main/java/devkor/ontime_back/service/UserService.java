@@ -41,7 +41,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저 id입니다."));
 
-        if (user.getPunctualityScore() == (float) -1) {
+        if ( user.getPunctualityScore() == null || user.getPunctualityScore() == (float) -1) {
             // 초기화 이후 첫 약속
             user.setScheduleCountAfterReset(1);
             user.setLatenessCountAfterReset(latenessTime > 0 ? 1 : 0);
