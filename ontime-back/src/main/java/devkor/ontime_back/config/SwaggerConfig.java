@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @OpenAPIDefinition(
         servers = {
-                @Server(url = "https://api.ontime.devkor.club", description = "Production Server"),
+                @Server(url = "https://3.38.172.54.nip.io", description = "New Production Server"),
                 @Server(url = "http://localhost:8080", description = "Local Serever")
         }
 )
