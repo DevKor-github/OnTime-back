@@ -8,8 +8,8 @@ services:
     image: ontimedemo # 빌드된 백엔드 이미지
     container_name: ontime-container
     ports:
-      - "80:8080"     # HTTP 요청을 Spring Boot 8080으로 전달
-      - "443:8443"    # HTTPS 요청을 Spring Boot 8443으로 전달
+      - "8080:8080"
+      - "8443:8443"
     volumes:
       - /home/ubuntu/OnTime-back/ontime-back/src/main/resources/:/app/src/main/resources/
       - /home/ubuntu/OnTime-back/ontime-back/src/main/resources/key/:/app/resources/key/
