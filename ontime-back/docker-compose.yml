@@ -10,6 +10,8 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+    environment:
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/etc/ontime/application.properties
+      FIREBASE_CREDENTIALS_PATH: /etc/ontime/firebase-adminsdk.json
     volumes:
-      - /home/ubuntu/OnTime-back/ontime-back/src/main/resources/:/app/src/main/resources/
-      - /home/ubuntu/OnTime-back/ontime-back/src/main/resources/key/:/app/resources/key/
+      - /etc/ontime:/etc/ontime:ro

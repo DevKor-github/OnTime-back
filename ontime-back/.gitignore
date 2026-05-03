@@ -1,6 +1,21 @@
-src/main/resources/application.properties
-src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json
-src/main/resources/key/AuthKey_743M7R5W3W.p8
+.env
+.env.*
+!.env.example
+
+# Local Spring config and generated secret-bearing config
+src/main/resources/application*.properties
+!src/main/resources/application.example.properties
+src/main/resources/application*.yml
+src/main/resources/application*.yaml
+
+# Private credentials and provider keys
+src/main/resources/ontime-*-firebase-adminsdk-*.json
+src/main/resources/key/
+*.p8
+*.pem
+*.jks
+*.keystore
+GoogleService-Info.plist
 
 HELP.md
 .gradle
