@@ -55,6 +55,9 @@ public class SecurityConfig {
     private final AppleLoginService appleLoginService;
     private final GoogleLoginService googleLoginService;
 
+    @Value("${feature.apple-login.enabled:true}")
+    private boolean appleLoginEnabled;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -78,9 +81,14 @@ public class SecurityConfig {
                 .addFilterBefore(new KakaoLoginFilter("/oauth2/kakao/login", jwtTokenProvider, userRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new GoogleLoginFilter("/oauth2/google/login", googleLoginService, userRepository),
-                        UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new AppleLoginFilter("/oauth2/apple/login", appleLoginService, userRepository),
-                        UsernamePasswordAuthenticationFilter.class)
+                        UsernamePasswordAuthenticationFilter.class);
+
+        if (appleLoginEnabled) {
+            http.addFilterBefore(new AppleLoginFilter("/oauth2/apple/login", appleLoginService, userRepository),
+                    UsernamePasswordAuthenticationFilter.class);
+        }
+
+        http
                 .addFilterAfter(customJsonUsernamePasswordAuthenticationFilter(), LogoutFilter.class)
                 .addFilterBefore(jwtAuthenticationProcessingFilter(), CustomJsonUsernamePasswordAuthenticationFilter.class);
       // 1.jwtAuthenticationProcessingFilter 중복으로 삽입됨

@@ -15,7 +15,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @Slf4j
 @RestController
@@ -26,6 +29,9 @@ public class SocialAuthController {
     private final UserAuthService userAuthService;
     private final AppleLoginService appleLoginService;
     private final GoogleLoginService googleLoginService;
+
+    @Value("${feature.apple-login.enabled:true}")
+    private boolean appleLoginEnabled;
 
     @Operation(
             summary = "구글 소셜 로그인/회원가입",
@@ -105,6 +111,7 @@ public class SocialAuthController {
     })
     @PostMapping("/apple/login")
     public String appleRegisterOrLogin(@RequestBody OAuthAppleRequestDto appleLoginRequestDto, HttpServletResponse response) {
+        assertAppleLoginEnabled();
         return "애플 로그인/회원가입 성공";
     }
 
@@ -113,6 +120,7 @@ public class SocialAuthController {
     )
     @DeleteMapping("/apple/me")
     public String appleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        assertAppleLoginEnabled();
         Long userId = userAuthService.getUserIdFromToken(request);
         log.info("userId: {}", userId);
         appleLoginService.revokeToken(userId);
@@ -132,6 +140,11 @@ public class SocialAuthController {
         return "애플 로그인 회원탈퇴 성공";
     }
 
+    private void assertAppleLoginEnabled() {
+        if (!appleLoginEnabled) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Apple login is disabled");
+        }
+    }
 
 
 }
