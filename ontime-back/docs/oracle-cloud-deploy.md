@@ -4,14 +4,72 @@ This guide deploys the backend to an Oracle Cloud Always Free VM with Docker Com
 
 ## Target Shape
 
-- OCI region: Seoul
+- OCI region: South Korea North (Chuncheon), `ap-chuncheon-1`
 - VM shape: `VM.Standard.A1.Flex`
-- OS: Ubuntu 24.04 LTS or Ubuntu 22.04 LTS
+- OS: Oracle Linux 9
 - First-pass public API: `http://<oracle-public-ip>:8080`
 - Containers:
   - `ontime-backend`
   - `ontime-mysql`
 - Secrets directory on VM: `/etc/ontime`
+
+## Retry VM Creation With OCI CLI
+
+Use this when the Console returns the A1 capacity error and you want to retry later without filling out the browser form again.
+
+Prerequisites on your machine:
+
+- OCI CLI installed and configured with `oci setup config`
+- `jq` installed
+- An SSH public key, defaulting to `~/.ssh/id_ed25519.pub`
+- Your compartment OCID. For the root compartment, this is the tenancy OCID.
+
+Run from `ontime-back/`:
+
+```bash
+export COMPARTMENT_ID=ocid1.tenancy.oc1..replace-with-your-tenancy-or-compartment-ocid
+export SSH_PUBLIC_KEY_FILE="$HOME/.ssh/id_ed25519.pub"
+
+./scripts/oci-retry-a1-chuncheon.sh
+```
+
+The script creates or reuses:
+
+- VCN: `ontime-vcn`
+- Public subnet: `ontime-public-subnet`
+- Internet gateway: `ontime-igw`
+- Default route to the internet gateway
+- Security list ingress for SSH `22` and backend `8080`
+- A public IPv4 address on the VM launch
+
+By default, SSH and API ingress are open from `0.0.0.0/0` so the first deploy is reachable. Restrict these before a real launch if you know your client IP:
+
+```bash
+export SSH_SOURCE_CIDR="$(curl -s https://ifconfig.me)/32"
+export API_SOURCE_CIDR="$SSH_SOURCE_CIDR"
+./scripts/oci-retry-a1-chuncheon.sh
+```
+
+The launch settings match the Console retry:
+
+- Region: `ap-chuncheon-1`
+- Availability domain: `Cxab:AP-CHUNCHEON-1-AD-1`
+- Shape: `VM.Standard.A1.Flex`
+- Shape config: `1` OCPU, `6` GB RAM
+- Image: newest available Oracle Linux 9 image compatible with A1 Flex
+- Instance name: `ontime`
+
+If OCI is still out of capacity, the script fails at the `oci compute instance launch` step. Rerun the same command later; already-created network resources are reused.
+
+To leave it retrying in the terminal, set retry controls:
+
+```bash
+export RETRY_ATTEMPTS=24
+export RETRY_SLEEP_SECONDS=900
+./scripts/oci-retry-a1-chuncheon.sh
+```
+
+That example retries every 15 minutes for up to 6 hours.
 
 ## Oracle Networking
 
@@ -24,22 +82,14 @@ Do not expose MySQL port `3306` publicly.
 
 ## VM Setup
 
-SSH into the VM, then install Docker:
+SSH into the VM as `opc`, then install Docker:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y ca-certificates curl git
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo dnf -y update
+sudo dnf -y install dnf-plugins-core git curl
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 ```
 
