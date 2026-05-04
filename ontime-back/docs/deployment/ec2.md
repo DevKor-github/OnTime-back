@@ -56,6 +56,8 @@ The deploy workflow writes these files under `/home/ubuntu/OnTime-back`:
 - `secrets/firebase-adminsdk.json`
 - `secrets/AuthKey_743M7R5W3W.p8`
 
-MySQL data is stored in the Docker volume `mysql-data`. Removing that volume deletes the deployed database.
+MySQL data is stored in the Docker volume `ontime-mysql-data`. Normal deploys run `docker compose down` without `-v`, so this volume is preserved across backend redeploys. Removing that volume deletes the deployed database.
+
+Keep `SPRING_JPA_HIBERNATE_DDL_AUTO` set to `validate` or another non-destructive value for production. Values such as `create` or `create-drop` can recreate schema and destroy data.
 
 Do not commit local `application.properties`, Firebase service account JSON, Apple `.p8` keys, or `.env` files.
