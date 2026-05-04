@@ -187,7 +187,6 @@ public class AppleLoginService {
         String clientSecret = generateClientSecret();
         log.info("getAppleAccessTokenAndRefreshToken");
         log.info("client_id: {}", clientId);
-        log.info("client_secret: {}", clientSecret);
         MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
         requestBody.add("grant_type", "authorization_code");
         requestBody.add("code", authCode);
@@ -270,4 +269,3 @@ public class AppleLoginService {
         }
     }
 }
-
