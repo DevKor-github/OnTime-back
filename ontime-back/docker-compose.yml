@@ -1,4 +1,21 @@
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: ontime-mysql
+    restart: unless-stopped
+    env_file:
+      - ./config/mysql.env
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: .
@@ -6,9 +23,15 @@ services:
     image: ontime-backend
     container_name: ontime-backend
     restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       - "8080:8080"
     volumes:
       - ./config/application.properties:/app/config/application.properties:ro
       - ./secrets/firebase-adminsdk.json:/app/secrets/firebase-adminsdk.json:ro
       - ./secrets/AuthKey_743M7R5W3W.p8:/app/secrets/AuthKey_743M7R5W3W.p8:ro
+
+volumes:
+  mysql-data:
