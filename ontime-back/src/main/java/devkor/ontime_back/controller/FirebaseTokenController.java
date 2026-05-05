@@ -50,7 +50,10 @@ public class FirebaseTokenController {
     public ResponseEntity<ApiResponseForm<String>> registerFirebaseToken(HttpServletRequest request, @RequestBody FirebaseTokenAddDto firebaseTokenAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
-        firebaseTokenService.registerFirebaseToken(userId, firebaseTokenAddDto);
+        firebaseTokenService.registerFirebaseToken(
+                userId,
+                firebaseTokenAddDto,
+                userAuthService.getAccessTokenFromRequest(request));
 
         String message = "FCM 토큰이 성공적으로 User테이블에 저장되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));

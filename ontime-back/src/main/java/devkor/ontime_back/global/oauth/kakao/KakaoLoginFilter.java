@@ -5,7 +5,10 @@ import devkor.ontime_back.dto.OAuthKakaoUserDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.UserAlarmSetting;
+import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
+import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,17 +25,23 @@ import org.springframework.security.web.authentication.AbstractAuthenticationPro
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
 
     private final UserRepository userRepository;
+    private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public KakaoLoginFilter(String defaultFilterProcessesUrl, JwtTokenProvider jwtTokenProvider, UserRepository userRepository) {
+    public KakaoLoginFilter(String defaultFilterProcessesUrl,
+                            JwtTokenProvider jwtTokenProvider,
+                            UserRepository userRepository,
+                            UserAlarmSettingRepository userAlarmSettingRepository) {
         super(defaultFilterProcessesUrl);
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
+        this.userAlarmSettingRepository = userAlarmSettingRepository;
 
     }
 
@@ -55,8 +64,10 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
-        jwtTokenProvider.updateRefreshToken(user.getEmail(), refreshToken);
-        jwtTokenProvider.sendAccessToken(response, accessToken);
+        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
+        user.updateAccessToken(accessToken);
+        user.updateRefreshToken(refreshToken);
+        userRepository.saveAndFlush(user);
 
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
@@ -86,10 +97,21 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
                 .role(Role.GUEST)
                 .build();
 
+        UserSetting userSetting = UserSetting.builder()
+                .userSettingId(UUID.randomUUID())
+                .user(newUser)
+                .build();
+        newUser.setUserSetting(userSetting);
+
         User savedUser = userRepository.save(newUser);
 
         String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
-        jwtTokenProvider.sendAccessToken(response, accessToken);
+        String refreshToken = jwtTokenProvider.createRefreshToken();
+        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
+        savedUser.updateAccessToken(accessToken);
+        savedUser.updateRefreshToken(refreshToken);
+        userRepository.save(savedUser);
+        userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
 
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");

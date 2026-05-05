@@ -7,9 +7,11 @@ import devkor.ontime_back.dto.OAuthAppleUserDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.UserAlarmSetting;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.global.jwt.JwtUtils;
+import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.InvalidTokenException;
 import io.jsonwebtoken.Claims;
@@ -62,6 +64,7 @@ public class AppleLoginService {
     private final ApplePublicKeyGenerator applePublicKeyGenerator;
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
+    private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -72,8 +75,10 @@ public class AppleLoginService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
-        jwtTokenProvider.updateRefreshToken(user.getEmail(), refreshToken);
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
+        user.updateAccessToken(accessToken);
+        user.updateRefreshToken(refreshToken);
+        userRepository.saveAndFlush(user);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user, null, Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
@@ -127,8 +132,10 @@ public class AppleLoginService {
 
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
 
+        savedUser.updateAccessToken(accessToken);
         savedUser.updateRefreshToken(refreshToken);
         userRepository.save(savedUser);
+        userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser, null, Collections.singletonList(new SimpleGrantedAuthority(savedUser.getRole().name()))
