@@ -48,6 +48,10 @@ public class FriendshipService {
         FriendShip friendShip = friendshipRepository.findByFriendShipId(friendshipId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 친구 요청입니다. 친구 추가를 신청한 유저가 탈퇴했을 수 있습니다."));
 
+        if (userRepository.findById(friendShip.getRequesterId()).isEmpty()) {
+            friendshipRepository.delete(friendShip);
+            throw new IllegalArgumentException("존재하지 않는 친구 요청입니다. 친구 추가를 신청한 유저가 탈퇴했을 수 있습니다.");
+        }
 
         // UUID로 조회한 FriendShip 데이터에 수신자 ID 세팅
         friendShip.updateReceiverId(receiverId);

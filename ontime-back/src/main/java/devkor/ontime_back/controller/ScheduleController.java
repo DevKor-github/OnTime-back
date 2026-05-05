@@ -1,6 +1,7 @@
 package devkor.ontime_back.controller;
 
 import devkor.ontime_back.dto.*;
+import devkor.ontime_back.response.GeneralException;
 import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.ScheduleService;
 import devkor.ontime_back.service.UserAuthService;
@@ -17,9 +18,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+
+import static devkor.ontime_back.response.ErrorCode.INVALID_INPUT;
 
 @RestController
 @RequestMapping("/schedules")
@@ -62,6 +67,20 @@ public class ScheduleController {
                                                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         Long userId = userAuthService.getUserIdFromToken(request);
         List<ScheduleDto> schedules = scheduleService.showSchedulesByPeriod(userId, startDate, endDate);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(schedules));
+    }
+
+    @GetMapping("/alarm-window")
+    public ResponseEntity<ApiResponseForm<List<AlarmWindowScheduleDto>>> getAlarmWindowSchedules(
+            HttpServletRequest request,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        Long userId = userAuthService.getUserIdFromToken(request);
+        List<AlarmWindowScheduleDto> schedules = scheduleService.getAlarmWindowSchedules(
+                userId,
+                parseLocalWallClockDateTime(startDate),
+                parseLocalWallClockDateTime(endDate)
+        );
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(schedules));
     }
 
@@ -262,6 +281,16 @@ public class ScheduleController {
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }
 
+    private LocalDateTime parseLocalWallClockDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+        try {
+            return LocalDateTime.from(DateTimeFormatter.ISO_DATE_TIME.parse(value));
+        } catch (DateTimeException e) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+    }
+
 
 }
-

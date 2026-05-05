@@ -15,6 +15,7 @@ import devkor.ontime_back.global.oauth.apple.ApplePublicKeyGenerator;
 import devkor.ontime_back.global.oauth.google.GoogleLoginService;
 import devkor.ontime_back.global.oauth.kakao.KakaoLoginFilter;
 import devkor.ontime_back.global.oauth.google.GoogleLoginFilter;
+import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,6 +52,7 @@ public class SecurityConfig {
     private final LoginService loginService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final ObjectMapper objectMapper;
     private final AppleLoginService appleLoginService;
     private final GoogleLoginService googleLoginService;
@@ -75,7 +77,7 @@ public class SecurityConfig {
                         .requestMatchers("/health").permitAll() // 로드밸런서 연결 확인용 url
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new KakaoLoginFilter("/oauth2/kakao/login", jwtTokenProvider, userRepository),
+                .addFilterBefore(new KakaoLoginFilter("/oauth2/kakao/login", jwtTokenProvider, userRepository, userAlarmSettingRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new GoogleLoginFilter("/oauth2/google/login", googleLoginService, userRepository),
                         UsernamePasswordAuthenticationFilter.class)

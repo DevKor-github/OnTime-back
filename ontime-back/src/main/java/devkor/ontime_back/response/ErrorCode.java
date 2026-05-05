@@ -30,6 +30,9 @@ public enum ErrorCode {
     FIRST_PREPARATION_NOT_FOUND(1012, "해당 ID의 사용자의 준비과정을 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
     NOTIFICATION_NOT_FOUND(1013, "알림을 찾을 수 없습니다.", HttpStatus.BAD_REQUEST ),
     PREPARATION_ALREADY_EXISTS(1014, "해당 사용자의 준비과정이 이미 존재합니다.", HttpStatus.BAD_REQUEST),
+    ALARM_SETTINGS_INVALID_FIELD(1101, "ALARM_SETTINGS_INVALID_FIELD", HttpStatus.BAD_REQUEST),
+    ALARM_WINDOW_RANGE_TOO_LONG(1102, "ALARM_WINDOW_RANGE_TOO_LONG", HttpStatus.BAD_REQUEST),
+    DEVICE_SESSION_NOT_ACTIVE(1103, "DEVICE_SESSION_NOT_ACTIVE", HttpStatus.CONFLICT),
 
     // 공통 오류 메시지
     UNEXPECTED_ERROR(1000, "Unexpected Error: An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR),;

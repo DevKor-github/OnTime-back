@@ -66,6 +66,7 @@ public class Schedule {
         this.scheduleSpareTime = scheduleModDto.getScheduleSpareTime();
         this.latenessTime = scheduleModDto.getLatenessTime();
         this.scheduleNote = scheduleModDto.getScheduleNote();
+        syncDoneStatusFromLatenessTime();
     }
 
     public void startSchedule() {
@@ -77,17 +78,20 @@ public class Schedule {
     public void updateLatenessTime(Integer latenessTime) {
         this.latenessTime = latenessTime;
 
-        if (latenessTime > 0) {
+        syncDoneStatusFromLatenessTime();
+    }
+
+    private void syncDoneStatusFromLatenessTime() {
+        if (latenessTime == null || latenessTime == -1) {
+            this.doneStatus = DoneStatus.NOT_ENDED;
+        } else if (latenessTime > 0) {
             this.doneStatus = DoneStatus.LATE;
         } else if (latenessTime == 0) {
             this.doneStatus = DoneStatus.NORMAL;
-        } else if (latenessTime == -1) {
-            this.doneStatus = DoneStatus.NOT_ENDED;
         }
         else {
             this.doneStatus = DoneStatus.ABNORMAL;
         }
     }
 }
-
 

@@ -1,6 +1,7 @@
 package devkor.ontime_back.repository;
 
 
+import devkor.ontime_back.entity.DoneStatus;
 import devkor.ontime_back.entity.Schedule;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -50,5 +51,18 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     // 약속 히스토리 조회
     @Query("SELECT s FROM Schedule s WHERE s.user.id = :userId")
     List<Schedule> findAllByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT s FROM Schedule s " +
+            "JOIN FETCH s.user " +
+            "LEFT JOIN FETCH s.place " +
+            "WHERE s.user.id = :userId " +
+            "AND s.doneStatus = :doneStatus " +
+            "AND s.scheduleTime >= :startDate " +
+            "AND s.scheduleTime < :endDate " +
+            "ORDER BY s.scheduleTime ASC, s.scheduleId ASC")
+    List<Schedule> findAlarmWindowSchedules(@Param("userId") Long userId,
+                                            @Param("startDate") LocalDateTime startDate,
+                                            @Param("endDate") LocalDateTime endDate,
+                                            @Param("doneStatus") DoneStatus doneStatus);
 
 }

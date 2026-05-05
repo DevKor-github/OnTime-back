@@ -30,6 +30,7 @@ import java.util.concurrent.ScheduledFuture;
 public class NotificationService {
 
     private final UserSettingRepository userSettingRepository;
+    private final AlarmService alarmService;
     private final TaskScheduler taskScheduler;
     private final NotificationScheduleRepository notificationScheduleRepository;
     private final ConcurrentHashMap<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
@@ -72,6 +73,14 @@ public class NotificationService {
             log.debug("사용자 알림 전송 설정 여부: " + userSetting.getIsNotificationsEnabled());
 
             if (Boolean.TRUE.equals(userSetting.getIsNotificationsEnabled())) {
+                if (alarmService.shouldSuppressLegacyReminder(
+                        userId,
+                        notificationSchedule.getSchedule().getScheduleId(),
+                        notificationSchedule.getNotificationTime())) {
+                    log.info("현재 기기 로컬 알람 커버리지로 인해 레거시 푸시 알림을 생략합니다. scheduleId={}",
+                            notificationSchedule.getSchedule().getScheduleId());
+                    return;
+                }
                 sendNotificationToUser(notificationSchedule.getSchedule(), message);
                 notificationSchedule.changeStatusToSent();
                 notificationScheduleRepository.save(notificationSchedule);
