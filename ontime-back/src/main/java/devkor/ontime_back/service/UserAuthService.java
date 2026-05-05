@@ -6,8 +6,10 @@ import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.UserAlarmSetting;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
+import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.repository.UserSettingRepository;
 import devkor.ontime_back.response.ErrorCode;
@@ -32,14 +34,36 @@ public class UserAuthService {
 
     private final UserRepository userRepository;
     private final UserSettingRepository userSettingRepository;
+    private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
     // 엑세스토큰에서 UserId 추출
     public Long getUserIdFromToken(HttpServletRequest request) {
-        String accessToken = request.getHeader("Authorization").substring(7); // "Bearer "를 제외한 토큰
-        String refreshToken = request.getHeader("refresh-token");
+        String accessToken = getAccessTokenFromRequest(request);
         return jwtTokenProvider.extractUserId(accessToken).orElseThrow(() -> new RuntimeException("User ID not found in token"));
+    }
+
+    public String getAccessTokenFromRequest(HttpServletRequest request) {
+        return stripBearerPrefix(request.getHeader("Authorization"));
+    }
+
+    public String getRefreshTokenFromRequest(HttpServletRequest request) {
+        String refreshToken = request.getHeader("Authorization-refresh");
+        if (refreshToken == null) {
+            refreshToken = request.getHeader("refresh-token");
+        }
+        return stripBearerPrefix(refreshToken);
+    }
+
+    private String stripBearerPrefix(String token) {
+        if (token == null) {
+            return null;
+        }
+        if (token.startsWith("Bearer ")) {
+            return token.substring(7);
+        }
+        return token;
     }
 
     // 자체 로그인 회원가입
@@ -87,6 +111,7 @@ public class UserAuthService {
 
         user.setUserSetting(userSetting);
         userRepository.save(user); //CASCADE옵션 덕분에 userRepository만 save해주면 됨(userSettingRepository는 save안해줘도 부모인 user를 따라 저장됨)
+        userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(user));
         return user;
     }
 
@@ -96,6 +121,7 @@ public class UserAuthService {
 
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
 
+        user.updateAccessToken(accessToken);
         user.updateRefreshToken(refreshToken);
         userRepository.saveAndFlush(user);
     }

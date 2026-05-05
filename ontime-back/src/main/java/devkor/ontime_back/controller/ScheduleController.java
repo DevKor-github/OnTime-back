@@ -1,6 +1,7 @@
 package devkor.ontime_back.controller;
 
 import devkor.ontime_back.dto.*;
+import devkor.ontime_back.response.GeneralException;
 import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.ScheduleService;
 import devkor.ontime_back.service.UserAuthService;
@@ -17,9 +18,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+
+import static devkor.ontime_back.response.ErrorCode.INVALID_INPUT;
 
 @RestController
 @RequestMapping("/schedules")
@@ -62,6 +67,46 @@ public class ScheduleController {
                                                                                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         Long userId = userAuthService.getUserIdFromToken(request);
         List<ScheduleDto> schedules = scheduleService.showSchedulesByPeriod(userId, startDate, endDate);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(schedules));
+    }
+
+    @Operation(summary = "Native alarm schedule window lookup",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "No JSON body is required. Send access token in the header and use startDate/endDate query parameters."
+            )
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Alarm schedule window lookup succeeded",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    example = "{\n  \"status\": \"success\",\n  \"code\": 200,\n  \"message\": \"OK\",\n  \"data\": [\n    {\n      \"scheduleId\": \"3fa85f64-5717-4562-b3fc-2c963f66afe5\",\n      \"scheduleName\": \"Morning meeting\",\n      \"place\": {\n        \"placeId\": \"3fa85f64-5717-4562-b3fc-2c963f66afe6\",\n        \"placeName\": \"Office\"\n      },\n      \"scheduleTime\": \"2026-05-05T09:30:00\",\n      \"moveTime\": 20,\n      \"scheduleSpareTime\": 10,\n      \"doneStatus\": \"NOT_ENDED\",\n      \"preparationStartTime\": \"2026-05-05T08:40:00\",\n      \"defaultAlarmTime\": \"2026-05-05T08:30:00\",\n      \"preparations\": [],\n      \"alarmSettings\": null\n    }\n  ]\n}"
+                            )
+                    )),
+            @ApiResponse(responseCode = "4XX", description = "Alarm schedule window lookup failed",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(example = "Failure message")
+                    )
+            )
+    })
+    @GetMapping("/alarm-window")
+    public ResponseEntity<ApiResponseForm<List<AlarmWindowScheduleDto>>> getAlarmWindowSchedules(
+            HttpServletRequest request,
+            @Parameter(description = "Alarm window start date-time. Supports ISO local date-time or ISO offset date-time.",
+                    required = true,
+                    example = "2026-05-05T00:00:00")
+            @RequestParam String startDate,
+            @Parameter(description = "Alarm window end date-time. Supports ISO local date-time or ISO offset date-time.",
+                    required = true,
+                    example = "2026-05-06T00:00:00")
+            @RequestParam String endDate) {
+        Long userId = userAuthService.getUserIdFromToken(request);
+        List<AlarmWindowScheduleDto> schedules = scheduleService.getAlarmWindowSchedules(
+                userId,
+                parseLocalWallClockDateTime(startDate),
+                parseLocalWallClockDateTime(endDate)
+        );
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(schedules));
     }
 
@@ -262,6 +307,16 @@ public class ScheduleController {
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }
 
+    private LocalDateTime parseLocalWallClockDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+        try {
+            return LocalDateTime.from(DateTimeFormatter.ISO_DATE_TIME.parse(value));
+        } catch (DateTimeException e) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+    }
+
 
 }
-

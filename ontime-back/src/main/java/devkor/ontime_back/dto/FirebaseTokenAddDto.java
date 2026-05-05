@@ -7,4 +7,5 @@ import lombok.ToString;
 @Getter
 public class FirebaseTokenAddDto {
     String firebaseToken;
+    String deviceId;
 }

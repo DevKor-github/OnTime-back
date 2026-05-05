@@ -16,13 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class FirebaseTokenService {
     private final UserRepository userRepository;
+    private final AlarmService alarmService;
 
     @Transactional
-    public void registerFirebaseToken(Long userId, FirebaseTokenAddDto firebaseTokenAddDto) {
+    public void registerFirebaseToken(Long userId, FirebaseTokenAddDto firebaseTokenAddDto, String accessToken) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         user.updateFirebaseToken(firebaseTokenAddDto.getFirebaseToken());
+        if (firebaseTokenAddDto.getDeviceId() != null && !firebaseTokenAddDto.getDeviceId().isBlank()) {
+            alarmService.linkFirebaseToken(userId, firebaseTokenAddDto.getDeviceId(), firebaseTokenAddDto.getFirebaseToken(), accessToken);
+        }
         userRepository.save(user);
     }
 

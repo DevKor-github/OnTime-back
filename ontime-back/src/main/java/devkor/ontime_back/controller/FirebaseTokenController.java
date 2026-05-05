@@ -32,7 +32,7 @@ public class FirebaseTokenController {
                     content = @Content(
                             schema = @Schema(
                                     type = "object",
-                                    example = "{\"firebaseToken\": \"token1234abcd(실제로는 firebase에서 받은 토큰을 기입해야 함)\"}"
+                                    example = "{\"firebaseToken\": \"token1234abcd(실제로는 firebase에서 받은 토큰을 기입해야 함)\", \"deviceId\": \"ios-device-000001\"}"
                             )
                     )
             )
@@ -50,7 +50,10 @@ public class FirebaseTokenController {
     public ResponseEntity<ApiResponseForm<String>> registerFirebaseToken(HttpServletRequest request, @RequestBody FirebaseTokenAddDto firebaseTokenAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
-        firebaseTokenService.registerFirebaseToken(userId, firebaseTokenAddDto);
+        firebaseTokenService.registerFirebaseToken(
+                userId,
+                firebaseTokenAddDto,
+                userAuthService.getAccessTokenFromRequest(request));
 
         String message = "FCM 토큰이 성공적으로 User테이블에 저장되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
