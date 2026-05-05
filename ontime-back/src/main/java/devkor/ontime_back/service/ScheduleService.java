@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,7 @@ public class ScheduleService {
 
     private final UserService userService;
     private final NotificationService notificationService;
+    private final AlarmService alarmService;
 
     private final ScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
@@ -108,7 +110,7 @@ public class ScheduleService {
     }
 
     public void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
-        if(newNotificationTime == notification.getNotificationTime()) return;
+        if(newNotificationTime.equals(notification.getNotificationTime())) return;
 
         notificationService.cancelScheduledNotification(notification.getId());
         notification.updateNotificationTime(newNotificationTime);
@@ -143,14 +145,18 @@ public class ScheduleService {
 
     public LocalDateTime getNotificationTime(Schedule schedule, User user) {
         Integer preparationTime = calculatePreparationTime(schedule, user);
-        Integer moveTime = schedule.getMoveTime();
-        Integer spareTime = schedule.getScheduleSpareTime() == null ? user.getSpareTime() : schedule.getScheduleSpareTime();
-        return schedule.getScheduleTime().minusMinutes(preparationTime + moveTime + spareTime);
+        Integer moveTime = defaultNonNegative(schedule.getMoveTime());
+        Integer spareTime = getEffectiveSpareTime(schedule);
+        Integer defaultAlarmOffsetMinutes = alarmService.getDefaultAlarmOffsetMinutes(user.getId());
+        return schedule.getScheduleTime().minusMinutes(preparationTime + moveTime + spareTime + defaultAlarmOffsetMinutes);
     }
 
     private Integer calculatePreparationTime(Schedule schedule, User user) {
         List<PreparationDto> preparationDtos = getPreparations(user.getId(), schedule.getScheduleId());
-        return preparationDtos.stream().map(PreparationDto::getPreparationTime).reduce(0, Integer::sum);
+        return preparationDtos.stream()
+                .map(PreparationDto::getPreparationTime)
+                .map(this::defaultNonNegative)
+                .reduce(0, Integer::sum);
     }
 
     // 지각 히스토리 반환
@@ -193,7 +199,7 @@ public class ScheduleService {
                     .map(preparationSchedule -> new PreparationDto(
                             preparationSchedule.getPreparationScheduleId(),
                             preparationSchedule.getPreparationName(),
-                            preparationSchedule.getPreparationTime(),
+                            defaultNonNegative(preparationSchedule.getPreparationTime()),
                             preparationSchedule.getNextPreparation() != null
                                     ? preparationSchedule.getNextPreparation().getPreparationScheduleId()
                                     : null
@@ -204,13 +210,32 @@ public class ScheduleService {
                     .map(preparationUser -> new PreparationDto(
                             preparationUser.getPreparationUserId(),
                             preparationUser.getPreparationName(),
-                            preparationUser.getPreparationTime(),
+                            defaultNonNegative(preparationUser.getPreparationTime()),
                             preparationUser.getNextPreparation() != null
                                     ? preparationUser.getNextPreparation().getPreparationUserId()
                                     : null
                     ))
                     .collect(Collectors.toList());
         }
+    }
+
+    public List<AlarmWindowScheduleDto> getAlarmWindowSchedules(Long userId, LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+        if (Duration.between(startDate, endDate).compareTo(Duration.ofDays(14)) > 0) {
+            throw new GeneralException(ALARM_WINDOW_RANGE_TOO_LONG);
+        }
+
+        List<Schedule> schedules = scheduleRepository.findAlarmWindowSchedules(userId, startDate, endDate, DoneStatus.NOT_ENDED);
+        List<PreparationDto> userPreparations = preparationUserRepository.findByUserIdWithNextPreparation(userId).stream()
+                .map(this::mapPreparationUserToDto)
+                .collect(Collectors.toList());
+        Integer defaultAlarmOffsetMinutes = alarmService.getDefaultAlarmOffsetMinutes(userId);
+
+        return schedules.stream()
+                .map(schedule -> mapToAlarmWindowDto(schedule, userPreparations, defaultAlarmOffsetMinutes))
+                .collect(Collectors.toList());
     }
 
     private ScheduleDto mapToDto(Schedule schedule) {
@@ -225,6 +250,72 @@ public class ScheduleService {
                 schedule.getLatenessTime(),
                 schedule.getDoneStatus()
         );
+    }
+
+    private AlarmWindowScheduleDto mapToAlarmWindowDto(Schedule schedule, List<PreparationDto> userPreparations, Integer defaultAlarmOffsetMinutes) {
+        List<PreparationDto> preparations = Boolean.TRUE.equals(schedule.getIsChange())
+                ? preparationScheduleRepository.findByScheduleWithNextPreparation(schedule).stream()
+                .map(this::mapPreparationScheduleToDto)
+                .collect(Collectors.toList())
+                : userPreparations;
+
+        int totalPreparationTime = preparations.stream()
+                .map(PreparationDto::getPreparationTime)
+                .map(this::defaultNonNegative)
+                .reduce(0, Integer::sum);
+        int moveTime = defaultNonNegative(schedule.getMoveTime());
+        int scheduleSpareTime = getEffectiveSpareTime(schedule);
+
+        LocalDateTime preparationStartTime = schedule.getScheduleTime()
+                .minusMinutes((long) totalPreparationTime + moveTime + scheduleSpareTime);
+        LocalDateTime defaultAlarmTime = preparationStartTime.minusMinutes(defaultNonNegative(defaultAlarmOffsetMinutes));
+
+        return AlarmWindowScheduleDto.builder()
+                .scheduleId(schedule.getScheduleId())
+                .scheduleName(schedule.getScheduleName())
+                .place((schedule.getPlace() != null) ? new PlaceDto(schedule.getPlace().getPlaceId(), schedule.getPlace().getPlaceName()) : null)
+                .scheduleTime(schedule.getScheduleTime())
+                .moveTime(moveTime)
+                .scheduleSpareTime(scheduleSpareTime)
+                .doneStatus(schedule.getDoneStatus())
+                .preparationStartTime(preparationStartTime)
+                .defaultAlarmTime(defaultAlarmTime)
+                .preparations(preparations)
+                .alarmSettings(null)
+                .build();
+    }
+
+    private PreparationDto mapPreparationScheduleToDto(PreparationSchedule preparationSchedule) {
+        return new PreparationDto(
+                preparationSchedule.getPreparationScheduleId(),
+                preparationSchedule.getPreparationName(),
+                defaultNonNegative(preparationSchedule.getPreparationTime()),
+                preparationSchedule.getNextPreparation() != null
+                        ? preparationSchedule.getNextPreparation().getPreparationScheduleId()
+                        : null
+        );
+    }
+
+    private PreparationDto mapPreparationUserToDto(PreparationUser preparationUser) {
+        return new PreparationDto(
+                preparationUser.getPreparationUserId(),
+                preparationUser.getPreparationName(),
+                defaultNonNegative(preparationUser.getPreparationTime()),
+                preparationUser.getNextPreparation() != null
+                        ? preparationUser.getNextPreparation().getPreparationUserId()
+                        : null
+        );
+    }
+
+    private Integer getEffectiveSpareTime(Schedule schedule) {
+        if (schedule.getScheduleSpareTime() != null) {
+            return defaultNonNegative(schedule.getScheduleSpareTime());
+        }
+        return defaultNonNegative(schedule.getUser().getSpareTime());
+    }
+
+    private Integer defaultNonNegative(Integer value) {
+        return value == null ? 0 : Math.max(value, 0);
     }
 
 }

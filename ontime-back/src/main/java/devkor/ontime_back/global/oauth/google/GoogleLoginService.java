@@ -8,8 +8,10 @@ import devkor.ontime_back.dto.OAuthGoogleUserDto;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.UserAlarmSetting;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
+import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
@@ -39,6 +41,7 @@ public class GoogleLoginService {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final UserAlarmSettingRepository userAlarmSettingRepository;
     private static final String GOOGLE_USER_INFO_URL = "https://www.googleapis.com/userinfo/v2/me";
     private static final String GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke?token=";
 
@@ -47,11 +50,13 @@ public class GoogleLoginService {
     public GoogleLoginService(
             JwtTokenProvider jwtTokenProvider,
             UserRepository userRepository,
+            UserAlarmSettingRepository userAlarmSettingRepository,
             @Value("${google.web.client-id}") String webClientId,
             @Value("${google.app.client-id}") String appClientId
     ) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
+        this.userAlarmSettingRepository = userAlarmSettingRepository;
         this.validClientIds = List.of(webClientId, appClientId);
     }
 
@@ -62,8 +67,10 @@ public class GoogleLoginService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
-        jwtTokenProvider.updateRefreshToken(user.getEmail(), refreshToken);
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
+        user.updateAccessToken(accessToken);
+        user.updateRefreshToken(refreshToken);
+        userRepository.saveAndFlush(user);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user, null, Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
@@ -116,8 +123,10 @@ public class GoogleLoginService {
 
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
 
+        savedUser.updateAccessToken(accessToken);
         savedUser.updateRefreshToken(refreshToken);
         userRepository.save(savedUser);
+        userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser, null, Collections.singletonList(new SimpleGrantedAuthority(savedUser.getRole().name()))
@@ -181,4 +190,3 @@ public class GoogleLoginService {
     }
 
 }
-
