@@ -107,15 +107,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                                   FilterChain filterChain) throws ServletException, IOException {
         log.info("checkAccessTokenAndAuthentication() 호출");
         jwtTokenProvider.extractAccessToken(request)
-                .ifPresent(accessToken -> {
-                    jwtTokenProvider.extractEmail(accessToken)
-                            .ifPresent(email -> userRepository.findByEmail(email)
-                                    .ifPresent(this::saveAuthentication)
-                            );
-
-                    jwtTokenProvider.extractUserId(accessToken)
-                            .ifPresent(userId -> log.info("추출된 userId: {}", userId));
-                });
+                .ifPresent(accessToken -> jwtTokenProvider.extractUserId(accessToken)
+                        .ifPresent(userId -> {
+                            log.info("추출된 userId: {}", userId);
+                            userRepository.findById(userId)
+                                    .ifPresent(this::saveAuthentication);
+                        }));
 
         filterChain.doFilter(request, response);
     }
