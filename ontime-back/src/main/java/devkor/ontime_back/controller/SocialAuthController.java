@@ -6,6 +6,7 @@ import devkor.ontime_back.dto.OAuthGoogleUserDto;
 import devkor.ontime_back.dto.OAuthKakaoUserDto;
 import devkor.ontime_back.global.oauth.apple.AppleLoginService;
 import devkor.ontime_back.global.oauth.google.GoogleLoginService;
+import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.UserAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -113,24 +115,32 @@ public class SocialAuthController {
             summary = "애플 소셜 로그인 회원탈퇴"
     )
     @DeleteMapping("/apple/me")
-    public String appleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) throws Exception {
+    public ResponseEntity<ApiResponseForm<?>> appleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         log.info("userId: {}", userId);
-        appleLoginService.revokeToken(userId);
+        try {
+            appleLoginService.revokeToken(userId);
+        } catch (Exception e) {
+            log.warn("Apple 토큰 철회에 실패했지만 계정 삭제를 계속 진행합니다. userId={}, reason={}", userId, e.getMessage());
+        }
         userAuthService.deleteUser(userId, feedbackAddDto);
-        return "애플 로그인 회원탈퇴 성공";
+        return ResponseEntity.ok(ApiResponseForm.success(null, "애플 로그인 회원탈퇴 성공"));
     }
 
     @Operation(
             summary = "구글 소셜 로그인 회원탈퇴"
     )
     @DeleteMapping("/google/me")
-    public String googleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) throws Exception {
+    public ResponseEntity<ApiResponseForm<?>> googleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         log.info("userId: {}", userId);
-        googleLoginService.revokeToken(userId);
+        try {
+            googleLoginService.revokeToken(userId);
+        } catch (Exception e) {
+            log.warn("Google 토큰 철회에 실패했지만 계정 삭제를 계속 진행합니다. userId={}, reason={}", userId, e.getMessage());
+        }
         userAuthService.deleteUser(userId, feedbackAddDto);
-        return "구글 로그인 회원탈퇴 성공";
+        return ResponseEntity.ok(ApiResponseForm.success(null, "구글 로그인 회원탈퇴 성공"));
     }
 
 
