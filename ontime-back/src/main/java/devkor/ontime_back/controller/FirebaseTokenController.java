@@ -32,7 +32,7 @@ public class FirebaseTokenController {
                     content = @Content(
                             schema = @Schema(
                                     type = "object",
-                                    example = "{\"firebaseToken\": \"token1234abcd(실제로는 firebase에서 받은 토큰을 기입해야 함)\"}"
+                                    example = "{\"firebaseToken\": \"token1234abcd(실제로는 firebase에서 받은 토큰을 기입해야 함)\", \"deviceId\": \"ios-device-000001\"}"
                             )
                     )
             )
