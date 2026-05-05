@@ -1,6 +1,7 @@
 package devkor.ontime_back.controller;
 
 import devkor.ontime_back.dto.ChangePasswordDto;
+import devkor.ontime_back.dto.FeedbackAddDto;
 import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
 import devkor.ontime_back.entity.User;
@@ -107,11 +108,11 @@ public class UserAuthController {
     @Operation(
             summary = "계정 삭제 (User 데이터 하드 삭제)",
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "계정 삭제 요청 JSON 데이터는 없음. 헤더에 토큰만 있으면 됨",
+                    description = "계정 삭제 요청 JSON 데이터는 선택사항. 탈퇴 피드백을 남기려면 feedbackId, message를 전달",
                     content = @Content(
                             schema = @Schema(
                                     type = "object",
-                                    example = "{}"
+                                    example = "{\"feedbackId\": \"d784cde3-9ff9-4054-872a-500bbcc2198a\", \"message\": \"탈퇴 피드백입니다.\"}"
                             )
                     )
             )
@@ -126,9 +127,9 @@ public class UserAuthController {
             @ApiResponse(responseCode = "4XX", description = "계정 삭제 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(토큰 오류 제외 비즈니스 로직 오류는 없음)")))
     })
     @DeleteMapping("/users/me/delete")
-    public ResponseEntity<ApiResponseForm<?>> deleteUser(HttpServletRequest request) {
+    public ResponseEntity<ApiResponseForm<?>> deleteUser(HttpServletRequest request, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
-        userAuthService.deleteUser(userId);
+        userAuthService.deleteUser(userId, feedbackAddDto);
         String message = "계정이 성공적으로 삭제되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }
