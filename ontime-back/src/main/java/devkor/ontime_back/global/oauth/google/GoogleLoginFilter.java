@@ -18,8 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -48,10 +48,14 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
 
             Object loginLock = LOGIN_LOCKS.computeIfAbsent(googleUserId, key -> new Object());
             synchronized (loginLock) {
-                Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.GOOGLE, googleUserId);
+                List<User> existingUsers = userRepository.findAllBySocialTypeAndSocialIdOrderByIdDesc(SocialType.GOOGLE, googleUserId);
 
-                if (existingUser.isPresent()) {
-                    return googleLoginService.handleLogin(oAuthGoogleRequestDto, existingUser.get(), response);
+                if (!existingUsers.isEmpty()) {
+                    if (existingUsers.size() > 1) {
+                        log.warn("동일한 Google socialId를 가진 유저가 {}명 존재합니다. 최신 userId={} 계정으로 로그인합니다.",
+                                existingUsers.size(), existingUsers.get(0).getId());
+                    }
+                    return googleLoginService.handleLogin(oAuthGoogleRequestDto, existingUsers.get(0), response);
                 } else {
                     OAuthGoogleUserDto oAuthGoogleUserDto = new OAuthGoogleUserDto(googleUserId, (String) googlePayload.get("name"), (String) googlePayload.get("picture"), googlePayload.getEmail());
                     return googleLoginService.handleRegister(oAuthGoogleRequestDto, oAuthGoogleUserDto, response);
