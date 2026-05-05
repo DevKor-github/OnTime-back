@@ -12,6 +12,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -58,7 +59,16 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
                     return googleLoginService.handleLogin(oAuthGoogleRequestDto, existingUsers.get(0), response);
                 } else {
                     OAuthGoogleUserDto oAuthGoogleUserDto = new OAuthGoogleUserDto(googleUserId, (String) googlePayload.get("name"), (String) googlePayload.get("picture"), googlePayload.getEmail());
-                    return googleLoginService.handleRegister(oAuthGoogleRequestDto, oAuthGoogleUserDto, response);
+                    try {
+                        return googleLoginService.handleRegister(oAuthGoogleRequestDto, oAuthGoogleUserDto, response);
+                    } catch (DataIntegrityViolationException e) {
+                        log.warn("Google 회원가입 중 중복 socialId가 감지되어 기존 계정으로 로그인합니다. socialId={}", googleUserId);
+                        User user = userRepository.findAllBySocialTypeAndSocialIdOrderByIdDesc(SocialType.GOOGLE, googleUserId)
+                                .stream()
+                                .findFirst()
+                                .orElseThrow(() -> e);
+                        return googleLoginService.handleLogin(oAuthGoogleRequestDto, user, response);
+                    }
                 }
             }
 
