@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import devkor.ontime_back.ControllerTestSupport;
 import devkor.ontime_back.TestSecurityConfig;
 import devkor.ontime_back.dto.ChangePasswordDto;
+import devkor.ontime_back.dto.FeedbackAddDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
@@ -100,12 +101,37 @@ class UserAuthControllerTest extends ControllerTestSupport {
     void deleteUser() throws Exception {
         // given
         when(userAuthService.getUserIdFromToken(any())).thenReturn(1L);
-        when(userAuthService.deleteUser(any(Long.class))).thenReturn(1L);
+        when(userAuthService.deleteUser(any(Long.class), any())).thenReturn(1L);
 
         // when // then
         mockMvc.perform(
                         delete("/users/me/delete")
                                 .content("{}")
+                                .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message").value("계정이 성공적으로 삭제되었습니다!"));
+    }
+
+    @DisplayName("탈퇴 피드백을 포함해 계정 삭제에 성공한다.")
+    @Test
+    void deleteUserWithFeedback() throws Exception {
+        // given
+        FeedbackAddDto request = FeedbackAddDto.builder()
+                .feedbackId(UUID.randomUUID())
+                .message("탈퇴 피드백입니다.")
+                .build();
+
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(1L);
+        when(userAuthService.deleteUser(any(Long.class), any(FeedbackAddDto.class))).thenReturn(1L);
+
+        // when // then
+        mockMvc.perform(
+                        delete("/users/me/delete")
+                                .content(objectMapper.writeValueAsString(request))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
                 .andDo(print())

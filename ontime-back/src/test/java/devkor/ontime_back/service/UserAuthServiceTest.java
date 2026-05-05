@@ -2,12 +2,16 @@ package devkor.ontime_back.service;
 
 import com.google.firebase.auth.UserInfo;
 import devkor.ontime_back.dto.ChangePasswordDto;
+import devkor.ontime_back.dto.FeedbackAddDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
+import devkor.ontime_back.entity.AccountDeletionFeedback;
 import devkor.ontime_back.entity.Role;
+import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserSetting;
+import devkor.ontime_back.repository.AccountDeletionFeedbackRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.repository.UserSettingRepository;
 import devkor.ontime_back.response.GeneralException;
@@ -44,6 +48,8 @@ class UserAuthServiceTest {
     private UserRepository userRepository;
     @Autowired
     private UserSettingRepository userSettingRepository;
+    @Autowired
+    private AccountDeletionFeedbackRepository accountDeletionFeedbackRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -53,6 +59,7 @@ class UserAuthServiceTest {
 
     @AfterEach
     void tearDown() {
+        accountDeletionFeedbackRepository.deleteAllInBatch();
         userSettingRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -277,6 +284,65 @@ class UserAuthServiceTest {
         assertThat(deletedUserId).isNotNull();
         assertThat(deletedUserId).isEqualTo(targetUserId);
         assertThat(userRepository.findById(targetUserId)).isEmpty();
+    }
+
+    @DisplayName("계정 삭제 시 선택 피드백을 익명화하여 저장한다")
+    @Test
+    void deleteUserWithFeedback(){
+        // given
+        User addedUser = User.builder()
+                .email("USER@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .socialType(SocialType.GOOGLE)
+                .build();
+        userRepository.save(addedUser);
+
+        UUID feedbackId = UUID.randomUUID();
+        FeedbackAddDto feedbackAddDto = FeedbackAddDto.builder()
+                .feedbackId(feedbackId)
+                .message("탈퇴 이유입니다.")
+                .build();
+
+        Long targetUserId = addedUser.getId();
+
+        // when
+        Long deletedUserId = userAuthService.deleteUser(targetUserId, feedbackAddDto);
+
+        // then
+        assertThat(deletedUserId).isEqualTo(targetUserId);
+        assertThat(userRepository.findById(targetUserId)).isEmpty();
+
+        AccountDeletionFeedback feedback = accountDeletionFeedbackRepository.findById(feedbackId)
+                .orElseThrow();
+        assertThat(feedback.getDeletedUserId()).isEqualTo(targetUserId);
+        assertThat(feedback.getSocialType()).isEqualTo(SocialType.GOOGLE);
+        assertThat(feedback.getMessage()).isEqualTo("탈퇴 이유입니다.");
+        assertThat(feedback.getEmailHash()).hasSize(64);
+        assertThat(feedback.getEmailHash()).doesNotContain("USER@example.com");
+        assertThat(feedback.getCreatedAt()).isNotNull();
+    }
+
+    @DisplayName("계정 삭제 시 피드백이 없어도 삭제된다")
+    @Test
+    void deleteUserWithoutFeedback(){
+        // given
+        User addedUser = User.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .build();
+        userRepository.save(addedUser);
+
+        Long targetUserId = addedUser.getId();
+
+        // when
+        Long deletedUserId = userAuthService.deleteUser(targetUserId, null);
+
+        // then
+        assertThat(deletedUserId).isEqualTo(targetUserId);
+        assertThat(userRepository.findById(targetUserId)).isEmpty();
+        assertThat(accountDeletionFeedbackRepository.findAll()).isEmpty();
     }
 
 

@@ -71,6 +71,7 @@ public class JwtTokenProvider {
         return JWT.create()
                 .withSubject(REFRESH_TOKEN_SUBJECT)
                 .withExpiresAt(new Date(now.getTime() + refreshTokenExpirationPeriod))
+                .withJWTId(UUID.randomUUID().toString())
                 .sign(Algorithm.HMAC512(secretKey));
     }
 
