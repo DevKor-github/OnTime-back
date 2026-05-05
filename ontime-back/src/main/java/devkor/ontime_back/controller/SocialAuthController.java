@@ -1,5 +1,6 @@
 package devkor.ontime_back.controller;
 
+import devkor.ontime_back.dto.FeedbackAddDto;
 import devkor.ontime_back.dto.OAuthAppleRequestDto;
 import devkor.ontime_back.dto.OAuthGoogleUserDto;
 import devkor.ontime_back.dto.OAuthKakaoUserDto;
@@ -112,11 +113,11 @@ public class SocialAuthController {
             summary = "애플 소셜 로그인 회원탈퇴"
     )
     @DeleteMapping("/apple/me")
-    public String appleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public String appleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) throws Exception {
         Long userId = userAuthService.getUserIdFromToken(request);
         log.info("userId: {}", userId);
         appleLoginService.revokeToken(userId);
-        userAuthService.deleteUser(userId);
+        userAuthService.deleteUser(userId, feedbackAddDto);
         return "애플 로그인 회원탈퇴 성공";
     }
 
@@ -124,12 +125,12 @@ public class SocialAuthController {
             summary = "구글 소셜 로그인 회원탈퇴"
     )
     @DeleteMapping("/google/me")
-    public String googleDeleteUser(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public String googleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) throws Exception {
         Long userId = userAuthService.getUserIdFromToken(request);
         log.info("userId: {}", userId);
         googleLoginService.revokeToken(userId);
-        userAuthService.deleteUser(userId);
-        return "애플 로그인 회원탈퇴 성공";
+        userAuthService.deleteUser(userId, feedbackAddDto);
+        return "구글 로그인 회원탈퇴 성공";
     }
 
 
