@@ -79,7 +79,7 @@ public class JwtTokenProvider {
         response.setStatus(HttpServletResponse.SC_OK);
 
         response.setHeader(accessHeader, accessToken);
-        log.info("발급된 Access Token : {}", accessToken);
+        log.info("Access Token 헤더 설정 완료");
     }
 
     // accessToken + refreshToken header에 넣어서 전송
@@ -88,7 +88,6 @@ public class JwtTokenProvider {
 
         setAccessTokenHeader(response, accessToken);
         setRefreshTokenHeader(response, refreshToken);
-        log.info("accesstoken: " + accessToken + "refreshtoken" + refreshToken);
         log.info("Access Token, Refresh Token 헤더 설정 완료");
     }
 
