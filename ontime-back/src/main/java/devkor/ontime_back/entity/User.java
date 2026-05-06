@@ -56,6 +56,8 @@ public class User {
 
     private String firebaseToken;
 
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String socialLoginToken;
 
     @OneToOne(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
