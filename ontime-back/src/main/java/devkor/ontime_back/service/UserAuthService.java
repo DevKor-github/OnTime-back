@@ -1,13 +1,16 @@
 package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.ChangePasswordDto;
+import devkor.ontime_back.dto.FeedbackAddDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
+import devkor.ontime_back.entity.AccountDeletionFeedback;
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserAlarmSetting;
 import devkor.ontime_back.entity.UserSetting;
+import devkor.ontime_back.repository.AccountDeletionFeedbackRepository;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
@@ -23,6 +26,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -35,6 +42,7 @@ public class UserAuthService {
     private final UserRepository userRepository;
     private final UserSettingRepository userSettingRepository;
     private final UserAlarmSettingRepository userAlarmSettingRepository;
+    private final AccountDeletionFeedbackRepository accountDeletionFeedbackRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -161,12 +169,55 @@ public class UserAuthService {
 
     @Transactional
     public Long deleteUser(Long userId) {
+        return deleteUser(userId, null);
+    }
+
+    @Transactional
+    public Long deleteUser(Long userId, FeedbackAddDto feedbackAddDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
 
+        saveAccountDeletionFeedback(user, feedbackAddDto);
         userRepository.delete(user);
 
         return userId;
+    }
+
+    private void saveAccountDeletionFeedback(User user, FeedbackAddDto feedbackAddDto) {
+        if (feedbackAddDto == null || feedbackAddDto.getMessage() == null || feedbackAddDto.getMessage().isBlank()) {
+            return;
+        }
+
+        UUID feedbackId = feedbackAddDto.getFeedbackId() != null ? feedbackAddDto.getFeedbackId() : UUID.randomUUID();
+
+        AccountDeletionFeedback feedback = AccountDeletionFeedback.builder()
+                .feedbackId(feedbackId)
+                .deletedUserId(user.getId())
+                .socialType(user.getSocialType())
+                .emailHash(hashEmail(user.getEmail()))
+                .message(feedbackAddDto.getMessage())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        accountDeletionFeedbackRepository.save(feedback);
+    }
+
+    private String hashEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encodedHash = digest.digest(email.trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder(encodedHash.length * 2);
+            for (byte b : encodedHash) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm is not available.", e);
+        }
     }
 
 }

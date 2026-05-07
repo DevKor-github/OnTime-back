@@ -18,10 +18,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
+    private static final Map<String, Object> LOGIN_LOCKS = new ConcurrentHashMap<>();
+
     private final UserRepository userRepository;
     private final GoogleLoginService googleLoginService;
 
@@ -42,13 +46,16 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
             GoogleIdToken.Payload googlePayload = googleLoginService.verifyIdentityToken(oAuthGoogleRequestDto.getIdToken());
             String googleUserId = googlePayload.getSubject();
 
-            Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.GOOGLE, googleUserId);
+            Object loginLock = LOGIN_LOCKS.computeIfAbsent(googleUserId, key -> new Object());
+            synchronized (loginLock) {
+                Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.GOOGLE, googleUserId);
 
-            if (existingUser.isPresent()) {
-                return googleLoginService.handleLogin(oAuthGoogleRequestDto, existingUser.get(), response);
-            } else {
-                OAuthGoogleUserDto oAuthGoogleUserDto = new OAuthGoogleUserDto(googleUserId, (String) googlePayload.get("name"), (String) googlePayload.get("picture"), googlePayload.getEmail());
-                return googleLoginService.handleRegister(oAuthGoogleRequestDto, oAuthGoogleUserDto, response);
+                if (existingUser.isPresent()) {
+                    return googleLoginService.handleLogin(oAuthGoogleRequestDto, existingUser.get(), response);
+                } else {
+                    OAuthGoogleUserDto oAuthGoogleUserDto = new OAuthGoogleUserDto(googleUserId, (String) googlePayload.get("name"), (String) googlePayload.get("picture"), googlePayload.getEmail());
+                    return googleLoginService.handleRegister(oAuthGoogleRequestDto, oAuthGoogleUserDto, response);
+                }
             }
 
         } catch (Exception e) {
