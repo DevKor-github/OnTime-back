@@ -172,6 +172,7 @@ public class ScheduleService {
     }
 
     // 지각 시간 업데이트
+    @Transactional
     public void updateLatenessTime(Schedule schedule, Integer latenessTime) {
         schedule.updateLatenessTime(latenessTime);
         scheduleRepository.save(schedule);
