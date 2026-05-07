@@ -87,6 +87,8 @@ jobs:
             BACKEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             BACKEND_CONTAINER_NAME=ontime-container
             BACKEND_HTTP_PORT=${{ secrets.BACKEND_HTTP_PORT || '8080' }}
+            BACKEND_MEMORY_LIMIT=${{ secrets.BACKEND_MEMORY_LIMIT || '768m' }}
+            BACKEND_CPU_LIMIT=${{ secrets.BACKEND_CPU_LIMIT || '1.0' }}
             SERVER_PORT=8080
             SPRING_PROFILES_ACTIVE=prod
             JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom
@@ -154,13 +156,32 @@ jobs:
             FLYWAY_BASELINE="$(get_env_value SPRING_FLYWAY_BASELINE_ON_MIGRATE)"
             NORMALIZED_DB_URL="$(printf '%s' "$DB_URL" | tr '[:upper:]' '[:lower:]')"
             NORMALIZED_DB_USERNAME="$(printf '%s' "$DB_USERNAME" | tr '[:upper:]' '[:lower:]')"
+            DB_URL_NO_PREFIX="${DB_URL#jdbc:mysql://}"
+            [ "$DB_URL_NO_PREFIX" != "$DB_URL" ] || fail_deploy "SPRING_DATASOURCE_URL must start with jdbc:mysql://."
+            DB_ADDRESS="${DB_URL_NO_PREFIX%%/*}"
+            DB_HOST="${DB_ADDRESS%%:*}"
+            DB_PORT="${DB_ADDRESS#*:}"
+            [ "$DB_PORT" != "$DB_ADDRESS" ] || DB_PORT="3306"
+            DB_NAME_AND_QUERY="${DB_URL_NO_PREFIX#*/}"
+            DB_NAME="$(printf '%s' "$DB_NAME_AND_QUERY" | sed 's/[?;].*$//')"
 
             [ -n "$DB_URL" ] || fail_deploy "SPRING_DATASOURCE_URL is required."
             [ -n "$DB_USERNAME" ] || fail_deploy "SPRING_DATASOURCE_USERNAME is required."
             [ -n "$DB_PASSWORD" ] || fail_deploy "SPRING_DATASOURCE_PASSWORD is required."
+            [ -n "$DB_HOST" ] || fail_deploy "SPRING_DATASOURCE_URL must include an RDS host."
+            [ "$DB_NAME" = "ontime_prod" ] || fail_deploy "SPRING_DATASOURCE_URL must use the ontime_prod database."
             [ "$NORMALIZED_DB_USERNAME" != "root" ] || fail_deploy "SPRING_DATASOURCE_USERNAME must not be root."
             [ "$DDL_AUTO" = "validate" ] || fail_deploy "SPRING_JPA_HIBERNATE_DDL_AUTO must be validate."
             [ "$FLYWAY_BASELINE" = "false" ] || fail_deploy "SPRING_FLYWAY_BASELINE_ON_MIGRATE must be false."
+
+            case "$NORMALIZED_DB_URL" in
+              *localhost*|*127.0.0.1*|*host.docker.internal*) fail_deploy "SPRING_DATASOURCE_URL must point to private RDS, not a local database." ;;
+            esac
+
+            case "$(printf '%s' "$DB_HOST" | tr '[:upper:]' '[:lower:]')" in
+              *.rds.amazonaws.com) ;;
+              *) fail_deploy "SPRING_DATASOURCE_URL host must be an RDS endpoint." ;;
+            esac
 
             case "$NORMALIZED_DB_URL" in
               *allowpublickeyretrieval=true*) fail_deploy "SPRING_DATASOURCE_URL must not enable allowPublicKeyRetrieval." ;;
@@ -175,9 +196,16 @@ jobs:
             esac
 
             case "$NORMALIZED_DB_URL" in
-              *sslmode=required*|*sslmode=verify_ca*|*sslmode=verify_identity*) ;;
-              *) fail_deploy "SPRING_DATASOURCE_URL must declare sslMode=REQUIRED, VERIFY_CA, or VERIFY_IDENTITY." ;;
+              *sslmode=required*|*sslmode=verify_ca*|*sslmode=verify_identity*|*usessl=true*) ;;
+              *) fail_deploy "SPRING_DATASOURCE_URL must declare useSSL=true, sslMode=REQUIRED, VERIFY_CA, or VERIFY_IDENTITY." ;;
             esac
+
+            echo "Checking EC2-to-RDS TCP connectivity for $DB_HOST:$DB_PORT..."
+            if command -v nc >/dev/null 2>&1; then
+              nc -zv "$DB_HOST" "$DB_PORT"
+            else
+              timeout 5 bash -c "</dev/tcp/$DB_HOST/$DB_PORT"
+            fi
 
             echo "${{ secrets.GHCR_READ_TOKEN }}" | sudo docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
