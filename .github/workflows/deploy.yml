@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - deploy
+      - main
 
 permissions:
   contents: read
@@ -51,6 +51,7 @@ jobs:
   deploy-to-ec2:
     needs: build-and-push
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

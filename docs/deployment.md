@@ -71,6 +71,14 @@ Firebase:
 
 - `FIREBASE_CREDENTIALS_BASE64`
 
+Development server:
+
+- `DEV_EC2_HOST`
+- `DEV_EC2_USER`
+- `DEV_EC2_SSH_KEY`
+- `DEV_BACKEND_HTTP_PORT` (optional, defaults to `8081`)
+- Runtime secrets matching the production names with a `DEV_` prefix, for example `DEV_SPRING_DATASOURCE_URL`, `DEV_JWT_SECRETKEY`, and `DEV_FIREBASE_CREDENTIALS_BASE64`
+
 Set the base64 secrets from the ignored local credential files:
 
 ```bash
@@ -83,7 +91,9 @@ base64 -i ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8 | tr -d '\n' 
 
 ## Build And Release Flow
 
-Push to the `deploy` branch to trigger `.github/workflows/deploy.yml`.
+Push to the `main` branch, or run `.github/workflows/deploy.yml` manually, to deploy production.
+
+Push to the `dev` branch, or run `.github/workflows/deploy-dev.yml` manually, to deploy the development server.
 
 The workflow:
 
