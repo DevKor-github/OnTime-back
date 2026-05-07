@@ -2,33 +2,22 @@ package devkor.ontime_back;
 
 import devkor.ontime_back.dto.RequestInfoDto;
 import devkor.ontime_back.entity.ApiLog;
-import devkor.ontime_back.repository.ApiLogRepository;
+import devkor.ontime_back.logging.RequestLogPolicy;
 import devkor.ontime_back.response.GeneralException;
 import devkor.ontime_back.service.ApiLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.lang.annotation.Annotation;
-import java.util.Map;
-
 
 @Slf4j
 @Aspect
@@ -37,95 +26,47 @@ import java.util.Map;
 public class LoggingAspect {
 
     private final ApiLogService apiLogService;
-    private static final String NO_PARAMS = "No Params";
-    private static final String NO_BODY = "No Body";
 
     @Pointcut("bean(*Controller)")
     private void allRequest() {}
 
     @Around("allRequest()")
     public Object logRequest(ProceedingJoinPoint joinPoint) throws Throwable {
-        RequestInfoDto requestInfoDto = extractRequestInfo();
-
-        // requestTime
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+        HttpServletRequest request = attributes.getRequest();
+        String requestId = RequestLogPolicy.resolveRequestId(request);
+        RequestLogPolicy.exposeRequestId(attributes, requestId);
+        RequestInfoDto requestInfoDto = extractRequestInfo(request);
         long beforeRequest = System.currentTimeMillis();
 
-        // pathVariable, requestBody
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Object[] args = joinPoint.getArgs();
-        Annotation[][] parameterAnnotations = signature.getMethod().getParameterAnnotations();
-
-        String pathVariable = null;
-        String requestBody = null;
-
-        for (int i = 0; i < parameterAnnotations.length; i++) {
-            Annotation[] annotations = parameterAnnotations[i];
-            for (Annotation annotation : annotations) {
-                if (annotation instanceof PathVariable) {
-                    pathVariable = args[i].toString(); // @PathVariable 값 저장
-                } else if (annotation instanceof RequestBody) {
-                    requestBody = args[i].toString(); // @RequestBody 값 저장
-                }
-            }
-        }
-
-        // responseStatus
-        int responseStatus = 200;
-        Object result;
         try {
-            // 실제 메서드 실행
-            result = joinPoint.proceed();
+            Object result = joinPoint.proceed();
+            int responseStatus = 200;
             if (result instanceof ResponseEntity) {
                 ResponseEntity<?> responseEntity = (ResponseEntity<?>) result;
-                responseStatus = responseEntity.getStatusCodeValue(); // 상태 코드 추출
+                responseStatus = responseEntity.getStatusCode().value();
             }
 
-            // 정상 요청 로그 저장
             long timeTaken = System.currentTimeMillis() - beforeRequest;
-
-            ApiLog apiLog = buildApiLog(requestInfoDto, responseStatus, timeTaken);
-            apiLogService.saveLog(apiLog);
-
-            log.info("[Request Log] requestUrl: {}, requestMethod: {}, userId: {}, clientIp: {}, pathVariable: {}, requestBody: {}, responseStatus: {}, timeTaken: {}",
-                    requestInfoDto.getRequestUrl(), requestInfoDto.getRequestMethod(), requestInfoDto.getUserId(), requestInfoDto.getClientIp(),
-                    pathVariable != null ? pathVariable : NO_PARAMS,
-                    requestBody != null ? requestBody : NO_BODY,
-                    responseStatus, timeTaken);
+            saveApiLog(requestInfoDto, responseStatus, timeTaken);
+            log.info("[Request Log] requestId: {}, route: {}, method: {}, actor: {}, clientIp: {}, responseStatus: {}, timeTakenMs: {}",
+                    requestId, requestInfoDto.getRequestUrl(), requestInfoDto.getRequestMethod(), requestInfoDto.getUserId(),
+                    requestInfoDto.getClientIp(), responseStatus, timeTaken);
 
             return result;
-
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
+            int responseStatus = mapExceptionToStatusCode(ex);
+            long timeTaken = System.currentTimeMillis() - beforeRequest;
+            saveApiLog(requestInfoDto, responseStatus, timeTaken);
+            log.error("[Error Log] requestId: {}, route: {}, method: {}, actor: {}, clientIp: {}, exception: {}, responseStatus: {}, timeTakenMs: {}",
+                    requestId, requestInfoDto.getRequestUrl(), requestInfoDto.getRequestMethod(), requestInfoDto.getUserId(),
+                    requestInfoDto.getClientIp(), ex.getClass().getSimpleName(), responseStatus, timeTaken);
             throw ex;
         }
     }
 
-    @AfterThrowing(pointcut = "allRequest()", throwing = "ex")
-    public void logException(JoinPoint joinPoint, Exception ex) {
-        RequestInfoDto requestInfoDto = extractRequestInfo();
-
-        // exceptionName
-        String exceptionName;
-        if (ex instanceof GeneralException) {
-            exceptionName = ((GeneralException) ex).getErrorCode().name();
-        } else {
-            exceptionName = ex.getClass().getSimpleName();
-        };
-        // exceptionMessage
-        String exceptionMessage = ex.getMessage();
-        // responseStatus
-        int responseStatus = mapExceptionToStatusCode(ex);
-
-        log.error("[Error Log] requestUrl: {}, requestMethod: {}, userId: {}, clientIp: {}, exception: {}, message: {}, responseStatus: {}",
-                requestInfoDto.getRequestUrl(), requestInfoDto.getRequestMethod(), requestInfoDto.getUserId(), requestInfoDto.getClientIp(), exceptionName, exceptionMessage, responseStatus);
-
-        ApiLog errorLog = buildApiLog(requestInfoDto, responseStatus, 0);
-        apiLogService.saveLog(errorLog);
-    }
-
     // requestinfo 추출
-    private RequestInfoDto extractRequestInfo() {
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-
+    private RequestInfoDto extractRequestInfo(HttpServletRequest request) {
         String requestUrl = request.getRequestURI();
         String requestMethod = request.getMethod();
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -135,6 +76,11 @@ public class LoggingAspect {
         String clientIp = request.getRemoteAddr();
 
         return new RequestInfoDto(requestUrl, requestMethod, userId, clientIp);
+    }
+
+    private void saveApiLog(RequestInfoDto requestInfoDto, int responseStatus, long timeTaken) {
+        ApiLog apiLog = buildApiLog(requestInfoDto, responseStatus, timeTaken);
+        apiLogService.saveLog(apiLog);
     }
 
     // apilog 생성
@@ -149,7 +95,7 @@ public class LoggingAspect {
                 .build();
     }
 
-    private int mapExceptionToStatusCode(Exception e) {
+    private int mapExceptionToStatusCode(Throwable e) {
         if (e instanceof GeneralException ge) {
             return ge.getErrorCode().getCode();
         }

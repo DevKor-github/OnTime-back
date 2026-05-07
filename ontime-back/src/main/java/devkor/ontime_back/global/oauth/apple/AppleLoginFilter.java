@@ -69,7 +69,6 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
             String appleUserId = tokenClaims.getSubject();
-            log.info("appleUserId: {}", appleUserId);
             String email = tokenClaims.get("email", String.class);
 
             // socialRefreshtoken에 저장
@@ -86,10 +85,9 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
         } catch (Exception e) {
-            log.error("Apple 로그인 실패: {}", e.getMessage(), e);
+            log.error("Apple login failed: {}", e.getClass().getSimpleName());
             throw new AuthenticationException("Apple 로그인 실패") {};
         }
     }
 
 }
-

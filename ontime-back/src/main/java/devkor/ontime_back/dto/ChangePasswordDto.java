@@ -8,7 +8,6 @@ import lombok.Getter;
 public class ChangePasswordDto {
     private String currentPassword;
     private String newPassword;
-
     @Builder
     public ChangePasswordDto(String currentPassword, String newPassword) {
         this.currentPassword = currentPassword;
