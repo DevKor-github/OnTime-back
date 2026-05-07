@@ -1,5 +1,6 @@
 package devkor.ontime_back.response;
 
+import devkor.ontime_back.logging.RequestLogPolicy;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -30,10 +31,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponseForm<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest request) {
-        log.error("[Error Log] requestUrl: {}, requestMethod: {}, userId: {}, clientIp: {}, exception: {}, message: {}, responseStatus: {}",
-                request.getRequestURI(), request.getMethod(), (request.getUserPrincipal() != null) ? request.getUserPrincipal().getName() : "Anonymous", request.getRemoteAddr(), "HttpMessageNotReadableException", "요청 형식이 올바르지 않습니다.", 400);
+        String requestId = RequestLogPolicy.resolveRequestId(request);
+
+        log.error("[Error Log] requestId: {}, route: {}, method: {}, actor: {}, clientIp: {}, exception: {}, responseStatus: {}",
+                requestId, request.getRequestURI(), request.getMethod(), (request.getUserPrincipal() != null) ? request.getUserPrincipal().getName() : "Anonymous", request.getRemoteAddr(), "HttpMessageNotReadableException", 400);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .header(RequestLogPolicy.REQUEST_ID_HEADER, requestId)
                 .body(ApiResponseForm.error(400, "요청 형식이 올바르지 않습니다."));
     }
 

@@ -52,7 +52,7 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
         } catch (Exception e) {
-            log.error("Google 로그인 실패: {}", e.getMessage(), e);
+            log.error("Google login failed: {}", e.getClass().getSimpleName());
             throw new AuthenticationException("Google 로그인 실패") {};
         }
 

@@ -7,12 +7,9 @@ import devkor.ontime_back.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.ToString;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@ToString
 @Getter
 @Builder
 @AllArgsConstructor
@@ -27,7 +24,6 @@ public class ScheduleAddDto {
     private Boolean isStarted; // 버튼누름여부
     private Integer scheduleSpareTime; // 스케줄 별 여유시간
     private String scheduleNote; // 스케줄 별 주의사항
-
     public Schedule toEntity(User user, Place place) {
         return Schedule.builder()
                 .user(user)

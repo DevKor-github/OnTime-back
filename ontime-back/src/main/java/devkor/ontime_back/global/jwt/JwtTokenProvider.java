@@ -55,7 +55,6 @@ public class JwtTokenProvider {
     // accessToken 생성
     public String createAccessToken(String email, Long userId) {
         Date now = new Date();
-        log.info("expiresAt: {}", new Date(now.getTime() + accessTokenExpirationPeriod));
         return JWT.create()
                 .withSubject(ACCESS_TOKEN_SUBJECT)
                 .withExpiresAt(new Date(now.getTime() + accessTokenExpirationPeriod))
@@ -79,7 +78,6 @@ public class JwtTokenProvider {
         response.setStatus(HttpServletResponse.SC_OK);
 
         response.setHeader(accessHeader, accessToken);
-        log.info("발급된 Access Token : {}", accessToken);
     }
 
     // accessToken + refreshToken header에 넣어서 전송
@@ -88,8 +86,7 @@ public class JwtTokenProvider {
 
         setAccessTokenHeader(response, accessToken);
         setRefreshTokenHeader(response, refreshToken);
-        log.info("accesstoken: " + accessToken + "refreshtoken" + refreshToken);
-        log.info("Access Token, Refresh Token 헤더 설정 완료");
+        log.info("Credential headers set");
     }
 
     // header에서 refreshToken 추출
@@ -115,7 +112,7 @@ public class JwtTokenProvider {
                     .getClaim(EMAIL_CLAIM)
                     .asString());
         } catch (Exception e) {
-            log.error("액세스 토큰이 유효하지 않습니다.as");
+            log.error("Access credential is invalid");
             return Optional.empty();
         }
     }
@@ -129,7 +126,7 @@ public class JwtTokenProvider {
                     .getClaim(USER_ID_CLAIM)
                     .asLong());
         } catch (Exception e) {
-            log.error("유효하지 않은 accessToken입니다.");
+            log.error("Access credential is invalid");
             return Optional.empty();
         }
     }
@@ -158,10 +155,10 @@ public class JwtTokenProvider {
     public boolean isTokenValid(String token) {
         try {
             JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
-            log.info("유효한 토큰입니다.");
+            log.info("Credential is valid");
             return true;
         } catch (Exception e) {
-            log.error("유효하지 않은 토큰입니다. {}", e.getMessage());
+            log.error("Credential is invalid");
             throw new InvalidTokenException("유효하지 않은 토큰입니다.");
         }
     }
@@ -171,10 +168,10 @@ public class JwtTokenProvider {
             userRepository.findByAccessToken(token)
                     .orElseThrow(() -> new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다."));
             JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
-            log.info("유효한 엑세스 토큰입니다.");
+            log.info("Access credential is valid");
             return true;
         } catch (Exception e) {
-            log.error("유효하지 않은 엑세스 토큰입니다. {}", e.getMessage());
+            log.error("Access credential is invalid");
             throw new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다.");
         }
     }
@@ -182,10 +179,10 @@ public class JwtTokenProvider {
     public boolean isRefreshTokenValid(String token) {
         try {
             JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
-            log.info("유효한 리프레시 토큰입니다.");
+            log.info("Refresh credential is valid");
             return true;
         } catch (Exception e) {
-            log.error("유효하지 않은 리프레시 토큰입니다. {}", e.getMessage());
+            log.error("Refresh credential is invalid");
             throw new InvalidRefreshTokenException("유효하지 않은 리프레시 토큰입니다.");
         }
     }

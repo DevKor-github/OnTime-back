@@ -1,6 +1,5 @@
 package devkor.ontime_back.dto;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

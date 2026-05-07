@@ -7,7 +7,6 @@ import lombok.Data;
 public class OAuthKakaoUserDto {
     private String id;
     private Profile profile;
-
     @Data
     public static class Profile {
         private String nickname;
