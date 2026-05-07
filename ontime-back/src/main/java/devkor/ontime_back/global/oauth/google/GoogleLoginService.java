@@ -22,6 +22,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -175,7 +176,10 @@ public class GoogleLoginService {
 
         String googleRefreshToken = user.getSocialLoginToken();
 
-        RestTemplate restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(3000);
+        requestFactory.setReadTimeout(3000);
+        RestTemplate restTemplate = new RestTemplate(requestFactory);
         String revokeUrl = GOOGLE_REVOKE_URL + googleRefreshToken;
 
         HttpHeaders headers = new HttpHeaders();
