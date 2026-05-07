@@ -1,16 +1,15 @@
-# PR이 올라왔을 때 자동으로 테스트코드를 실행하고 하나라도 Fail했을 시, PR을 Close하고 실패 코멘트를 달고 성공시에는 머지를 가능케하는 파이프라인.
+# PR이 올라왔을 때 자동으로 테스트코드를 실행하고 실패 시 머지를 막는 파이프라인.
 name: PR Test
 
 on:
   pull_request:
     branches:
-      - main  # main 브랜치로 머지되는 PR에서 실행
+      - dev
+      - main
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    outputs:
-      test_result: ${{ steps.run-tests.outcome }}  # 테스트 결과를 output으로 저장
 
     services:
       mysql:
@@ -64,8 +63,6 @@ jobs:
 
       # 4. Gradle 빌드 & JUnit 테스트 실행
       - name: Run Tests with Gradle
-        id: run-tests  # 실행 결과를 output으로 저장할 id 추가
-        continue-on-error: true
         env:
           SPRING_PROFILES_ACTIVE: test
         run: |
@@ -76,43 +73,3 @@ jobs:
         run: |
           echo "Checking Flyway migration history..."
           mysql -h 127.0.0.1 -u test_user --password=test_password -e "SELECT * FROM test_db.flyway_schema_history;"
-
-      
-  handle-failure:
-    needs: test
-    if: needs.test.outputs.test_result == 'failure'  # test job의 output 값이 실패(failure)일 때 실행
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      issues: write
-    steps:
-      - name: Close PR
-        uses: octokit/request-action@v2.x
-        with:
-          route: PATCH /repos/{owner}/{repo}/pulls/{pull_number}
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          pull_number: ${{ github.event.pull_request.number }}
-          state: closed
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Wait for PR to close
-        run: sleep 5
-
-      - name: Comment on PR
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const prNumber = context.payload.pull_request?.number || context.payload.issue?.number;
-            if (!prNumber) {
-              console.log("PR 번호를 찾을 수 없습니다.");
-              return;
-            }
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: "실패하는 테스트코드가 있어 PR이 자동으로 닫혔습니다.\nGithub Action에서 자세한 실패 로그를 확인하고 코드를 수정하세요."
-            });

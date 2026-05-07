@@ -1,0 +1,185 @@
+name: Deploy Dev
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: devkor-github/ontime-back
+  IMAGE_TAG: dev-${{ github.sha }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./ontime-back
+          file: ./ontime-back/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-to-dev-ec2:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload compose file to dev EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEV_EC2_HOST }}
+          username: ${{ secrets.DEV_EC2_USER }}
+          key: ${{ secrets.DEV_EC2_SSH_KEY }}
+          source: "ontime-back/docker-compose.yml"
+          target: "/home/ubuntu/OnTime-back-dev"
+          strip_components: 1
+
+      - name: Pull image and restart dev container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_EC2_HOST }}
+          username: ${{ secrets.DEV_EC2_USER }}
+          key: ${{ secrets.DEV_EC2_SSH_KEY }}
+          script: |
+            set -eu
+
+            DEPLOY_DIR="/home/ubuntu/OnTime-back-dev"
+            CONTAINER_NAME="ontime-dev-container"
+
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            umask 077
+            cat > .env <<'EOF'
+            IMAGE_TAG=${{ env.IMAGE_TAG }}
+            BACKEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            BACKEND_CONTAINER_NAME=ontime-dev-container
+            BACKEND_HTTP_PORT=${{ secrets.DEV_BACKEND_HTTP_PORT || '8081' }}
+            SERVER_PORT=8080
+            SPRING_PROFILES_ACTIVE=prod
+            JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom
+
+            SPRING_APPLICATION_NAME=${{ secrets.DEV_SPRING_APPLICATION_NAME }}
+            SPRING_DATASOURCE_URL=${{ secrets.DEV_SPRING_DATASOURCE_URL }}
+            SPRING_DATASOURCE_USERNAME=${{ secrets.DEV_SPRING_DATASOURCE_USERNAME }}
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.DEV_SPRING_DATASOURCE_PASSWORD }}
+            SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
+            SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+
+            SPRING_FLYWAY_ENABLED=true
+            SPRING_FLYWAY_BASELINE_ON_MIGRATE=false
+
+            JWT_SECRET_KEY=${{ secrets.DEV_JWT_SECRETKEY }}
+            JWT_ACCESS_EXPIRATION=${{ secrets.DEV_JWT_ACCESS_EXPIRATION }}
+            JWT_REFRESH_EXPIRATION=${{ secrets.DEV_JWT_REFRESH_EXPIRATION }}
+            JWT_ACCESS_HEADER=${{ secrets.DEV_JWT_ACCESS_HEADER }}
+            JWT_REFRESH_HEADER=${{ secrets.DEV_JWT_REFRESH_HEADER }}
+
+            GOOGLE_WEB_CLIENT_ID=${{ secrets.DEV_GOOGLE_WEB_CLIENT_ID }}
+            GOOGLE_APP_CLIENT_ID=${{ secrets.DEV_GOOGLE_APP_CLIENT_ID }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE }}
+
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE=${{ secrets.DEV_SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE }}
+
+            APPLE_CLIENT_ID=${{ secrets.DEV_APPLE_CLIENT_ID }}
+            APPLE_TEAM_ID=${{ secrets.DEV_APPLE_TEAM_ID }}
+            APPLE_LOGIN_KEY=${{ secrets.DEV_APPLE_LOGIN_KEY }}
+            APPLE_PRIVATE_KEY_BASE64=${{ secrets.DEV_APPLE_PRIVATE_KEY_BASE64 }}
+            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.DEV_FEATURE_APPLE_LOGIN_ENABLED || 'true' }}
+
+            FIREBASE_CREDENTIALS_BASE64=${{ secrets.DEV_FIREBASE_CREDENTIALS_BASE64 }}
+            EOF
+
+            fail_deploy() {
+              echo "Unsafe development database configuration: $1" >&2
+              exit 1
+            }
+
+            get_env_value() {
+              grep -E "^$1=" .env | tail -n 1 | cut -d= -f2-
+            }
+
+            DB_URL="$(get_env_value SPRING_DATASOURCE_URL)"
+            DB_USERNAME="$(get_env_value SPRING_DATASOURCE_USERNAME)"
+            DB_PASSWORD="$(get_env_value SPRING_DATASOURCE_PASSWORD)"
+            DDL_AUTO="$(get_env_value SPRING_JPA_HIBERNATE_DDL_AUTO)"
+            FLYWAY_BASELINE="$(get_env_value SPRING_FLYWAY_BASELINE_ON_MIGRATE)"
+            NORMALIZED_DB_USERNAME="$(printf '%s' "$DB_USERNAME" | tr '[:upper:]' '[:lower:]')"
+
+            [ -n "$DB_URL" ] || fail_deploy "SPRING_DATASOURCE_URL is required."
+            [ -n "$DB_USERNAME" ] || fail_deploy "SPRING_DATASOURCE_USERNAME is required."
+            [ -n "$DB_PASSWORD" ] || fail_deploy "SPRING_DATASOURCE_PASSWORD is required."
+            [ "$NORMALIZED_DB_USERNAME" != "root" ] || fail_deploy "SPRING_DATASOURCE_USERNAME must not be root."
+            [ "$DDL_AUTO" = "validate" ] || fail_deploy "SPRING_JPA_HIBERNATE_DDL_AUTO must be validate."
+            [ "$FLYWAY_BASELINE" = "false" ] || fail_deploy "SPRING_FLYWAY_BASELINE_ON_MIGRATE must be false."
+
+            echo "${{ secrets.GHCR_READ_TOKEN }}" | sudo docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+            if sudo docker compose version >/dev/null 2>&1; then
+              sudo docker compose pull
+              sudo docker compose up -d --remove-orphans
+            else
+              sudo docker-compose pull
+              sudo docker-compose up -d --remove-orphans
+            fi
+
+            for attempt in $(seq 1 30); do
+              STATUS="$(sudo docker inspect -f '{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+              if [ "$STATUS" = "healthy" ]; then
+                echo "Container is healthy."
+                exit 0
+              fi
+              echo "Waiting for healthy container status; current status: ${STATUS:-unknown}"
+              sleep 5
+            done
+
+            sudo docker logs --tail=200 "$CONTAINER_NAME" || true
+            exit 1
