@@ -93,14 +93,11 @@ jobs:
             SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }}
             SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME }}
             SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }}
-            SPRING_DATASOURCE_DRIVER_CLASS_NAME=${{ secrets.SPRING_DATASOURCE_DRIVER_CLASS_NAME }}
-            SPRING_JPA_HIBERNATE_DDL_AUTO=${{ secrets.SPRING_JPA_HIBERNATE_DDL_AUTO }}
+            SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
+            SPRING_JPA_HIBERNATE_DDL_AUTO=validate
 
             SPRING_FLYWAY_ENABLED=true
-            SPRING_FLYWAY_URL=${{ secrets.SPRING_FLYWAY_URL }}
-            SPRING_FLYWAY_USER=${{ secrets.SPRING_FLYWAY_USER }}
-            SPRING_FLYWAY_PASSWORD=${{ secrets.SPRING_FLYWAY_PASSWORD }}
-            SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
+            SPRING_FLYWAY_BASELINE_ON_MIGRATE=false
 
             JWT_SECRET_KEY=${{ secrets.JWT_SECRETKEY }}
             JWT_ACCESS_EXPIRATION=${{ secrets.JWT_ACCESS_EXPIRATION }}
@@ -138,6 +135,47 @@ jobs:
 
             FIREBASE_CREDENTIALS_BASE64=${{ secrets.FIREBASE_CREDENTIALS_BASE64 }}
             EOF
+
+            fail_deploy() {
+              echo "Unsafe production database configuration: $1" >&2
+              exit 1
+            }
+
+            get_env_value() {
+              grep -E "^$1=" .env | tail -n 1 | cut -d= -f2-
+            }
+
+            DB_URL="$(get_env_value SPRING_DATASOURCE_URL)"
+            DB_USERNAME="$(get_env_value SPRING_DATASOURCE_USERNAME)"
+            DB_PASSWORD="$(get_env_value SPRING_DATASOURCE_PASSWORD)"
+            DDL_AUTO="$(get_env_value SPRING_JPA_HIBERNATE_DDL_AUTO)"
+            FLYWAY_BASELINE="$(get_env_value SPRING_FLYWAY_BASELINE_ON_MIGRATE)"
+            NORMALIZED_DB_URL="$(printf '%s' "$DB_URL" | tr '[:upper:]' '[:lower:]')"
+            NORMALIZED_DB_USERNAME="$(printf '%s' "$DB_USERNAME" | tr '[:upper:]' '[:lower:]')"
+
+            [ -n "$DB_URL" ] || fail_deploy "SPRING_DATASOURCE_URL is required."
+            [ -n "$DB_USERNAME" ] || fail_deploy "SPRING_DATASOURCE_USERNAME is required."
+            [ -n "$DB_PASSWORD" ] || fail_deploy "SPRING_DATASOURCE_PASSWORD is required."
+            [ "$NORMALIZED_DB_USERNAME" != "root" ] || fail_deploy "SPRING_DATASOURCE_USERNAME must not be root."
+            [ "$DDL_AUTO" = "validate" ] || fail_deploy "SPRING_JPA_HIBERNATE_DDL_AUTO must be validate."
+            [ "$FLYWAY_BASELINE" = "false" ] || fail_deploy "SPRING_FLYWAY_BASELINE_ON_MIGRATE must be false."
+
+            case "$NORMALIZED_DB_URL" in
+              *allowpublickeyretrieval=true*) fail_deploy "SPRING_DATASOURCE_URL must not enable allowPublicKeyRetrieval." ;;
+            esac
+
+            case "$NORMALIZED_DB_URL" in
+              *createdatabaseifnotexist=true*) fail_deploy "SPRING_DATASOURCE_URL must not create databases at startup." ;;
+            esac
+
+            case "$NORMALIZED_DB_URL" in
+              *usessl=false*) fail_deploy "SPRING_DATASOURCE_URL must not disable TLS." ;;
+            esac
+
+            case "$NORMALIZED_DB_URL" in
+              *sslmode=required*|*sslmode=verify_ca*|*sslmode=verify_identity*) ;;
+              *) fail_deploy "SPRING_DATASOURCE_URL must declare sslMode=REQUIRED, VERIFY_CA, or VERIFY_IDENTITY." ;;
+            esac
 
             echo "${{ secrets.GHCR_READ_TOKEN }}" | sudo docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
