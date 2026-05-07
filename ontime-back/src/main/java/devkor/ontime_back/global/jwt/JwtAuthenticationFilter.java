@@ -32,7 +32,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final List<String> NO_CHECK_URLS = List.of("/login", "/swagger-ui", "/sign-up", "/v3/api-docs", "/oauth2/google/login", "/oauth2/kakao/login", "/oauth2/apple/login");
+    private static final List<String> NO_CHECK_URLS = List.of("/login", "/health", "/actuator/health", "/swagger-ui", "/sign-up", "/v3/api-docs", "/oauth2/google/login", "/oauth2/kakao/login", "/oauth2/apple/login");
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -60,7 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 리프레시토큰의 경우 토큰의 유효성 뿐만 아니라 DB에 등록되어 있는지도 확인해야 함
                 // reIssueAccessToken 메소드에서 DB를 확인해 등록된 리프레시 토큰이면 엑세스 토큰 재발급
                 // 이때 reIssueAccessToken 메소드에서 DB에 등록된 리프레시 토큰이 아니면 InvalidRefreshTokenException 발생
-                log.info("리프레시 토큰이 있고 유효한데 DB에 있는지는 아직 모름");
+                log.info("Refresh credential passed signature validation; checking stored credential");
                 reIssueAccessToken(response, refreshToken);
                 return;
             }
@@ -90,10 +90,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // 리프레시 토큰이 DB에 있으면 엑세스 토큰을 재발급
     // DB에 없으면 InvalidRefreshTokenException 발생
     public void reIssueAccessToken(HttpServletResponse response, String refreshToken) throws IOException {
-        log.info("리프레시토큰이 유효하나 DB에 있는지는 모름. DB에서 찾아봐서 없으면 예외 발생할 것임.");
+        log.info("Checking stored refresh credential");
         User user = userRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new InvalidRefreshTokenException("Invalid Refresh token!~!"));
-        log.info("리프레시토큰이 DB에도 있음");
+        log.info("Stored refresh credential matched");
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
 
@@ -105,11 +105,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // accessToken으로 유저의 권한정보만 저장하고 인증 허가(스프링 시큐리티 필터체인 中 인증체인 통과해 다음 체인으로 이동)
     public void checkAccessTokenAndAuthentication(HttpServletRequest request, HttpServletResponse response,
                                                   FilterChain filterChain) throws ServletException, IOException {
-        log.info("checkAccessTokenAndAuthentication() 호출");
+        log.info("Checking access credential authentication");
         jwtTokenProvider.extractAccessToken(request)
                 .ifPresent(accessToken -> jwtTokenProvider.extractUserId(accessToken)
                         .ifPresent(userId -> {
-                            log.info("추출된 userId: {}", userId);
+                            log.info("Authenticated userId: {}", userId);
                             userRepository.findById(userId)
                                     .ifPresent(this::saveAuthentication);
                         }));
@@ -155,7 +155,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-        log.info("InvalidTokenException 발생");
+        log.info("Credential validation exception occurred");
 
         // ErrorCode에서 정보를 가져옴
         ErrorCode errorCode = ErrorCode.UNAUTHORIZED;

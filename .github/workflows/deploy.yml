@@ -1,159 +1,163 @@
 name: Deploy
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - deploy
 
-jobs:
-  deploy-to-ec2:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
+  packages: write
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: devkor-github/ontime-back
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build with Gradle
-        run: |
-          cd ontime-back
-          ./gradlew build -x test
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./ontime-back
+          file: ./ontime-back/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:deploy-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Prepare deploy files
-        env:
-          SPRING_APPLICATION_NAME: ${{ secrets.SPRING_APPLICATION_NAME }}
-          SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
-          SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
-          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
-          SPRING_DATASOURCE_DRIVER_CLASS_NAME: ${{ secrets.SPRING_DATASOURCE_DRIVER_CLASS_NAME }}
-          SPRING_JPA_DATABASE_PLATFORM: ${{ secrets.SPRING_JPA_DATABASE_PLATFORM }}
-          SPRING_JPA_HIBERNATE_DDL_AUTO: ${{ secrets.SPRING_JPA_HIBERNATE_DDL_AUTO }}
-          JWT_SECRETKEY: ${{ secrets.JWT_SECRETKEY }}
-          JWT_ACCESS_EXPIRATION: ${{ secrets.JWT_ACCESS_EXPIRATION }}
-          JWT_REFRESH_EXPIRATION: ${{ secrets.JWT_REFRESH_EXPIRATION }}
-          JWT_ACCESS_HEADER: ${{ secrets.JWT_ACCESS_HEADER }}
-          JWT_REFRESH_HEADER: ${{ secrets.JWT_REFRESH_HEADER }}
-          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
-          GOOGLE_APP_CLIENT_ID: ${{ secrets.GOOGLE_APP_CLIENT_ID }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE }}
-          SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI }}
-          SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE }}
-          APPLE_CLIENT_ID: ${{ secrets.APPLE_CLIENT_ID }}
-          APPLE_LOGIN_KEY: ${{ secrets.APPLE_LOGIN_KEY }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          FEATURE_APPLE_LOGIN_ENABLED: ${{ secrets.FEATURE_APPLE_LOGIN_ENABLED }}
-          AUTHKEY_743M7R5W3W: ${{ secrets.AUTHKEY_743M7R5W3W }}
-          SPRING_FLYWAY_URL: ${{ secrets.SPRING_FLYWAY_URL }}
-          SPRING_FLYWAY_USER: ${{ secrets.SPRING_FLYWAY_USER }}
-          SPRING_FLYWAY_PASSWORD: ${{ secrets.SPRING_FLYWAY_PASSWORD }}
-          ONTIME_PUSH_FIREBASE_ADMINSDK: ${{ secrets.ONTIME_PUSH_FIREBASE_ADMINSDK }}
-        run: |
-          mkdir -p config secrets
+  deploy-to-ec2:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-          add_property() {
-            printf '%s=%s\n' "$1" "$2" >> config/application.properties
-          }
-
-          : > config/application.properties
-          add_property "spring.application.name" "$SPRING_APPLICATION_NAME"
-          add_property "spring.datasource.url" "$SPRING_DATASOURCE_URL"
-          add_property "spring.datasource.username" "$SPRING_DATASOURCE_USERNAME"
-          add_property "spring.datasource.password" "$SPRING_DATASOURCE_PASSWORD"
-          add_property "spring.datasource.driver-class-name" "$SPRING_DATASOURCE_DRIVER_CLASS_NAME"
-          add_property "spring.jpa.database" "mysql"
-          add_property "spring.jpa.database-platform" "${SPRING_JPA_DATABASE_PLATFORM:-org.hibernate.dialect.MySQL8Dialect}"
-          add_property "spring.jpa.hibernate.ddl-auto" "$SPRING_JPA_HIBERNATE_DDL_AUTO"
-          add_property "jwt.secret.key" "$JWT_SECRETKEY"
-          add_property "jwt.access.expiration" "$JWT_ACCESS_EXPIRATION"
-          add_property "jwt.refresh.expiration" "$JWT_REFRESH_EXPIRATION"
-          add_property "jwt.access.header" "$JWT_ACCESS_HEADER"
-          add_property "jwt.refresh.header" "$JWT_REFRESH_HEADER"
-          add_property "google.web.client-id" "$GOOGLE_WEB_CLIENT_ID"
-          add_property "google.app.client-id" "$GOOGLE_APP_CLIENT_ID"
-          add_property "spring.security.oauth2.client.registration.google.client-secret" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET"
-          add_property "spring.security.oauth2.client.registration.google.scope" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE"
-          add_property "spring.security.oauth2.client.registration.google.redirect-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI"
-          add_property "spring.security.oauth2.client.registration.google.authorization-grant-type" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE"
-          add_property "spring.security.oauth2.client.registration.google.client-name" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME"
-          add_property "spring.security.oauth2.client.provider.google.authorization-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI"
-          add_property "spring.security.oauth2.client.provider.google.token-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI"
-          add_property "spring.security.oauth2.client.provider.google.user-info-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI"
-          add_property "spring.security.oauth2.client.provider.google.user-name-attribute" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE"
-          add_property "spring.security.oauth2.client.registration.kakao.client-id" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID"
-          add_property "spring.security.oauth2.client.registration.kakao.scope" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE"
-          add_property "spring.security.oauth2.client.registration.kakao.redirect-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI"
-          add_property "spring.security.oauth2.client.registration.kakao.authorization-grant-type" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE"
-          add_property "spring.security.oauth2.client.registration.kakao.client-name" "$SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME"
-          add_property "spring.security.oauth2.client.provider.kakao.authorization-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI"
-          add_property "spring.security.oauth2.client.provider.kakao.token-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI"
-          add_property "spring.security.oauth2.client.provider.kakao.user-info-uri" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI"
-          add_property "spring.security.oauth2.client.provider.kakao.user-name-attribute" "$SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE"
-          add_property "apple.client.id" "$APPLE_CLIENT_ID"
-          add_property "apple.client.secret" "/app/secrets/AuthKey_743M7R5W3W.p8"
-          add_property "apple.login.key" "$APPLE_LOGIN_KEY"
-          add_property "apple.team.id" "$APPLE_TEAM_ID"
-          add_property "feature.apple-login.enabled" "${FEATURE_APPLE_LOGIN_ENABLED:-true}"
-          add_property "spring.flyway.enabled" "true"
-          add_property "spring.flyway.url" "$SPRING_FLYWAY_URL"
-          add_property "spring.flyway.user" "$SPRING_FLYWAY_USER"
-          add_property "spring.flyway.password" "$SPRING_FLYWAY_PASSWORD"
-          add_property "spring.flyway.baseline-on-migrate" "true"
-          add_property "management.endpoints.web.exposure.include" "health"
-          add_property "management.endpoint.health.show-details" "always"
-          add_property "server.forward-headers-strategy" "framework"
-          add_property "firebase.service-account.path" "/app/secrets/firebase-adminsdk.json"
-
-          printf '%s' "$ONTIME_PUSH_FIREBASE_ADMINSDK" > secrets/firebase-adminsdk.json
-          printf '%s' "$AUTHKEY_743M7R5W3W" > secrets/AuthKey_743M7R5W3W.p8
-          cp ontime-back/build/libs/ontime-back-0.0.1-SNAPSHOT.jar project.jar
-          cp ontime-back/Dockerfile Dockerfile
-          cp ontime-back/docker-compose.yml docker-compose.yml
-
-      - name: Upload files to EC2
+      - name: Upload compose file to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "project.jar,Dockerfile,docker-compose.yml,config/application.properties,secrets/firebase-adminsdk.json,secrets/AuthKey_743M7R5W3W.p8"
+          source: "ontime-back/docker-compose.yml"
           target: "/home/ubuntu/OnTime-back"
+          strip_components: 1
 
-      - name: Restart service on EC2
-        uses: appleboy/ssh-action@master
+      - name: Pull image and restart container
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
-            cd /home/ubuntu/OnTime-back
-            sudo docker rm -f ontime-container || true
+            set -eu
+
+            DEPLOY_DIR="/home/ubuntu/OnTime-back"
+            CONTAINER_NAME="ontime-container"
+
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            umask 077
+            cat > .env <<'EOF'
+            IMAGE_TAG=${{ env.IMAGE_TAG }}
+            BACKEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            BACKEND_CONTAINER_NAME=ontime-container
+            BACKEND_HTTP_PORT=${{ secrets.BACKEND_HTTP_PORT || '8080' }}
+            SERVER_PORT=8080
+            SPRING_PROFILES_ACTIVE=prod
+            JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom
+
+            SPRING_APPLICATION_NAME=${{ secrets.SPRING_APPLICATION_NAME }}
+            SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }}
+            SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME }}
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+            SPRING_DATASOURCE_DRIVER_CLASS_NAME=${{ secrets.SPRING_DATASOURCE_DRIVER_CLASS_NAME }}
+            SPRING_JPA_HIBERNATE_DDL_AUTO=${{ secrets.SPRING_JPA_HIBERNATE_DDL_AUTO }}
+
+            SPRING_FLYWAY_ENABLED=true
+            SPRING_FLYWAY_URL=${{ secrets.SPRING_FLYWAY_URL }}
+            SPRING_FLYWAY_USER=${{ secrets.SPRING_FLYWAY_USER }}
+            SPRING_FLYWAY_PASSWORD=${{ secrets.SPRING_FLYWAY_PASSWORD }}
+            SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
+
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRETKEY }}
+            JWT_ACCESS_EXPIRATION=${{ secrets.JWT_ACCESS_EXPIRATION }}
+            JWT_REFRESH_EXPIRATION=${{ secrets.JWT_REFRESH_EXPIRATION }}
+            JWT_ACCESS_HEADER=${{ secrets.JWT_ACCESS_HEADER }}
+            JWT_REFRESH_HEADER=${{ secrets.JWT_REFRESH_HEADER }}
+
+            GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+            GOOGLE_APP_CLIENT_ID=${{ secrets.GOOGLE_APP_CLIENT_ID }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_SCOPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_AUTHORIZATION_GRANT_TYPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_NAME }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_NAME_ATTRIBUTE }}
+
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_ID }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_SCOPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_AUTHORIZATION_GRANT_TYPE }}
+            SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_CLIENT_NAME }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_AUTHORIZATION_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_TOKEN_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_INFO_URI }}
+            SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE=${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KAKAO_USER_NAME_ATTRIBUTE }}
+
+            APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}
+            APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
+            APPLE_LOGIN_KEY=${{ secrets.APPLE_LOGIN_KEY }}
+            APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
+            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.FEATURE_APPLE_LOGIN_ENABLED || 'true' }}
+
+            FIREBASE_CREDENTIALS_BASE64=${{ secrets.FIREBASE_CREDENTIALS_BASE64 }}
+            EOF
+
+            echo "${{ secrets.GHCR_READ_TOKEN }}" | sudo docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
             if sudo docker compose version >/dev/null 2>&1; then
-              sudo docker compose down
-              sudo docker compose up --build -d
+              sudo docker compose pull
+              sudo docker compose up -d --remove-orphans
             else
-              sudo docker-compose down
-              sudo docker-compose up --build -d
+              sudo docker-compose pull
+              sudo docker-compose up -d --remove-orphans
             fi
-            sudo docker image prune -f
+
+            for attempt in $(seq 1 30); do
+              STATUS="$(sudo docker inspect -f '{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
+              if [ "$STATUS" = "healthy" ]; then
+                echo "Container is healthy."
+                exit 0
+              fi
+              echo "Waiting for healthy container status; current status: ${STATUS:-unknown}"
+              sleep 5
+            done
+
+            sudo docker logs --tail=200 "$CONTAINER_NAME" || true
+            exit 1

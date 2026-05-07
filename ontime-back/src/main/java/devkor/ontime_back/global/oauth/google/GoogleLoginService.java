@@ -165,7 +165,7 @@ public class GoogleLoginService {
             GoogleIdToken.Payload payload = idToken.getPayload();
             return payload;
         } else {
-            log.info("유효하지 않은 idtoken 입니다.");
+            log.info("Google identity credential is invalid");
             return null;
         }
     }
