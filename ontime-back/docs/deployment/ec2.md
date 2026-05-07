@@ -6,7 +6,7 @@ This service deploys to Amazon EC2 through `.github/workflows/deploy.yml`.
 
 1. Make sure the EC2 instance has Docker installed and the security group allows inbound traffic for the service port, currently `8080`.
 2. Add the required GitHub Actions secrets listed below.
-3. Run the `Deploy` workflow manually from GitHub Actions, or push to the `deploy` branch.
+3. Run the `Deploy` workflow manually from GitHub Actions, or push to the `main` branch.
 
 The workflow builds a Docker image, pushes it to GHCR, uploads `docker-compose.yml` to `/home/ubuntu/OnTime-back`, writes a production `.env` from GitHub Secrets, verifies private RDS connectivity, and restarts Docker Compose on the EC2 instance.
 
