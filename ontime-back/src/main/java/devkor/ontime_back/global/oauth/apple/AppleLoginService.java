@@ -34,6 +34,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
@@ -58,8 +59,12 @@ public class AppleLoginService {
     private String teamId;
     @Value("${apple.login.key}")
     private String keyId;
-    @Value("${apple.client.secret}")
+    @Value("${apple.client.secret:}")
     private String privateKeyPath;
+    @Value("${apple.private-key.base64:}")
+    private String privateKeyBase64;
+    @Value("${apple.private-key:}")
+    private String privateKey;
 
     private final ApplePublicKeyGenerator applePublicKeyGenerator;
     private final JwtUtils jwtUtils;
@@ -218,7 +223,7 @@ public class AppleLoginService {
     private String generateClientSecret() throws Exception {
         log.info("Generate Apple client credential");
         // Private Key
-        String privateKeyContent = new String(Files.readAllBytes(Paths.get(privateKeyPath)))
+        String privateKeyContent = resolvePrivateKey()
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
                 .replaceAll("\\s", "");
@@ -243,6 +248,20 @@ public class AppleLoginService {
                 .signWith(privateKey, SignatureAlgorithm.ES256)
                 .compact();
     }
+
+    private String resolvePrivateKey() throws IOException {
+        if (privateKeyBase64 != null && !privateKeyBase64.isBlank()) {
+            byte[] decodedPrivateKey = Base64.getDecoder().decode(privateKeyBase64);
+            return new String(decodedPrivateKey, StandardCharsets.UTF_8);
+        }
+
+        if (privateKey != null && !privateKey.isBlank()) {
+            return privateKey;
+        }
+
+        return new String(Files.readAllBytes(Paths.get(privateKeyPath)));
+    }
+
     public boolean revokeToken(Long userId) throws Exception {
         log.info("checkAppleLoginRevoked");
         User user = userRepository.findById(userId)
