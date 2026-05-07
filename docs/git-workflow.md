@@ -1,14 +1,14 @@
-# Git Workflow And Deployment Strategy
+# Git Workflow And Production Deployment Strategy
 
-This document describes the recommended Git strategy for OnTime-back when running both a development server and a production server.
+This document describes the recommended Git strategy for OnTime-back with one production EC2 server and one private production RDS instance.
 
 ## Goals
 
 - Keep one clear production source of truth.
-- Support a separate development server for integration testing.
 - Make every server deployment traceable to a Git branch and commit.
 - Avoid using deployment branches as places where product code diverges.
 - Keep feature branches short-lived and easy to review.
+- Keep `dev` as an integration branch only; it must not deploy a long-running dev backend.
 
 ## Branch Model
 
@@ -16,7 +16,7 @@ Use a lightweight environment-branch workflow:
 
 ```text
 feature/*, fix/*, chore/*  -> short-lived work branches
-dev                        -> development server source
+dev                        -> integration branch for CI and review
 main                       -> production server source
 ```
 
@@ -25,7 +25,7 @@ Branch responsibilities:
 | Branch | Purpose | Deployment |
 | --- | --- | --- |
 | `main` | Production-ready code and source of truth | Production server |
-| `dev` | Integrated code for QA, frontend/mobile testing, and pre-release validation | Development server |
+| `dev` | Integrated code for QA, frontend/mobile testing, and pre-release validation | No direct deployment |
 | `feature/*` | New feature work | No direct deployment |
 | `fix/*` | Bug fixes | No direct deployment |
 | `chore/*` | Maintenance, docs, config, CI changes | No direct deployment |
@@ -59,21 +59,19 @@ feature/* -> dev
 
 5. After review, merge into `dev`.
 
-6. GitHub Actions deploys the updated `dev` branch to the development server.
+6. Validate the integrated code without running a long-lived dev backend on EC2.
 
-7. Validate the change using the development server.
-
-8. When the release candidate is ready, open a pull request from `dev` into `main`.
+7. When the release candidate is ready, open a pull request from `dev` into `main`.
 
 ```text
 dev -> main
 ```
 
-9. After review and CI pass, merge into `main`.
+8. After review and CI pass, merge into `main`.
 
-10. GitHub Actions deploys `main` to the production server.
+9. GitHub Actions deploys `main` to the production server.
 
-11. Tag the production release.
+10. Tag the production release.
 
 ```bash
 git tag prod-YYYY-MM-DD
@@ -82,10 +80,10 @@ git push origin prod-YYYY-MM-DD
 
 ## Server Mapping
 
-Use branch-based deployments with separate GitHub Actions environments:
+Use branch-based CI and production deployment:
 
 ```text
-push to dev  -> development environment -> dev server
+pull_request to dev/main -> test workflow
 push to main -> production environment  -> production server
 ```
 
@@ -93,19 +91,15 @@ Recommended GitHub environments:
 
 | Environment | Source Branch | Server | Approval |
 | --- | --- | --- | --- |
-| `development` | `dev` | Dev server | Usually automatic |
 | `production` | `main` | Production server | Manual approval recommended |
 
 ## CI/CD Workflow
-
-Use either two workflows or one branch-aware workflow.
 
 Recommended simple setup:
 
 ```text
 .github/workflows/test.yml
-.github/workflows/deploy-dev.yml
-.github/workflows/deploy-prod.yml
+.github/workflows/deploy.yml
 ```
 
 Expected triggers:
@@ -113,34 +107,23 @@ Expected triggers:
 ```text
 pull_request to dev   -> run tests
 pull_request to main  -> run tests
-push to dev           -> deploy to dev server
+push to dev           -> no deployment
 push to main          -> deploy to production server
 workflow_dispatch     -> allow manual redeploy or rollback support
-```
-
-Development deploy should use development secrets only:
-
-```text
-DEV_EC2_HOST
-DEV_EC2_USER
-DEV_EC2_SSH_KEY
-DEV_DATASOURCE_URL
-DEV_DATASOURCE_USERNAME
-DEV_DATASOURCE_PASSWORD
 ```
 
 Production deploy should use production secrets only:
 
 ```text
-PROD_EC2_HOST
-PROD_EC2_USER
-PROD_EC2_SSH_KEY
-PROD_DATASOURCE_URL
-PROD_DATASOURCE_USERNAME
-PROD_DATASOURCE_PASSWORD
+EC2_HOST
+EC2_USER
+EC2_SSH_KEY
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
 ```
 
-Do not share databases, Firebase credentials, OAuth redirect URIs, or private keys between development and production unless there is a deliberate reason.
+Do not add `DEV_*` deployment secrets or a dev-server workflow unless the infrastructure plan changes deliberately.
 
 ## Branch Protection
 
@@ -188,7 +171,7 @@ The current repository has `main` and `deploy` as separate long-lived branches. 
 ```text
 deploy branch -> retired
 main branch   -> production
-dev branch    -> development server
+dev branch    -> integration and CI only
 ```
 
 Recommended migration sequence:
@@ -206,8 +189,8 @@ git push origin dev
 ```
 
 5. Change production deployment to trigger from `main`.
-6. Add development deployment to trigger from `dev`.
-7. Update GitHub environment secrets for `development` and `production`.
+6. Ensure there is no workflow that deploys from `dev`.
+7. Update GitHub production environment secrets.
 8. Protect `main` and `dev`.
 9. Stop using `deploy` for new work.
 10. Delete or archive stale merged feature branches after confirming they are no longer needed.
@@ -218,7 +201,7 @@ git push origin dev
 - Normal PR target is `dev`.
 - Release PR target is `main`.
 - Production deploys only from `main`.
-- Development deploys only from `dev`.
+- `dev` runs CI only and does not deploy.
 - Do not commit directly to `main`.
 - Do not commit directly to `dev` unless it is an emergency coordination fix.
 - Delete feature branches after merge.
