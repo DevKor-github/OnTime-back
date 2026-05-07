@@ -14,6 +14,11 @@ services:
     stop_grace_period: 30s
     mem_limit: "${BACKEND_MEMORY_LIMIT:-768m}"
     cpus: "${BACKEND_CPU_LIMIT:-1.0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:${SERVER_PORT:-8080}/actuator/health/readiness || exit 1"]
       interval: 30s
