@@ -172,21 +172,28 @@ public class ScheduleService {
     }
 
     // 지각 시간 업데이트
-    @Transactional
-    public void updateLatenessTime(FinishPreparationDto finishPreparationDto) {
-        UUID scheduleId = finishPreparationDto.getScheduleId();
-        Integer latenessTime = finishPreparationDto.getLatenessTime();
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new GeneralException(SCHEDULE_NOT_FOUND));
-
+    public void updateLatenessTime(Schedule schedule, Integer latenessTime) {
         schedule.updateLatenessTime(latenessTime);
         scheduleRepository.save(schedule);
     }
 
     @Transactional
-    public void finishSchedule(Long userId, FinishPreparationDto finishPreparationDto) {
-        updateLatenessTime(finishPreparationDto);
+    public void finishSchedule(Long userId, UUID scheduleId, FinishPreparationDto finishPreparationDto) {
+        if (finishPreparationDto == null || finishPreparationDto.getLatenessTime() == null) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+        if (finishPreparationDto.getScheduleId() != null && !scheduleId.equals(finishPreparationDto.getScheduleId())) {
+            throw new GeneralException(SCHEDULE_ID_MISMATCH);
+        }
+
+        Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
+        boolean alreadyFinishedByDoneStatus = schedule.getDoneStatus() != null && schedule.getDoneStatus() != DoneStatus.NOT_ENDED;
+        boolean alreadyFinishedByLatenessTime = schedule.getLatenessTime() != null && schedule.getLatenessTime() != -1;
+        if (alreadyFinishedByDoneStatus || alreadyFinishedByLatenessTime) {
+            throw new GeneralException(SCHEDULE_ALREADY_FINISHED);
+        }
+
+        updateLatenessTime(schedule, finishPreparationDto.getLatenessTime());
         userService.updatePunctualityScore(userId, finishPreparationDto.getLatenessTime());
     }
 
