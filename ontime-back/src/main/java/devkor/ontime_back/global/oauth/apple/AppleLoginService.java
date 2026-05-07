@@ -169,7 +169,7 @@ public class AppleLoginService {
     // identitytoken 검증
     public Claims verifyIdentityToken(String identityToken) throws
             Exception {
-        log.info("verifyIdentityToken");
+        log.info("Verify Apple identity credential");
         Map<String, String> headers = jwtUtils.parseHeaders(identityToken);
         // apple publickey
         ApplePublicKeyResponse applePublicKeyResponse = restTemplate.getForObject(APPLE_KEYS_URL, ApplePublicKeyResponse.class);
@@ -197,8 +197,7 @@ public class AppleLoginService {
     public AppleTokenResponseDto getAppleAccessTokenAndRefreshToken(String authCode) throws Exception {
         // clientSecret
         String clientSecret = generateClientSecret();
-        log.info("getAppleAccessTokenAndRefreshToken");
-        log.info("client_id: {}", clientId);
+        log.info("Exchange Apple credential");
         MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
         requestBody.add("grant_type", "authorization_code");
         requestBody.add("code", authCode);
@@ -222,7 +221,7 @@ public class AppleLoginService {
 
     // clientsecret 생성
     private String generateClientSecret() throws Exception {
-        log.info("generageClientSecret");
+        log.info("Generate Apple client credential");
         // Private Key
         String privateKeyContent = resolvePrivateKey()
                 .replace("-----BEGIN PRIVATE KEY-----", "")

@@ -7,7 +7,6 @@ public class OAuthAppleUserDto {
     private String appleUserId;
     private String email;
     private String fullName;
-
     public OAuthAppleUserDto(String appleUserId, String email, String fullName) {
         this.appleUserId = appleUserId;
         this.email = email;

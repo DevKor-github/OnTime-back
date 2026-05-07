@@ -7,6 +7,8 @@ import devkor.ontime_back.ControllerTestSupport;
 import devkor.ontime_back.TestSecurityConfig;
 import devkor.ontime_back.dto.*;
 import devkor.ontime_back.entity.DoneStatus;
+import devkor.ontime_back.response.ErrorCode;
+import devkor.ontime_back.response.GeneralException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -261,16 +263,18 @@ class ScheduleControllerTest extends ControllerTestSupport {
     @Test
     void finishSchedule() throws Exception {
         // given
+        Long userId = 1L;
+        UUID scheduleId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5");
         FinishPreparationDto finishPreparationDto = FinishPreparationDto.builder()
-                .scheduleId(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
+                .latenessTime(0)
                 .build();
 
-        when(userAuthService.getUserIdFromToken(any())).thenReturn(1L);
-        doNothing().when(scheduleService).finishSchedule(any(Long.class), any(FinishPreparationDto.class));
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(userId);
+        doNothing().when(scheduleService).finishSchedule(eq(userId), eq(scheduleId), any(FinishPreparationDto.class));
 
         // when // then
         mockMvc.perform(
-                        put("/schedules/" + 1L + "/finish")
+                        put("/schedules/{scheduleId}/finish", scheduleId)
                                 .content(objectMapper.writeValueAsString(finishPreparationDto))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -279,5 +283,35 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.code").value("200"))
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message").value("지각시간과 성실도점수가 성공적으로 업데이트 되었습니다!"));
+
+        verify(scheduleService, times(1)).finishSchedule(eq(userId), eq(scheduleId), any(FinishPreparationDto.class));
+    }
+
+    @DisplayName("약속 종료 요청에서 경로와 본문의 scheduleId가 다르면 400을 반환한다.")
+    @Test
+    void finishSchedule_failByScheduleIdMismatch() throws Exception {
+        // given
+        Long userId = 1L;
+        UUID pathScheduleId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5");
+        FinishPreparationDto finishPreparationDto = FinishPreparationDto.builder()
+                .scheduleId(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe6"))
+                .latenessTime(0)
+                .build();
+
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(userId);
+        doThrow(new GeneralException(ErrorCode.SCHEDULE_ID_MISMATCH))
+                .when(scheduleService).finishSchedule(eq(userId), eq(pathScheduleId), any(FinishPreparationDto.class));
+
+        // when // then
+        mockMvc.perform(
+                        put("/schedules/{scheduleId}/finish", pathScheduleId)
+                                .content(objectMapper.writeValueAsString(finishPreparationDto))
+                                .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(ErrorCode.SCHEDULE_ID_MISMATCH.getCode()))
+                .andExpect(jsonPath("$.status").value("error"))
+                .andExpect(jsonPath("$.message").value(ErrorCode.SCHEDULE_ID_MISMATCH.getMessage()));
     }
 }

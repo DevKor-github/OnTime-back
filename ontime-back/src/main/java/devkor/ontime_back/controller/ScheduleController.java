@@ -282,7 +282,7 @@ public class ScheduleController {
                     content = @Content(
                             schema = @Schema(
                                     type = "object",
-                                    example = "{\"scheduleId\": \"3fa85f64-5717-4562-b3fc-2c963f66afe5\", \"latenessTime\": 3}"
+                                    example = "{\"latenessTime\": 3}"
                             )
                     )
             )
@@ -299,10 +299,11 @@ public class ScheduleController {
     @PutMapping("/{scheduleId}/finish") // 약속 준비 종료 이후 지각시간(Schedule 테이블), 성실도 점수(User 테이블) 업데이트
     public ResponseEntity<ApiResponseForm<?>> finishSchedule(
             HttpServletRequest request,
+            @PathVariable UUID scheduleId,
             @RequestBody FinishPreparationDto finishPreparationDto) {
 
         Long userId = userAuthService.getUserIdFromToken(request);
-        scheduleService.finishSchedule(userId, finishPreparationDto);
+        scheduleService.finishSchedule(userId, scheduleId, finishPreparationDto);
         String message = "지각시간과 성실도점수가 성공적으로 업데이트 되었습니다!";
         return ResponseEntity.ok(ApiResponseForm.success(null, message));
     }

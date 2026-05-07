@@ -1233,16 +1233,17 @@ class ScheduleServiceTest {
                 .build();
 
         // when
-        scheduleService.updateLatenessTime(finishPreparationDto);
+        Schedule schedule = scheduleRepository.findById(finishPreparationDto.getScheduleId()).get();
+        scheduleService.updateLatenessTime(schedule, finishPreparationDto.getLatenessTime());
 
         // then
         assertThat(scheduleRepository.findById(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
                 .get().getLatenessTime()).isEqualTo(1);
     }
 
-    @DisplayName("지각 시간 업데이트할 때, 잘못된 schedulId를 DTO에 담아 요청하는 경우 예외가 발생한다.")
+    @DisplayName("약속 종료할 때, 경로와 본문의 scheduleId가 다르면 예외가 발생한다.")
     @Test
-    void updateLatenessTimeWithWrongScheduleId(){
+    void finishScheduleWithScheduleIdMismatch(){
         // given
         User addedUser = User.builder()
                 .email("user@example.com")
@@ -1269,9 +1270,19 @@ class ScheduleServiceTest {
                 .build();
 
         // when // then
-        assertThatThrownBy(() -> scheduleService.updateLatenessTime(finishPreparationDto))
+        assertThatThrownBy(() -> scheduleService.finishSchedule(
+                addedUser.getId(),
+                UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"),
+                finishPreparationDto
+        ))
                 .isInstanceOf(GeneralException.class)
-                .hasMessage("해당 약속이 존재하지 않습니다.");
+                .hasMessage(ErrorCode.SCHEDULE_ID_MISMATCH.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_ID_MISMATCH);
+
+        assertThat(scheduleRepository.findById(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
+                .get().getLatenessTime()).isEqualTo(-1);
+        assertThat(userRepository.findById(addedUser.getId()).get().getPunctualityScore()).isEqualTo(-1f);
     }
 
     @DisplayName("약속을 종료해 지각시간과 성실도점수 업데이트에 성공한다.")
@@ -1298,12 +1309,11 @@ class ScheduleServiceTest {
         scheduleRepository.save(addedSchedule);
 
         FinishPreparationDto finishPreparationDto = FinishPreparationDto.builder()
-                .scheduleId(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
                 .latenessTime(1)
                 .build();
 
         // when
-        scheduleService.finishSchedule(addedUser.getId(), finishPreparationDto);
+        scheduleService.finishSchedule(addedUser.getId(), addedSchedule.getScheduleId(), finishPreparationDto);
 
         // then
         assertThat(scheduleRepository.findById(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
@@ -1325,6 +1335,16 @@ class ScheduleServiceTest {
                 .build();
         userRepository.save(addedUser);
 
+        User otherUser = User.builder()
+                .email("other@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("other")
+                .punctualityScore(-1f)
+                .scheduleCountAfterReset(0)
+                .latenessCountAfterReset(0)
+                .build();
+        userRepository.save(otherUser);
+
         Schedule addedSchedule = Schedule.builder()
                 .scheduleId(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
                 .scheduleName("을사년 새해")
@@ -1340,9 +1360,15 @@ class ScheduleServiceTest {
                 .build();
 
         // when // then
-        assertThatThrownBy(() -> scheduleService.finishSchedule(addedUser.getId() + 1, finishPreparationDto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("존재하지 않는 유저 id입니다.");
+        assertThatThrownBy(() -> scheduleService.finishSchedule(otherUser.getId(), addedSchedule.getScheduleId(), finishPreparationDto))
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
+
+        assertThat(scheduleRepository.findById(addedSchedule.getScheduleId()).get().getLatenessTime()).isEqualTo(-1);
+        assertThat(userRepository.findById(addedUser.getId()).get().getPunctualityScore()).isEqualTo(-1f);
+        assertThat(userRepository.findById(otherUser.getId()).get().getPunctualityScore()).isEqualTo(-1f);
     }
 
     @DisplayName("약속을 종료할 때, 잘못된 scheduleId를 인자로 넘기는 경우 예외가 발생한다.")
@@ -1374,9 +1400,62 @@ class ScheduleServiceTest {
                 .build();
 
         // when // then
-        assertThatThrownBy(() -> scheduleService.finishSchedule(addedUser.getId(), finishPreparationDto))
+        assertThatThrownBy(() -> scheduleService.finishSchedule(
+                addedUser.getId(),
+                UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe6"),
+                finishPreparationDto
+        ))
                 .isInstanceOf(GeneralException.class)
-                .hasMessage("해당 약속이 존재하지 않습니다.");
+                .hasMessage(ErrorCode.SCHEDULE_NOT_FOUND.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
+
+        assertThat(scheduleRepository.findById(addedSchedule.getScheduleId()).get().getLatenessTime()).isEqualTo(-1);
+        assertThat(userRepository.findById(addedUser.getId()).get().getPunctualityScore()).isEqualTo(-1f);
+    }
+
+    @DisplayName("이미 종료된 약속을 다시 종료하면 예외가 발생하고 성실도점수를 다시 계산하지 않는다.")
+    @Test
+    void finishScheduleWithAlreadyFinishedSchedule(){
+        // given
+        User addedUser = User.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .punctualityScore(100f)
+                .scheduleCountAfterReset(1)
+                .latenessCountAfterReset(0)
+                .build();
+        userRepository.save(addedUser);
+
+        Schedule addedSchedule = Schedule.builder()
+                .scheduleId(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
+                .scheduleName("을사년 새해")
+                .scheduleTime(LocalDateTime.of(2025, 1, 1, 0, 0))
+                .latenessTime(0)
+                .doneStatus(DoneStatus.NORMAL)
+                .user(addedUser)
+                .build();
+        scheduleRepository.save(addedSchedule);
+
+        FinishPreparationDto finishPreparationDto = FinishPreparationDto.builder()
+                .scheduleId(addedSchedule.getScheduleId())
+                .latenessTime(1)
+                .build();
+
+        // when // then
+        assertThatThrownBy(() -> scheduleService.finishSchedule(addedUser.getId(), addedSchedule.getScheduleId(), finishPreparationDto))
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.SCHEDULE_ALREADY_FINISHED.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_ALREADY_FINISHED);
+
+        User user = userRepository.findById(addedUser.getId()).get();
+        Schedule schedule = scheduleRepository.findById(addedSchedule.getScheduleId()).get();
+        assertThat(schedule.getLatenessTime()).isEqualTo(0);
+        assertThat(user.getPunctualityScore()).isEqualTo(100f);
+        assertThat(user.getScheduleCountAfterReset()).isEqualTo(1);
+        assertThat(user.getLatenessCountAfterReset()).isEqualTo(0);
     }
 
     @Test
