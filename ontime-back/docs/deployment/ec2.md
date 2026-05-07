@@ -6,9 +6,9 @@ This service deploys to Amazon EC2 through `.github/workflows/deploy.yml`.
 
 1. Make sure the EC2 instance has Docker installed and the security group allows inbound traffic for the service port, currently `8080`.
 2. Add the required GitHub Actions secrets listed below.
-3. Run the `Deploy` workflow manually from GitHub Actions, or push to the `deploy` branch.
+3. Run the `Deploy` workflow manually from GitHub Actions, or push to the `main` branch.
 
-The workflow builds the Spring Boot jar, creates deploy-only config files from GitHub Secrets, uploads them to `/home/ubuntu/OnTime-back`, and restarts Docker Compose on the EC2 instance.
+The workflow builds a Docker image, pushes it to GHCR, uploads `docker-compose.yml` to `/home/ubuntu/OnTime-back`, writes a production `.env` from GitHub Secrets, verifies private RDS connectivity, and restarts Docker Compose on the EC2 instance.
 
 ## Required EC2 Secrets
 
@@ -22,8 +22,6 @@ The workflow builds the Spring Boot jar, creates deploy-only config files from G
 - `SPRING_DATASOURCE_URL`
 - `SPRING_DATASOURCE_USERNAME`
 - `SPRING_DATASOURCE_PASSWORD`
-- `SPRING_DATASOURCE_DRIVER_CLASS_NAME`
-- `SPRING_JPA_HIBERNATE_DDL_AUTO`
 - `JWT_SECRETKEY`
 - `JWT_ACCESS_EXPIRATION`
 - `JWT_REFRESH_EXPIRATION`
@@ -34,15 +32,14 @@ The workflow builds the Spring Boot jar, creates deploy-only config files from G
 - `APPLE_CLIENT_ID`
 - `APPLE_LOGIN_KEY`
 - `APPLE_TEAM_ID`
-- `AUTHKEY_743M7R5W3W`
-- `SPRING_FLYWAY_URL`
-- `SPRING_FLYWAY_USER`
-- `SPRING_FLYWAY_PASSWORD`
-- `ONTIME_PUSH_FIREBASE_ADMINSDK`
+- `APPLE_PRIVATE_KEY_BASE64`
+- `FIREBASE_CREDENTIALS_BASE64`
 
 ## Optional Secrets
 
-- `SPRING_JPA_DATABASE_PLATFORM` defaults to `org.hibernate.dialect.MySQL8Dialect`.
+- `BACKEND_HTTP_PORT` defaults to `8080`.
+- `BACKEND_MEMORY_LIMIT` defaults to `768m`; use `640m` if the EC2 instance is memory constrained.
+- `BACKEND_CPU_LIMIT` defaults to `1.0`.
 - `FEATURE_APPLE_LOGIN_ENABLED` defaults to `true`.
 - Google and Kakao OAuth provider/registration secrets are included by the workflow when configured.
 
@@ -50,11 +47,13 @@ The workflow builds the Spring Boot jar, creates deploy-only config files from G
 
 The deploy workflow writes these files under `/home/ubuntu/OnTime-back`:
 
-- `project.jar`
-- `Dockerfile`
 - `docker-compose.yml`
-- `config/application.properties`
-- `secrets/firebase-adminsdk.json`
-- `secrets/AuthKey_743M7R5W3W.p8`
+- `.env`
+
+Production uses the private RDS instance:
+
+```text
+ontime-prod.cpoeguokwaq5.ap-northeast-2.rds.amazonaws.com:3306/ontime_prod
+```
 
 Do not commit local `application.properties`, Firebase service account JSON, Apple `.p8` keys, or `.env` files.

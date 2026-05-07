@@ -15,18 +15,24 @@ Deployment access:
 Runtime image and port:
 
 - `BACKEND_HTTP_PORT` (optional, defaults to `8080`)
+- `BACKEND_MEMORY_LIMIT` (optional, defaults to `768m`; use `640m` if the EC2 instance is memory constrained)
+- `BACKEND_CPU_LIMIT` (optional, defaults to `1.0`)
 
 Spring and database:
 
 - `SPRING_APPLICATION_NAME`
-- `SPRING_DATASOURCE_URL`
-- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_URL` (`jdbc:mysql://ontime-prod.cpoeguokwaq5.ap-northeast-2.rds.amazonaws.com:3306/ontime_prod?useSSL=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8`)
+- `SPRING_DATASOURCE_USERNAME` (`ontimeadmin`)
 - `SPRING_DATASOURCE_PASSWORD`
-- `SPRING_DATASOURCE_DRIVER_CLASS_NAME`
-- `SPRING_JPA_HIBERNATE_DDL_AUTO`
-- `SPRING_FLYWAY_URL`
-- `SPRING_FLYWAY_USER`
-- `SPRING_FLYWAY_PASSWORD`
+
+The deploy workflow hardcodes safe production defaults for the datasource driver, JPA DDL mode, and Flyway:
+
+- `SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver`
+- `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`
+- `SPRING_FLYWAY_ENABLED=true`
+- `SPRING_FLYWAY_BASELINE_ON_MIGRATE=false`
+
+It also fails before restart if the datasource URL does not point to an RDS MySQL endpoint using the `ontime_prod` database, or if EC2 cannot reach RDS on `3306`.
 
 Authentication and OAuth:
 
@@ -77,7 +83,9 @@ base64 -i ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8 | tr -d '\n' 
 
 ## Build And Release Flow
 
-Push to the `deploy` branch to trigger `.github/workflows/deploy.yml`.
+Push to the `main` branch, or run `.github/workflows/deploy.yml` manually, to deploy production.
+
+Pushes to `dev` run CI only. There is no dev-server deploy workflow in the one-EC2 plan.
 
 The workflow:
 
@@ -87,8 +95,9 @@ The workflow:
    - `ghcr.io/devkor-github/ontime-back:deploy-latest`
 3. Uploads `docker-compose.yml` to `/home/ubuntu/OnTime-back`.
 4. Writes `/home/ubuntu/OnTime-back/.env` from GitHub secrets.
-5. Runs `docker compose pull && docker compose up -d --remove-orphans`.
-6. Waits until the `ontime-container` Docker health status is `healthy`.
+5. Verifies EC2 can reach private RDS on `3306`.
+6. Runs `docker compose pull && docker compose up -d --remove-orphans`.
+7. Waits until the `ontime-container` Docker health status is `healthy`.
 
 ## Health Verification
 
@@ -105,6 +114,7 @@ cd /home/ubuntu/OnTime-back
 sudo docker compose ps
 sudo docker inspect -f '{{.State.Health.Status}}' ontime-container
 curl -fsS http://localhost:8080/actuator/health/readiness
+nc -zv ontime-prod.cpoeguokwaq5.ap-northeast-2.rds.amazonaws.com 3306
 ```
 
 ## Rollback
