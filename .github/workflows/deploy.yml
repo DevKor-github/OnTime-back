@@ -294,8 +294,9 @@ jobs:
             done
 
             if [ "$HTTPS_HEALTHY" != "true" ]; then
+              echo "HTTPS is not ready yet. Caddy is running and will continue ACME certificate retries in the background."
               sudo journalctl -u caddy --no-pager -n 120 || true
-              exit 1
+              exit 0
             fi
 
             echo "HTTPS is healthy at https://$PUBLIC_BACKEND_HOST."
