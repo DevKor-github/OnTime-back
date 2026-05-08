@@ -1,7 +1,14 @@
 src/main/resources/application.properties
 src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json
 src/main/resources/key/AuthKey_743M7R5W3W.p8
+src/main/resources/*.json
+src/main/resources/**/*.p8
+src/main/resources/key/
+GoogleService-Info.plist
 .env
+.secrets/
+*.pem
+*.key
 
 HELP.md
 .gradle

@@ -71,15 +71,29 @@ Firebase:
 
 - `FIREBASE_CREDENTIALS_BASE64`
 
-Set the base64 secrets from the ignored local credential files:
+## Credential Rotation And Loading
+
+Before this service is promoted, rotate every credential that may have existed in a local workspace or application resource path:
+
+- Firebase Admin service account key
+- Apple Sign in private key
+- Google OAuth client secret and client IDs, if reused by production
+- JWT signing secret
+- Database username/password
+
+Store replacement private material outside this repository, then set GitHub Actions secrets from those external files. Do not keep provider keys under `src/main/resources`, `.github`, Docker bind mounts, or committed files.
+
+Example commands from a private directory outside the repo:
 
 ```bash
-base64 -i ontime-back/src/main/resources/ontime-c63f1-firebase-adminsdk-fbsvc-a043cdc829.json | tr -d '\n' | gh secret set FIREBASE_CREDENTIALS_BASE64 --repo DevKor-github/OnTime-back
+base64 -i /secure/path/firebase-adminsdk.json | tr -d '\n' | gh secret set FIREBASE_CREDENTIALS_BASE64 --repo DevKor-github/OnTime-back
 ```
 
 ```bash
-base64 -i ontime-back/src/main/resources/key/AuthKey_743M7R5W3W.p8 | tr -d '\n' | gh secret set APPLE_PRIVATE_KEY_BASE64 --repo DevKor-github/OnTime-back
+base64 -i /secure/path/AuthKey_REDACTED.p8 | tr -d '\n' | gh secret set APPLE_PRIVATE_KEY_BASE64 --repo DevKor-github/OnTime-back
 ```
+
+Production startup fails when required secrets are missing, placeholder-like, weak, or supplied through legacy file-path properties such as `APPLE_CLIENT_SECRET`, `FIREBASE_CREDENTIALS_PATH`, or `GOOGLE_APPLICATION_CREDENTIALS`.
 
 ## Build And Release Flow
 
@@ -98,6 +112,8 @@ The workflow:
 5. Verifies EC2 can reach private RDS on `3306`.
 6. Runs `docker compose pull && docker compose up -d --remove-orphans`.
 7. Waits until the `ontime-container` Docker health status is `healthy`.
+
+The production image does not copy private resource files. Gradle resource processing and `.dockerignore` both exclude credential-like files so accidental local files are not packaged.
 
 ## Health Verification
 
