@@ -11,9 +11,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +25,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/schedules")
 @RequiredArgsConstructor
+@Validated
 public class PreparationScheduleController {
 
     private final PreparationScheduleService preparationScheduleService;
@@ -45,7 +49,7 @@ public class PreparationScheduleController {
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PostMapping("/{scheduleId}/preparations")
-    public ResponseEntity<ApiResponseForm<Void>> createPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
+    public ResponseEntity<ApiResponseForm<Void>> createPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @NotEmpty(message = "준비과정은 하나 이상 필요합니다.") @RequestBody List<@Valid PreparationDto> preparationDtoList) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
         preparationScheduleService.makePreparationSchedules(userId, scheduleId, preparationDtoList);
@@ -70,7 +74,7 @@ public class PreparationScheduleController {
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PutMapping("/{scheduleId}/preparations")
-    public ResponseEntity<ApiResponseForm<Void>> modifyPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @RequestBody List<PreparationDto> preparationDtoList) {
+    public ResponseEntity<ApiResponseForm<Void>> modifyPreparationSchedule(HttpServletRequest request, @Parameter(description = "스케줄 ID (UUID 형식)", required = true, example = "3fa85f64-5717-4562-b3fc-2c963f66afe5") @PathVariable UUID scheduleId, @NotEmpty(message = "준비과정은 하나 이상 필요합니다.") @RequestBody List<@Valid PreparationDto> preparationDtoList) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
         preparationScheduleService.updatePreparationSchedules(userId, scheduleId, preparationDtoList);

@@ -164,7 +164,7 @@ class ScheduleControllerTest extends ControllerTestSupport {
     void addSchedule_success() throws Exception {
         // given
         Long userId = 1L;
-        LocalDateTime localDateTime = LocalDateTime.of(2024, 11, 25, 14, 0);
+        LocalDateTime localDateTime = LocalDateTime.now().plusDays(1);
 
         ScheduleAddDto scheduleAddDto = new ScheduleAddDto(
                 UUID.randomUUID(),

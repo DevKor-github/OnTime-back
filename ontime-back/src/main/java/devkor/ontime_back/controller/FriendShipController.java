@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -85,10 +86,10 @@ public class FriendShipController {
             @ApiResponse(responseCode = "4XX", description = "친구추가 요청자 조회 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @GetMapping("/{uuid}/requests") // 친구 추가 요청자 조회
-    public ResponseEntity<ApiResponseForm<GetFriendshipRequesterResponse>> getFriendShipRequester(HttpServletRequest request, @PathVariable String uuid) {
+    public ResponseEntity<ApiResponseForm<GetFriendshipRequesterResponse>> getFriendShipRequester(HttpServletRequest request, @PathVariable UUID uuid) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
-        User requester = friendShipService.getFriendShipRequester(userId, UUID.fromString(uuid));
+        User requester = friendShipService.getFriendShipRequester(userId, uuid);
         GetFriendshipRequesterResponse getFriendshipRequesterResponse = GetFriendshipRequesterResponse.builder()
                 .requesterId(requester.getId())
                 .requesterName(requester.getName())
@@ -122,10 +123,10 @@ public class FriendShipController {
             @ApiResponse(responseCode = "4XX", description = "친구추가 수락상태 업데이트 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PostMapping("/{uuid}/approve") // 친구 추가 요청 수락
-    public ResponseEntity<ApiResponseForm<String>> updateAcceptStatus(HttpServletRequest request, @PathVariable String uuid, @RequestBody UpdateAcceptStatusDto updateAcceptStatusDto) {
+    public ResponseEntity<ApiResponseForm<String>> updateAcceptStatus(HttpServletRequest request, @PathVariable UUID uuid, @Valid @RequestBody UpdateAcceptStatusDto updateAcceptStatusDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
-        friendShipService.updateAcceptStatus(userId, UUID.fromString(uuid), updateAcceptStatusDto.getAcceptStatus());
+        friendShipService.updateAcceptStatus(userId, uuid, updateAcceptStatusDto.getAcceptStatus());
 
         String status = updateAcceptStatusDto.getAcceptStatus().equals("ACCEPTED") ? "수락" : "거절";
         String message = "친구추가 요청 " + status + " 성공";

@@ -97,11 +97,13 @@ class UserControllerTest extends ControllerTestSupport {
         PreparationDto preparationDto1 = PreparationDto.builder()
                 .preparationId(UUID.randomUUID())
                 .preparationName("준비물")
+                .preparationTime(10)
                 .build();
 
         PreparationDto preparationDto2 = PreparationDto.builder()
                 .preparationId(UUID.randomUUID())
                 .preparationName("준비물2")
+                .preparationTime(15)
                 .build();
 
         UserOnboardingDto userOnboardingDto = UserOnboardingDto.builder()

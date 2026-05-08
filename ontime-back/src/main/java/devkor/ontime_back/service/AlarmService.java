@@ -56,6 +56,18 @@ public class AlarmService {
     }
 
     @Transactional
+    public AlarmSettingsResponseDto patchAlarmSettings(Long userId, AlarmSettingsPatchDto requestBody) {
+        Map<String, Object> values = new HashMap<>();
+        if (requestBody.getAlarmsEnabled() != null) {
+            values.put("alarmsEnabled", requestBody.getAlarmsEnabledValue());
+        }
+        if (requestBody.getDefaultAlarmOffsetMinutes() != null) {
+            values.put("defaultAlarmOffsetMinutes", requestBody.getDefaultAlarmOffsetMinutesValue());
+        }
+        return patchAlarmSettings(userId, values);
+    }
+
+    @Transactional
     public AlarmSettingsResponseDto patchAlarmSettings(Long userId, Map<String, Object> requestBody) {
         if (requestBody == null || requestBody.isEmpty()) {
             throw new GeneralException(INVALID_INPUT);

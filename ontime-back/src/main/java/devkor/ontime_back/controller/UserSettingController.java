@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -47,7 +48,7 @@ public class UserSettingController {
             @ApiResponse(responseCode = "4XX", description = "사용자 앱 설정 업데이트 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PutMapping("")
-    public ResponseEntity<ApiResponseForm<?>> updateSetting(HttpServletRequest request, @RequestBody UserSettingUpdateDto userSettingUpdateDto) {
+    public ResponseEntity<ApiResponseForm<?>> updateSetting(HttpServletRequest request, @Valid @RequestBody UserSettingUpdateDto userSettingUpdateDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
         userSettingService.updateSetting(userId, userSettingUpdateDto);

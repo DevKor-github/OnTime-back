@@ -11,11 +11,14 @@ import devkor.ontime_back.entity.User;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.global.jwt.JwtUtils;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.ValidationErrorWriter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -41,16 +44,21 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
 
     private final AppleLoginService appleLoginService;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    public AppleLoginFilter(String defaultFilterProcessesUrl, AppleLoginService appleLoginService, UserRepository userRepository) {
+    public AppleLoginFilter(String defaultFilterProcessesUrl, ObjectMapper objectMapper, Validator validator, AppleLoginService appleLoginService, UserRepository userRepository) {
         super(defaultFilterProcessesUrl);
+        this.objectMapper = objectMapper;
+        this.validator = validator;
         this.appleLoginService = appleLoginService;
         this.userRepository = userRepository;
     }
@@ -58,8 +66,12 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException, IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
         OAuthAppleRequestDto oAuthAppleRequestDto = objectMapper.readValue(request.getInputStream(), OAuthAppleRequestDto.class);
+        Set<ConstraintViolation<OAuthAppleRequestDto>> violations = validator.validate(oAuthAppleRequestDto);
+        if (!violations.isEmpty()) {
+            ValidationErrorWriter.write(response, objectMapper, violations);
+            throw new RequestValidationException();
+        }
 
         try {
             // Apple Identity Token 검증
@@ -87,6 +99,22 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
         } catch (Exception e) {
             log.error("Apple login failed: {}", e.getClass().getSimpleName());
             throw new AuthenticationException("Apple 로그인 실패") {};
+        }
+    }
+
+    @Override
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+                                              AuthenticationException failed) throws IOException {
+        if (failed instanceof RequestValidationException) {
+            return;
+        }
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.getWriter().write("{\"status\":\"error\", \"message\":\"Authentication failed\"}");
+    }
+
+    private static class RequestValidationException extends AuthenticationException {
+        private RequestValidationException() {
+            super("Request validation failed");
         }
     }
 

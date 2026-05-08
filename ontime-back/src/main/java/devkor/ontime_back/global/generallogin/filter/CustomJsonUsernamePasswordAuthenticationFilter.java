@@ -1,6 +1,10 @@
 package devkor.ontime_back.global.generallogin.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import devkor.ontime_back.dto.LoginRequestDto;
+import devkor.ontime_back.response.ValidationErrorWriter;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -13,8 +17,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * 스프링 시큐리티의 폼 기반의 UsernamePasswordAuthenticationFilter를 참고하여 만든 커스텀 필터
@@ -27,16 +30,16 @@ public class CustomJsonUsernamePasswordAuthenticationFilter extends AbstractAuth
     private static final String DEFAULT_LOGIN_REQUEST_URL = "/login"; // "/login"으로 오는 요청을 처리
     private static final String HTTP_METHOD = "POST"; // 로그인 HTTP 메소드는 POST
     private static final String CONTENT_TYPE = "application/json"; // JSON 타입의 데이터로 오는 로그인 요청만 처리
-    private static final String USERNAME_KEY = "email"; // 회원 로그인 시 이메일 요청 JSON Key : "email"
-    private static final String PASSWORD_KEY = "password"; // 회원 로그인 시 비밀번호 요청 JSon Key : "password"
     private static final AntPathRequestMatcher DEFAULT_LOGIN_PATH_REQUEST_MATCHER =
             new AntPathRequestMatcher(DEFAULT_LOGIN_REQUEST_URL, HTTP_METHOD); // "/login" + POST로 온 요청에 매칭된다.
 
     private final ObjectMapper objectMapper;
+    private final Validator validator;
 
-    public CustomJsonUsernamePasswordAuthenticationFilter(ObjectMapper objectMapper) {
+    public CustomJsonUsernamePasswordAuthenticationFilter(ObjectMapper objectMapper, Validator validator) {
         super(DEFAULT_LOGIN_PATH_REQUEST_MATCHER); // 위에서 설정한 "login" + POST로 온 요청을 처리하기 위해 설정
         this.objectMapper = objectMapper;
+        this.validator = validator;
     }
 
     /**
@@ -63,15 +66,33 @@ public class CustomJsonUsernamePasswordAuthenticationFilter extends AbstractAuth
             throw new AuthenticationServiceException("Authentication Content-Type not supported: " + request.getContentType());
         }
 
-        String messageBody = StreamUtils.copyToString(request.getInputStream(), StandardCharsets.UTF_8);
+        LoginRequestDto loginRequest = objectMapper.readValue(request.getInputStream(), LoginRequestDto.class);
+        Set<ConstraintViolation<LoginRequestDto>> violations = validator.validate(loginRequest);
+        if (!violations.isEmpty()) {
+            ValidationErrorWriter.write(response, objectMapper, violations);
+            throw new RequestValidationException();
+        }
 
-        Map<String, String> usernamePasswordMap = objectMapper.readValue(messageBody, Map.class);
-
-        String email = usernamePasswordMap.get(USERNAME_KEY);
-        String password = usernamePasswordMap.get(PASSWORD_KEY);
+        String email = loginRequest.getEmail();
+        String password = loginRequest.getPassword();
 
         UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(email, password);//principal 과 credentials 전달
 
         return this.getAuthenticationManager().authenticate(authRequest);
+    }
+
+    @Override
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+                                              AuthenticationException failed) throws IOException, ServletException {
+        if (failed instanceof RequestValidationException) {
+            return;
+        }
+        super.unsuccessfulAuthentication(request, response, failed);
+    }
+
+    private static class RequestValidationException extends AuthenticationServiceException {
+        private RequestValidationException() {
+            super("Request validation failed");
+        }
     }
 }

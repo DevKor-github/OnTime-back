@@ -7,10 +7,13 @@ import devkor.ontime_back.dto.OAuthGoogleUserDto;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.ValidationErrorWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
@@ -21,6 +24,7 @@ import org.springframework.security.web.authentication.AbstractAuthenticationPro
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -29,10 +33,14 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
 
     private final UserRepository userRepository;
     private final GoogleLoginService googleLoginService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
 
-    public GoogleLoginFilter(String defaultFilterProcessesUrl, GoogleLoginService googleLoginService, UserRepository userRepository) {
+    public GoogleLoginFilter(String defaultFilterProcessesUrl, ObjectMapper objectMapper, Validator validator, GoogleLoginService googleLoginService, UserRepository userRepository) {
         super(defaultFilterProcessesUrl);
+        this.objectMapper = objectMapper;
+        this.validator = validator;
         this.googleLoginService = googleLoginService;
         this.userRepository = userRepository;
     }
@@ -40,8 +48,12 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException, IOException, ServletException {
-        ObjectMapper objectMapper = new ObjectMapper();
         OAuthGoogleRequestDto oAuthGoogleRequestDto = objectMapper.readValue(request.getInputStream(), OAuthGoogleRequestDto.class);
+        Set<ConstraintViolation<OAuthGoogleRequestDto>> violations = validator.validate(oAuthGoogleRequestDto);
+        if (!violations.isEmpty()) {
+            ValidationErrorWriter.write(response, objectMapper, violations);
+            throw new RequestValidationException();
+        }
 
         try {
             GoogleIdToken.Payload googlePayload = googleLoginService.verifyIdentityToken(oAuthGoogleRequestDto.getIdToken());
@@ -94,9 +106,18 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                               AuthenticationException failed) throws IOException, ServletException {
+        if (failed instanceof RequestValidationException) {
+            return;
+        }
         log.warn("구글 로그인 실패");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.getWriter().write("{\"status\":\"error\", \"message\":\"Authentication failed\"}");
+    }
+
+    private static class RequestValidationException extends AuthenticationException {
+        private RequestValidationException() {
+            super("Request validation failed");
+        }
     }
 
 }

@@ -10,9 +10,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Validated
 public class PreparationUserController {
 
 
@@ -44,7 +48,7 @@ public class PreparationUserController {
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PutMapping("/preparations")
-    public ResponseEntity<ApiResponseForm<Void>> modifyPreparationUser(HttpServletRequest request, @RequestBody List<PreparationDto> preparationDtoList) {
+    public ResponseEntity<ApiResponseForm<Void>> modifyPreparationUser(HttpServletRequest request, @NotEmpty(message = "준비과정은 하나 이상 필요합니다.") @RequestBody List<@Valid PreparationDto> preparationDtoList) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
         preparationUserService.updatePreparationUsers(userId, preparationDtoList);

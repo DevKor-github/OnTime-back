@@ -10,12 +10,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,7 +59,7 @@ public class AlarmController {
     @PatchMapping("/users/me/alarm-settings")
     public ResponseEntity<ApiResponseForm<AlarmSettingsResponseDto>> patchAlarmSettings(
             HttpServletRequest request,
-            @RequestBody Map<String, Object> requestBody) {
+            @Valid @RequestBody AlarmSettingsPatchDto requestBody) {
         Long userId = userAuthService.getUserIdFromToken(request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponseForm.success(alarmService.patchAlarmSettings(userId, requestBody)));
@@ -87,7 +86,7 @@ public class AlarmController {
     @PutMapping("/users/me/devices/current")
     public ResponseEntity<ApiResponseForm<AlarmDeviceCurrentResponseDto>> registerCurrentDevice(
             HttpServletRequest request,
-            @RequestBody AlarmDeviceCurrentRequestDto requestDto) {
+            @Valid @RequestBody AlarmDeviceCurrentRequestDto requestDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponseForm.success(alarmService.registerCurrentDevice(
@@ -117,7 +116,7 @@ public class AlarmController {
     @DeleteMapping("/users/me/devices/current")
     public ResponseEntity<ApiResponseForm<AlarmDeviceUnregisterResponseDto>> unregisterCurrentDevice(
             HttpServletRequest request,
-            @RequestBody(required = false) AlarmDeviceUnregisterRequestDto requestDto) {
+            @Valid @RequestBody(required = false) AlarmDeviceUnregisterRequestDto requestDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponseForm.success(alarmService.unregisterCurrentDevice(
@@ -147,7 +146,7 @@ public class AlarmController {
     @PostMapping("/users/me/alarm-status")
     public ResponseEntity<ApiResponseForm<AlarmStatusReportResponseDto>> reportAlarmStatus(
             HttpServletRequest request,
-            @RequestBody AlarmStatusReportRequestDto requestDto) {
+            @Valid @RequestBody AlarmStatusReportRequestDto requestDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponseForm.success(alarmService.reportAlarmStatus(

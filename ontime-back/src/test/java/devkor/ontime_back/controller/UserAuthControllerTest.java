@@ -44,7 +44,7 @@ class UserAuthControllerTest extends ControllerTestSupport {
         UserSignUpDto request = UserSignUpDto.builder()
                 .email("user@example.com")
                 .name("junbeom")
-                .password("password123")
+                .password("password123!")
                 .build();
 
         UserInfoResponse userSignupResponse = UserInfoResponse.builder()
@@ -76,7 +76,7 @@ class UserAuthControllerTest extends ControllerTestSupport {
         // given
         ChangePasswordDto changePasswordDto = ChangePasswordDto.builder()
                 .currentPassword("password1234")
-                .newPassword("password12345")
+                .newPassword("password12345!")
                 .build();
 
         when(userAuthService.getUserIdFromToken(any())).thenReturn(1L);
