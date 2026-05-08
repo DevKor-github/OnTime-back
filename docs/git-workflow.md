@@ -1,6 +1,6 @@
-# Git Workflow And Production Deployment Strategy
+# Git Workflow And Deployment Strategy
 
-This document describes the recommended Git strategy for OnTime-back with one production EC2 server and one private production RDS instance.
+This document describes the recommended Git strategy for OnTime-back with one production EC2 server, one private production RDS instance, and one remote-PC development server.
 
 ## Goals
 
@@ -8,7 +8,7 @@ This document describes the recommended Git strategy for OnTime-back with one pr
 - Make every server deployment traceable to a Git branch and commit.
 - Avoid using deployment branches as places where product code diverges.
 - Keep feature branches short-lived and easy to review.
-- Keep `dev` as an integration branch only; it must not deploy a long-running dev backend.
+- Use `dev` as the integration branch and remote-PC development deploy source.
 
 ## Branch Model
 
@@ -25,7 +25,7 @@ Branch responsibilities:
 | Branch | Purpose | Deployment |
 | --- | --- | --- |
 | `main` | Production-ready code and source of truth | Production server |
-| `dev` | Integrated code for QA, frontend/mobile testing, and pre-release validation | No direct deployment |
+| `dev` | Integrated code for QA, frontend/mobile testing, and pre-release validation | Remote PC development server |
 | `feature/*` | New feature work | No direct deployment |
 | `fix/*` | Bug fixes | No direct deployment |
 | `chore/*` | Maintenance, docs, config, CI changes | No direct deployment |
@@ -59,7 +59,7 @@ feature/* -> dev
 
 5. After review, merge into `dev`.
 
-6. Validate the integrated code without running a long-lived dev backend on EC2.
+6. Validate the integrated code on the remote PC development backend.
 
 7. When the release candidate is ready, open a pull request from `dev` into `main`.
 
@@ -84,6 +84,7 @@ Use branch-based CI and production deployment:
 
 ```text
 pull_request to dev/main -> test workflow
+push to dev  -> development environment -> remote PC development server
 push to main -> production environment  -> production server
 ```
 
@@ -91,6 +92,7 @@ Recommended GitHub environments:
 
 | Environment | Source Branch | Server | Approval |
 | --- | --- | --- | --- |
+| `development` | `dev` | Remote PC development server | Optional |
 | `production` | `main` | Production server | Manual approval recommended |
 
 ## CI/CD Workflow
@@ -99,6 +101,7 @@ Recommended simple setup:
 
 ```text
 .github/workflows/test.yml
+.github/workflows/deploy-dev.yml
 .github/workflows/deploy.yml
 ```
 
@@ -107,9 +110,9 @@ Expected triggers:
 ```text
 pull_request to dev   -> run tests
 pull_request to main  -> run tests
-push to dev           -> no deployment
+push to dev           -> deploy to remote PC development server
 push to main          -> deploy to production server
-workflow_dispatch     -> allow manual redeploy or rollback support
+workflow_dispatch     -> allow manual redeploy for each deploy workflow
 ```
 
 Production deploy should use production secrets only:
@@ -123,7 +126,17 @@ SPRING_DATASOURCE_USERNAME
 SPRING_DATASOURCE_PASSWORD
 ```
 
-Do not add `DEV_*` deployment secrets or a dev-server workflow unless the infrastructure plan changes deliberately.
+Development deploy should use development secrets only:
+
+```text
+DEV_REMOTE_HOST
+DEV_REMOTE_USER
+DEV_REMOTE_SSH_KEY
+GHCR_USERNAME
+GHCR_READ_TOKEN
+```
+
+Optional `DEV_*` secrets can override the default dev deploy directory, HTTP port, MySQL credentials, and non-production OAuth/Firebase settings.
 
 ## Branch Protection
 
@@ -171,7 +184,7 @@ The current repository has `main` and `deploy` as separate long-lived branches. 
 ```text
 deploy branch -> retired
 main branch   -> production
-dev branch    -> integration and CI only
+dev branch    -> integration and remote PC development deployment
 ```
 
 Recommended migration sequence:
@@ -189,19 +202,20 @@ git push origin dev
 ```
 
 5. Change production deployment to trigger from `main`.
-6. Ensure there is no workflow that deploys from `dev`.
+6. Ensure `dev` deploys only to the remote PC development environment.
 7. Update GitHub production environment secrets.
-8. Protect `main` and `dev`.
-9. Stop using `deploy` for new work.
-10. Delete or archive stale merged feature branches after confirming they are no longer needed.
+8. Update GitHub development environment secrets for the remote PC.
+9. Protect `main` and `dev`.
+10. Stop using `deploy` for new work.
+11. Delete or archive stale merged feature branches after confirming they are no longer needed.
 
 ## Practical Rules
 
 - New work branches from `dev`.
 - Normal PR target is `dev`.
 - Release PR target is `main`.
+- `dev` deploys only to the remote PC development server.
 - Production deploys only from `main`.
-- `dev` runs CI only and does not deploy.
 - Do not commit directly to `main`.
 - Do not commit directly to `dev` unless it is an emergency coordination fix.
 - Delete feature branches after merge.
