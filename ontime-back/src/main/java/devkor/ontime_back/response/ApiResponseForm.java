@@ -50,5 +50,8 @@ public class ApiResponseForm<T> {
         return new ApiResponseForm<>("error", code, message, null);  // 오류의 경우 data는 null로 처리
     }
 
-}
+    public static <T> ApiResponseForm<T> error(int code, String message, T data) {
+        return new ApiResponseForm<>("error", code, message, data);
+    }
 
+}

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,7 +48,7 @@ public class FirebaseTokenController {
             @ApiResponse(responseCode = "4XX", description = "FCM 토큰 저장 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PostMapping("")
-    public ResponseEntity<ApiResponseForm<String>> registerFirebaseToken(HttpServletRequest request, @RequestBody FirebaseTokenAddDto firebaseTokenAddDto) {
+    public ResponseEntity<ApiResponseForm<String>> registerFirebaseToken(HttpServletRequest request, @Valid @RequestBody FirebaseTokenAddDto firebaseTokenAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
 
         firebaseTokenService.registerFirebaseToken(

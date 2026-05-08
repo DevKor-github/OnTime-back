@@ -10,10 +10,13 @@ import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.ValidationErrorWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,6 +28,7 @@ import org.springframework.security.web.authentication.AbstractAuthenticationPro
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -33,12 +37,18 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
     private final UserRepository userRepository;
     private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     public KakaoLoginFilter(String defaultFilterProcessesUrl,
+                            ObjectMapper objectMapper,
+                            Validator validator,
                             JwtTokenProvider jwtTokenProvider,
                             UserRepository userRepository,
                             UserAlarmSettingRepository userAlarmSettingRepository) {
         super(defaultFilterProcessesUrl);
+        this.objectMapper = objectMapper;
+        this.validator = validator;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.userAlarmSettingRepository = userAlarmSettingRepository;
@@ -48,8 +58,12 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException, IOException, ServletException {
-        ObjectMapper objectMapper = new ObjectMapper();
         OAuthKakaoUserDto oAuthKakaoUserDto = objectMapper.readValue(request.getInputStream(), OAuthKakaoUserDto.class);
+        Set<ConstraintViolation<OAuthKakaoUserDto>> violations = validator.validate(oAuthKakaoUserDto);
+        if (!violations.isEmpty()) {
+            ValidationErrorWriter.write(response, objectMapper, violations);
+            throw new RequestValidationException();
+        }
 
         Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.KAKAO, oAuthKakaoUserDto.getId());
 
@@ -144,8 +158,17 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                               AuthenticationException failed) throws IOException, ServletException {
+        if (failed instanceof RequestValidationException) {
+            return;
+        }
         log.warn("카카오 로그인 실패");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.getWriter().write("{\"status\":\"error\", \"message\":\"Authentication failed\"}");
+    }
+
+    private static class RequestValidationException extends AuthenticationException {
+        private RequestValidationException() {
+            super("Request validation failed");
+        }
     }
 }

@@ -3,6 +3,8 @@ package devkor.ontime_back;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import devkor.ontime_back.controller.*;
 import devkor.ontime_back.global.generallogin.handler.LoginSuccessHandler;
+import devkor.ontime_back.global.oauth.apple.AppleLoginService;
+import devkor.ontime_back.global.oauth.google.GoogleLoginService;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,12 @@ import org.springframework.test.web.servlet.MockMvc;
                 ScheduleController.class,
                 FriendShipController.class,
                 PreparationUserController.class,
-                PreparationScheduleController.class
+                PreparationScheduleController.class,
+                UserSettingController.class,
+                FeedbackController.class,
+                FirebaseTokenController.class,
+                AlarmController.class,
+                SocialAuthController.class
         }
 )
 public abstract class ControllerTestSupport {
@@ -46,6 +53,24 @@ public abstract class ControllerTestSupport {
 
     @MockBean
     protected PreparationScheduleService preparationScheduleService;
+
+    @MockBean
+    protected UserSettingService userSettingService;
+
+    @MockBean
+    protected FeedbackService feedbackService;
+
+    @MockBean
+    protected FirebaseTokenService firebaseTokenService;
+
+    @MockBean
+    protected AlarmService alarmService;
+
+    @MockBean
+    protected AppleLoginService appleLoginService;
+
+    @MockBean
+    protected GoogleLoginService googleLoginService;
 
     @MockBean
     protected UserRepository userRepository;

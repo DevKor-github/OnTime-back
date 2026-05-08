@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -53,7 +54,7 @@ public class SocialAuthController {
             @ApiResponse(responseCode = "4XX", description = "실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(이메일이 이미 존재할 경우, 이름이 이미 존재할 경우 다르게 출력)")))
     })
     @PostMapping("/google/login")
-    public String googleRegisterOrLogin(@RequestBody OAuthGoogleUserDto oAuthGoogleUserDto, HttpServletResponse response) {
+    public String googleRegisterOrLogin(@Valid @RequestBody OAuthGoogleUserDto oAuthGoogleUserDto, HttpServletResponse response) {
         return "구글 로그인/회원가입 성공"; // 로그인 처리는 필터에서 적용
     }
 
@@ -80,7 +81,7 @@ public class SocialAuthController {
             @ApiResponse(responseCode = "4XX", description = "실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(이메일이 이미 존재할 경우, 이름이 이미 존재할 경우 다르게 출력)")))
     })
     @PostMapping("/kakao/login")
-    public String kakaoRegisterOrLogin(@RequestBody OAuthKakaoUserDto oAuthKakaoUserDto, HttpServletResponse response) {
+    public String kakaoRegisterOrLogin(@Valid @RequestBody OAuthKakaoUserDto oAuthKakaoUserDto, HttpServletResponse response) {
         return "카카오 로그인/회원가입 성공"; // 로그인 처리는 필터에서 적용
     }
 
@@ -107,7 +108,7 @@ public class SocialAuthController {
             @ApiResponse(responseCode = "4XX", description = "실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(이메일이 이미 존재할 경우, 이름이 이미 존재할 경우 다르게 출력)")))
     })
     @PostMapping("/apple/login")
-    public String appleRegisterOrLogin(@RequestBody OAuthAppleRequestDto appleLoginRequestDto, HttpServletResponse response) {
+    public String appleRegisterOrLogin(@Valid @RequestBody OAuthAppleRequestDto appleLoginRequestDto, HttpServletResponse response) {
         return "애플 로그인/회원가입 성공";
     }
 
@@ -115,7 +116,7 @@ public class SocialAuthController {
             summary = "애플 소셜 로그인 회원탈퇴"
     )
     @DeleteMapping("/apple/me")
-    public ResponseEntity<ApiResponseForm<?>> appleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) {
+    public ResponseEntity<ApiResponseForm<?>> appleDeleteUser(HttpServletRequest request, HttpServletResponse response, @Valid @RequestBody(required = false) FeedbackAddDto feedbackAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         log.info("userId: {}", userId);
         try {
@@ -131,7 +132,7 @@ public class SocialAuthController {
             summary = "구글 소셜 로그인 회원탈퇴"
     )
     @DeleteMapping("/google/me")
-    public ResponseEntity<ApiResponseForm<?>> googleDeleteUser(HttpServletRequest request, HttpServletResponse response, @RequestBody(required = false) FeedbackAddDto feedbackAddDto) {
+    public ResponseEntity<ApiResponseForm<?>> googleDeleteUser(HttpServletRequest request, HttpServletResponse response, @Valid @RequestBody(required = false) FeedbackAddDto feedbackAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         log.info("userId: {}", userId);
         try {

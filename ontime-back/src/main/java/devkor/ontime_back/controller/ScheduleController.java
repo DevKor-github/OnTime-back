@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -185,7 +186,7 @@ public class ScheduleController {
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PutMapping("/{scheduleId}")
-    public ResponseEntity<ApiResponseForm<Void>> modifySchedule(HttpServletRequest request, @PathVariable UUID scheduleId, @RequestBody ScheduleModDto scheduleModDto) {
+    public ResponseEntity<ApiResponseForm<Void>> modifySchedule(HttpServletRequest request, @PathVariable UUID scheduleId, @Valid @RequestBody ScheduleModDto scheduleModDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.modifySchedule(userId, scheduleId, scheduleModDto);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
@@ -210,7 +211,7 @@ public class ScheduleController {
             @ApiResponse(responseCode = "4XX", description = "잘못된 요청", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PostMapping("")
-    public ResponseEntity<ApiResponseForm<Void>> addSchedule(HttpServletRequest request, @RequestBody ScheduleAddDto scheduleAddDto) {
+    public ResponseEntity<ApiResponseForm<Void>> addSchedule(HttpServletRequest request, @Valid @RequestBody ScheduleAddDto scheduleAddDto) {
         Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.addSchedule(scheduleAddDto, userId);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(null));
@@ -300,7 +301,7 @@ public class ScheduleController {
     public ResponseEntity<ApiResponseForm<?>> finishSchedule(
             HttpServletRequest request,
             @PathVariable UUID scheduleId,
-            @RequestBody FinishPreparationDto finishPreparationDto) {
+            @Valid @RequestBody FinishPreparationDto finishPreparationDto) {
 
         Long userId = userAuthService.getUserIdFromToken(request);
         scheduleService.finishSchedule(userId, scheduleId, finishPreparationDto);
