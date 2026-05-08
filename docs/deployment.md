@@ -14,7 +14,7 @@ Deployment access:
 
 Runtime image and port:
 
-- `BACKEND_HTTP_PORT` (optional, defaults to `8080`)
+- `BACKEND_HTTP_PORT` (optional, defaults to `127.0.0.1:8080`; if set, it must be exactly `127.0.0.1:8080`)
 - `BACKEND_MEMORY_LIMIT` (optional, defaults to `768m`; use `640m` if the EC2 instance is memory constrained)
 - `BACKEND_CPU_LIMIT` (optional, defaults to `1.0`)
 
@@ -93,11 +93,22 @@ The workflow:
 2. Pushes two GHCR tags:
    - `ghcr.io/devkor-github/ontime-back:<commit-sha>`
    - `ghcr.io/devkor-github/ontime-back:deploy-latest`
-3. Uploads `docker-compose.yml` to `/home/ubuntu/OnTime-back`.
+3. Uploads `docker-compose.yml` and `Caddyfile` to `/home/ubuntu/OnTime-back`.
 4. Writes `/home/ubuntu/OnTime-back/.env` from GitHub secrets.
 5. Verifies EC2 can reach private RDS on `3306`.
 6. Runs `docker compose pull && docker compose up -d --remove-orphans`.
 7. Waits until the `ontime-container` Docker health status is `healthy`.
+8. Installs Caddy if needed, configures `/etc/caddy/Caddyfile`, and verifies HTTPS for `ontime-back.kro.kr`.
+
+## HTTPS Prerequisites
+
+Before running the production deploy, configure AWS and DNS:
+
+- Point `ontime-back.kro.kr` to the EC2 public IPv4 address with an `A` record. Prefer an Elastic IP so the address is stable.
+- Allow EC2 security group inbound TCP `80` and `443` from `0.0.0.0/0`.
+- Restrict SSH `22` to trusted admin IPs.
+- Remove or update any existing GitHub secret named `BACKEND_HTTP_PORT` unless it is exactly `127.0.0.1:8080`.
+- Remove public inbound `8080` after HTTPS is verified. The deploy default binds the backend to `127.0.0.1:8080`, so Caddy can reach it locally without exposing it publicly.
 
 ## Health Verification
 
@@ -114,6 +125,7 @@ cd /home/ubuntu/OnTime-back
 sudo docker compose ps
 sudo docker inspect -f '{{.State.Health.Status}}' ontime-container
 curl -fsS http://localhost:8080/actuator/health/readiness
+curl -fsS https://ontime-back.kro.kr/actuator/health/readiness
 nc -zv ontime-prod.cpoeguokwaq5.ap-northeast-2.rds.amazonaws.com 3306
 ```
 

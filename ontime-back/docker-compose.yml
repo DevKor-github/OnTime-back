@@ -9,7 +9,7 @@ services:
       SERVER_PORT: "${SERVER_PORT:-8080}"
       JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:--XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom}"
     ports:
-      - "${BACKEND_HTTP_PORT:-8080}:${SERVER_PORT:-8080}"
+      - "${BACKEND_HTTP_PORT:-127.0.0.1:8080}:${SERVER_PORT:-8080}"
     restart: unless-stopped
     stop_grace_period: 30s
     mem_limit: "${BACKEND_MEMORY_LIMIT:-768m}"
