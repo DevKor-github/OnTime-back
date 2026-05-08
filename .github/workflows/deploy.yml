@@ -18,7 +18,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: devkor-github/ontime-back
   IMAGE_TAG: ${{ github.sha }}
-  PUBLIC_BACKEND_HOST: ontime-back.kro.kr
+  PUBLIC_BACKEND_HOST: ontime-back.duckdns.org
 
 jobs:
   build-and-push:

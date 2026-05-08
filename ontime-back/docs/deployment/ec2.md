@@ -5,7 +5,7 @@ This service deploys to Amazon EC2 through `.github/workflows/deploy.yml`.
 ## How to Deploy
 
 1. Make sure the EC2 instance has Docker installed.
-2. Point `ontime-back.kro.kr` to the EC2 public IPv4 address.
+2. Point `ontime-back.duckdns.org` to the EC2 public IPv4 address.
 3. Allow inbound security group traffic on TCP `80` and `443`.
 4. Add the required GitHub Actions secrets listed below.
 5. Run the `Deploy` workflow manually from GitHub Actions, or push to the `main` branch.
@@ -56,7 +56,7 @@ The deploy workflow writes these files under `/home/ubuntu/OnTime-back`:
 Caddy is installed as a systemd service on the host and serves:
 
 ```text
-https://ontime-back.kro.kr
+https://ontime-back.duckdns.org
 ```
 
 It proxies to the Spring Boot container through `http://127.0.0.1:8080`. After HTTPS is verified, remove public inbound `8080` from the EC2 security group.
