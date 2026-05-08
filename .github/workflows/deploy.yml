@@ -18,6 +18,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: devkor-github/ontime-back
   IMAGE_TAG: ${{ github.sha }}
+  PUBLIC_BACKEND_HOST: ontime-back.kro.kr
 
 jobs:
   build-and-push:
@@ -66,6 +67,16 @@ jobs:
           target: "/home/ubuntu/OnTime-back"
           strip_components: 1
 
+      - name: Upload Caddyfile to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "ontime-back/Caddyfile"
+          target: "/home/ubuntu/OnTime-back"
+          strip_components: 1
+
       - name: Pull image and restart container
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -77,6 +88,7 @@ jobs:
 
             DEPLOY_DIR="/home/ubuntu/OnTime-back"
             CONTAINER_NAME="ontime-container"
+            PUBLIC_BACKEND_HOST="${{ env.PUBLIC_BACKEND_HOST }}"
 
             mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
@@ -86,7 +98,7 @@ jobs:
             IMAGE_TAG=${{ env.IMAGE_TAG }}
             BACKEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             BACKEND_CONTAINER_NAME=ontime-container
-            BACKEND_HTTP_PORT=${{ secrets.BACKEND_HTTP_PORT || '8080' }}
+            BACKEND_HTTP_PORT=${{ secrets.BACKEND_HTTP_PORT || '127.0.0.1:8080' }}
             BACKEND_MEMORY_LIMIT=${{ secrets.BACKEND_MEMORY_LIMIT || '768m' }}
             BACKEND_CPU_LIMIT=${{ secrets.BACKEND_CPU_LIMIT || '1.0' }}
             SERVER_PORT=8080
@@ -149,9 +161,28 @@ jobs:
               grep -E "^$1=" .env | tail -n 1 | cut -d= -f2-
             }
 
+            install_caddy() {
+              if command -v caddy >/dev/null 2>&1; then
+                return
+              fi
+
+              echo "Installing Caddy from the official package repository..."
+              sudo apt-get update
+              sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl gnupg
+              curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+                | sudo gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+              curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+                | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+              sudo chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+              sudo chmod o+r /etc/apt/sources.list.d/caddy-stable.list
+              sudo apt-get update
+              sudo apt-get install -y caddy
+            }
+
             DB_URL="$(get_env_value SPRING_DATASOURCE_URL)"
             DB_USERNAME="$(get_env_value SPRING_DATASOURCE_USERNAME)"
             DB_PASSWORD="$(get_env_value SPRING_DATASOURCE_PASSWORD)"
+            BACKEND_HTTP_BIND="$(get_env_value BACKEND_HTTP_PORT)"
             DDL_AUTO="$(get_env_value SPRING_JPA_HIBERNATE_DDL_AUTO)"
             FLYWAY_BASELINE="$(get_env_value SPRING_FLYWAY_BASELINE_ON_MIGRATE)"
             NORMALIZED_DB_URL="$(printf '%s' "$DB_URL" | tr '[:upper:]' '[:lower:]')"
@@ -171,6 +202,7 @@ jobs:
             [ -n "$DB_HOST" ] || fail_deploy "SPRING_DATASOURCE_URL must include an RDS host."
             [ "$DB_NAME" = "ontime_prod" ] || fail_deploy "SPRING_DATASOURCE_URL must use the ontime_prod database."
             [ "$NORMALIZED_DB_USERNAME" != "root" ] || fail_deploy "SPRING_DATASOURCE_USERNAME must not be root."
+            [ "$BACKEND_HTTP_BIND" = "127.0.0.1:8080" ] || fail_deploy "BACKEND_HTTP_PORT must be 127.0.0.1:8080 so public traffic goes through Caddy HTTPS."
             [ "$DDL_AUTO" = "validate" ] || fail_deploy "SPRING_JPA_HIBERNATE_DDL_AUTO must be validate."
             [ "$FLYWAY_BASELINE" = "false" ] || fail_deploy "SPRING_FLYWAY_BASELINE_ON_MIGRATE must be false."
 
@@ -217,15 +249,53 @@ jobs:
               sudo docker-compose up -d --remove-orphans
             fi
 
+            HEALTHY=false
             for attempt in $(seq 1 30); do
               STATUS="$(sudo docker inspect -f '{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || true)"
               if [ "$STATUS" = "healthy" ]; then
                 echo "Container is healthy."
-                exit 0
+                HEALTHY=true
+                break
               fi
               echo "Waiting for healthy container status; current status: ${STATUS:-unknown}"
               sleep 5
             done
 
-            sudo docker logs --tail=200 "$CONTAINER_NAME" || true
-            exit 1
+            if [ "$HEALTHY" != "true" ]; then
+              sudo docker logs --tail=200 "$CONTAINER_NAME" || true
+              exit 1
+            fi
+
+            echo "Configuring Caddy reverse proxy for https://$PUBLIC_BACKEND_HOST..."
+            [ -f "$DEPLOY_DIR/Caddyfile" ] || fail_deploy "Caddyfile was not uploaded to $DEPLOY_DIR."
+
+            if ! getent hosts "$PUBLIC_BACKEND_HOST" >/dev/null 2>&1; then
+              fail_deploy "DNS for $PUBLIC_BACKEND_HOST must resolve before Caddy can issue a TLS certificate."
+            fi
+
+            install_caddy
+            sudo install -o root -g root -m 0644 "$DEPLOY_DIR/Caddyfile" /etc/caddy/Caddyfile
+            sudo caddy validate --config /etc/caddy/Caddyfile
+            sudo systemctl enable caddy
+            sudo systemctl reload caddy || sudo systemctl restart caddy
+            sudo systemctl is-active --quiet caddy
+
+            echo "Verifying HTTPS through local Caddy..."
+            HTTPS_HEALTHY=false
+            for attempt in $(seq 1 6); do
+              if curl -fsS \
+                --resolve "$PUBLIC_BACKEND_HOST:443:127.0.0.1" \
+                "https://$PUBLIC_BACKEND_HOST/actuator/health/readiness"; then
+                HTTPS_HEALTHY=true
+                break
+              fi
+              echo "Waiting for HTTPS readiness through Caddy..."
+              sleep 10
+            done
+
+            if [ "$HTTPS_HEALTHY" != "true" ]; then
+              sudo journalctl -u caddy --no-pager -n 120 || true
+              exit 1
+            fi
+
+            echo "HTTPS is healthy at https://$PUBLIC_BACKEND_HOST."
