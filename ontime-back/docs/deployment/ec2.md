@@ -8,7 +8,7 @@ This service deploys to Amazon EC2 through `.github/workflows/deploy.yml`.
 2. Add the required GitHub Actions secrets listed below.
 3. Run the `Deploy` workflow manually from GitHub Actions, or push to the `main` branch.
 
-The workflow builds a Docker image, pushes it to GHCR, uploads `docker-compose.yml` to `/home/ubuntu/OnTime-back`, writes a production `.env` from GitHub Secrets, verifies private RDS connectivity, and restarts Docker Compose on the EC2 instance.
+The workflow builds an immutable Docker image, pushes it to GHCR, uploads `docker-compose.yml` to `/home/ubuntu/OnTime-back`, writes a production `.env` from GitHub Secrets, verifies private RDS connectivity, and restarts Docker Compose on the EC2 instance. Private files are not copied into the image or mounted from the host.
 
 ## Required EC2 Secrets
 
@@ -29,6 +29,7 @@ The workflow builds a Docker image, pushes it to GHCR, uploads `docker-compose.y
 - `JWT_REFRESH_HEADER`
 - `GOOGLE_WEB_CLIENT_ID`
 - `GOOGLE_APP_CLIENT_ID`
+- `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET`
 - `APPLE_CLIENT_ID`
 - `APPLE_LOGIN_KEY`
 - `APPLE_TEAM_ID`
@@ -56,4 +57,4 @@ Production uses the private RDS instance:
 ontime-prod.cpoeguokwaq5.ap-northeast-2.rds.amazonaws.com:3306/ontime_prod
 ```
 
-Do not commit local `application.properties`, Firebase service account JSON, Apple `.p8` keys, or `.env` files.
+Do not commit local `application.properties`, Firebase service account JSON, Apple `.p8` keys, `.env` files, or files under `.secrets/`. Rotate any credential that has ever appeared in a workspace resource path before using it in production.

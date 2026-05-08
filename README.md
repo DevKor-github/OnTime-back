@@ -23,4 +23,6 @@
 ## API 명세서
 ![screencapture-ontime-devkor-club-swagger-ui-index-html-2025-02-10-09_17_38](https://github.com/user-attachments/assets/0da05bb0-8596-48c3-8d16-d579820cc8d8)
 
+## 로컬 개발 설정
 
+백엔드는 실제 운영 비밀값 없이 실행할 수 있도록 `ontime-back/.env.example`에 로컬 전용 샘플 값을 제공합니다. 로컬에서 필요한 경우 이 파일을 `ontime-back/.env`로 복사해 개인 환경에 맞게 수정하세요. Firebase Admin JSON, Apple `.p8` 키, DB 비밀번호, JWT 서명 키 같은 실제 비밀값은 `src/main/resources`나 커밋 대상 파일에 두지 마세요.

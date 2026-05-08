@@ -1,4 +1,8 @@
 .env
+.env.*
+!.env.example
+.secrets
+.secrets/**
 .git
 .gitignore
 .gradle
@@ -13,9 +17,18 @@ bin
 .DS_Store
 
 src/main/resources/application.properties
+src/main/resources/*.env
 src/main/resources/*.json
+src/main/resources/**/*service-account*.json
+src/main/resources/**/*service_account*.json
+src/main/resources/**/*firebase*adminsdk*.json
 src/main/resources/key
 src/main/resources/**/*.p8
+src/main/resources/**/*.pem
+src/main/resources/**/*.key
+GoogleService-Info.plist
+*.pem
+*.key
 
 Dockerfile
 docker-compose*.yml

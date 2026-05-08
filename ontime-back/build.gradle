@@ -70,3 +70,17 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+tasks.named('processResources') {
+	exclude 'application.properties'
+	exclude '*.env'
+	exclude '.env'
+	exclude '**/.env'
+	exclude '**/*.p8'
+	exclude '**/*.pem'
+	exclude '**/*.key'
+	exclude '**/*firebase*adminsdk*.json'
+	exclude '**/*service-account*.json'
+	exclude '**/*service_account*.json'
+	exclude '**/GoogleService-Info.plist'
+}
