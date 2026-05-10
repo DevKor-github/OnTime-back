@@ -169,6 +169,65 @@ Before running the production deploy, configure AWS and DNS:
 - Remove or update any existing GitHub secret named `BACKEND_HTTP_PORT` unless it is exactly `127.0.0.1:8080`.
 - Remove public inbound `8080` after HTTPS is verified. The deploy default binds the backend to `127.0.0.1:8080`, so Caddy can reach it locally without exposing it publicly.
 
+## Development Remote PC Deployment
+
+Push to the `dev` branch, or run `.github/workflows/deploy-dev.yml` manually, to deploy the development backend to the remote PC.
+
+The development workflow:
+
+1. Builds `ontime-back/Dockerfile` from the `ontime-back/` context.
+2. Pushes two GHCR tags:
+   - `ghcr.io/devkor-github/ontime-back:dev-<commit-sha>`
+   - `ghcr.io/devkor-github/ontime-back:dev-latest`
+3. Uploads `docker-compose.yml` and `docker-compose.dev.yml` to the remote PC.
+4. Writes a development `.env` from GitHub secrets and safe dev defaults.
+5. Runs `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --remove-orphans`.
+6. Starts MySQL as a private Docker Compose service with persistent volume `ontime-dev-mysql-data`.
+7. Waits until the `ontime-dev-container` Docker health status is `healthy`.
+
+Required development secrets:
+
+- `DEV_REMOTE_HOST`
+- `DEV_REMOTE_USER`
+- `DEV_REMOTE_SSH_KEY`
+- `GHCR_USERNAME`
+- `GHCR_READ_TOKEN`
+
+Optional development secrets:
+
+- `DEV_DEPLOY_DIR` (defaults to `/home/<DEV_REMOTE_USER>/OnTime-back-dev`)
+- `DEV_BACKEND_HTTP_PORT` (defaults to `8081`)
+- `DEV_BACKEND_MEMORY_LIMIT` (defaults to `768m`)
+- `DEV_BACKEND_CPU_LIMIT` (defaults to `1.0`)
+- `DEV_MYSQL_DATABASE` (defaults to `ontime_dev`)
+- `DEV_MYSQL_USER` (defaults to `ontime_dev`)
+- `DEV_MYSQL_PASSWORD` (defaults to `ontime_dev_password`)
+- `DEV_MYSQL_ROOT_PASSWORD` (defaults to `ontime_dev_root_password`)
+- `DEV_SPRING_APPLICATION_NAME` (defaults to `ontime-back-dev`)
+- `DEV_SPRING_DATASOURCE_URL` (defaults to the Compose MySQL service)
+- `DEV_SPRING_DATASOURCE_USERNAME` (defaults to the dev MySQL user)
+- `DEV_SPRING_DATASOURCE_PASSWORD` (defaults to the dev MySQL password)
+- `DEV_JWT_SECRETKEY`
+- `DEV_JWT_ACCESS_EXPIRATION`
+- `DEV_JWT_REFRESH_EXPIRATION`
+- `DEV_JWT_ACCESS_HEADER`
+- `DEV_JWT_REFRESH_HEADER`
+- `DEV_GOOGLE_WEB_CLIENT_ID`
+- `DEV_GOOGLE_APP_CLIENT_ID`
+- `DEV_APPLE_CLIENT_ID`
+- `DEV_APPLE_TEAM_ID`
+- `DEV_APPLE_LOGIN_KEY`
+- `DEV_APPLE_PRIVATE_KEY_BASE64`
+- `DEV_FEATURE_APPLE_LOGIN_ENABLED` (defaults to `false`)
+- `DEV_FIREBASE_CREDENTIALS_BASE64`
+
+Remote PC prerequisites:
+
+- Ubuntu/Linux host with normal SSH access from GitHub Actions.
+- Docker and the Docker Compose plugin installed.
+- Inbound firewall access for the backend HTTP port, default `8081`.
+- No public inbound MySQL port is required; MySQL stays inside the Docker network.
+
 ## Health Verification
 
 The production image exposes a Docker healthcheck against:
