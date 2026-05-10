@@ -66,6 +66,9 @@ public class GoogleLoginService {
                 .map(String::trim)
                 .filter(clientId -> !clientId.isBlank())
                 .toList();
+        log.info("Configured Google OAuth audiences: {}", validClientIds.stream()
+                .map(this::maskClientId)
+                .toList());
     }
 
 
@@ -173,8 +176,50 @@ public class GoogleLoginService {
             return payload;
         } else {
             log.info("Google identity credential is invalid");
+            logGoogleIdentityTokenClaims(identityToken);
             return null;
         }
+    }
+
+    private void logGoogleIdentityTokenClaims(String identityToken) {
+        try {
+            GoogleIdToken parsedToken = GoogleIdToken.parse(
+                    GsonFactory.getDefaultInstance(),
+                    identityToken
+            );
+            GoogleIdToken.Payload payload = parsedToken.getPayload();
+            String audience = String.valueOf(payload.getAudience());
+            Long expirationTimeSeconds = payload.getExpirationTimeSeconds();
+            long nowSeconds = System.currentTimeMillis() / 1000;
+            log.info(
+                    "Google identity token claims aud={}, azp={}, iss={}, exp={}, now={}, secondsUntilExp={}, audienceAllowed={}",
+                    maskClientId(audience),
+                    payload.get("azp"),
+                    payload.getIssuer(),
+                    expirationTimeSeconds,
+                    nowSeconds,
+                    expirationTimeSeconds == null ? null : expirationTimeSeconds - nowSeconds,
+                    validClientIds.contains(audience)
+            );
+        } catch (Exception e) {
+            log.info("Google identity token claim parsing failed: {}", e.getClass().getSimpleName());
+        }
+    }
+
+    private String maskClientId(String clientId) {
+        int separatorIndex = clientId.indexOf('-');
+        if (separatorIndex < 0) {
+            return "<invalid-client-id>";
+        }
+        String projectNumber = clientId.substring(0, separatorIndex);
+        String suffix = ".apps.googleusercontent.com";
+        boolean hasGoogleSuffix = clientId.endsWith(suffix);
+        String middle = clientId.substring(
+                separatorIndex + 1,
+                hasGoogleSuffix ? clientId.length() - suffix.length() : clientId.length()
+        );
+        String visibleTail = middle.length() <= 4 ? middle : middle.substring(middle.length() - 4);
+        return projectNumber + "-..." + visibleTail + (hasGoogleSuffix ? suffix : "");
     }
 
     public boolean revokeToken(Long userId) {

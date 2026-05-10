@@ -126,8 +126,8 @@ jobs:
             JWT_ACCESS_HEADER=${{ secrets.DEV_JWT_ACCESS_HEADER || 'Authorization' }}
             JWT_REFRESH_HEADER=${{ secrets.DEV_JWT_REFRESH_HEADER || 'Authorization-refresh' }}
 
-            GOOGLE_WEB_CLIENT_ID=${{ secrets.DEV_GOOGLE_WEB_CLIENT_ID || 'dev-google-web-client-id' }}
-            GOOGLE_APP_CLIENT_ID=${{ secrets.DEV_GOOGLE_APP_CLIENT_ID || 'dev-google-app-client-id' }}
+            GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID || 'dev-google-web-client-id' }}
+            GOOGLE_APP_CLIENT_ID=${{ secrets.GOOGLE_APP_CLIENT_ID || 'dev-google-app-client-id' }}
 
             APPLE_CLIENT_ID=${{ secrets.DEV_APPLE_CLIENT_ID || 'dev-apple-client-id' }}
             APPLE_TEAM_ID=${{ secrets.DEV_APPLE_TEAM_ID || 'dev-apple-team-id' }}
