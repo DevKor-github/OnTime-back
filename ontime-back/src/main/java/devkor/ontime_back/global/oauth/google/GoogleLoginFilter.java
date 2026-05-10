@@ -16,6 +16,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -57,7 +58,14 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
 
         try {
             GoogleIdToken.Payload googlePayload = googleLoginService.verifyIdentityToken(oAuthGoogleRequestDto.getIdToken());
+            if (googlePayload == null) {
+                throw new BadCredentialsException("Invalid Google identity token");
+            }
+
             String googleUserId = googlePayload.getSubject();
+            if (googleUserId == null || googleUserId.isBlank()) {
+                throw new BadCredentialsException("Google identity token has no subject");
+            }
 
             Object loginLock = LOGIN_LOCKS.computeIfAbsent(googleUserId, key -> new Object());
             synchronized (loginLock) {
@@ -84,6 +92,9 @@ public class GoogleLoginFilter extends AbstractAuthenticationProcessingFilter {
                 }
             }
 
+        } catch (AuthenticationException e) {
+            log.warn("Google login failed: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Google login failed: {}", e.getClass().getSimpleName());
             throw new AuthenticationException("Google 로그인 실패") {};
