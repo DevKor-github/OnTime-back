@@ -26,7 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
                 FirebaseTokenController.class,
                 AlarmController.class,
                 SocialAuthController.class,
-                AccountDeletionPageController.class
+                AccountDeletionPageController.class,
+                PrivacyPolicyController.class
         }
 )
 public abstract class ControllerTestSupport {
