@@ -133,8 +133,9 @@ public class AccountDeletionPageController {
 
                               <h2>Privacy Policy</h2>
                               <p>
-                                Once the public OnTime privacy policy is hosted, it should be linked from this page and listed in
-                                Google Play Console together with this account deletion request URL.
+                                The public OnTime privacy policy is available at
+                                <a href="https://ontime-back.duckdns.org/privacy-policy">https://ontime-back.duckdns.org/privacy-policy</a>.
+                                It can be listed in Google Play Console together with this account deletion request URL.
                               </p>
                             </section>
                           </main>

@@ -31,6 +31,6 @@ class AccountDeletionPageControllerTest extends ControllerTestSupport {
                 .andExpect(content().string(containsString("retain that feedback for up to")))
                 .andExpect(content().string(containsString("Operational logs, monitoring records, and security records may be retained for up to 90 days")))
                 .andExpect(content().string(containsString("retained for no longer than 30 days")))
-                .andExpect(content().string(containsString("privacy policy")));
+                .andExpect(content().string(containsString("https://ontime-back.duckdns.org/privacy-policy")));
     }
 }
