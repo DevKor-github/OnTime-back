@@ -7,11 +7,32 @@ import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
 import devkor.ontime_back.entity.AccountDeletionFeedback;
+import devkor.ontime_back.entity.DoneStatus;
+import devkor.ontime_back.entity.Feedback;
+import devkor.ontime_back.entity.FriendShip;
+import devkor.ontime_back.entity.NotificationSchedule;
+import devkor.ontime_back.entity.Place;
+import devkor.ontime_back.entity.PreparationSchedule;
+import devkor.ontime_back.entity.PreparationUser;
 import devkor.ontime_back.entity.Role;
+import devkor.ontime_back.entity.Schedule;
 import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.entity.UserAlarmSetting;
+import devkor.ontime_back.entity.UserAlarmStatus;
+import devkor.ontime_back.entity.UserDevice;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.repository.AccountDeletionFeedbackRepository;
+import devkor.ontime_back.repository.FeedbackRepository;
+import devkor.ontime_back.repository.FriendshipRepository;
+import devkor.ontime_back.repository.NotificationScheduleRepository;
+import devkor.ontime_back.repository.PlaceRepository;
+import devkor.ontime_back.repository.PreparationScheduleRepository;
+import devkor.ontime_back.repository.PreparationUserRepository;
+import devkor.ontime_back.repository.ScheduleRepository;
+import devkor.ontime_back.repository.UserAlarmSettingRepository;
+import devkor.ontime_back.repository.UserAlarmStatusRepository;
+import devkor.ontime_back.repository.UserDeviceRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.repository.UserSettingRepository;
 import devkor.ontime_back.response.GeneralException;
@@ -19,10 +40,14 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -50,6 +75,26 @@ class UserAuthServiceTest {
     private UserSettingRepository userSettingRepository;
     @Autowired
     private AccountDeletionFeedbackRepository accountDeletionFeedbackRepository;
+    @Autowired
+    private FeedbackRepository feedbackRepository;
+    @Autowired
+    private FriendshipRepository friendshipRepository;
+    @Autowired
+    private NotificationScheduleRepository notificationScheduleRepository;
+    @Autowired
+    private PlaceRepository placeRepository;
+    @Autowired
+    private PreparationScheduleRepository preparationScheduleRepository;
+    @Autowired
+    private PreparationUserRepository preparationUserRepository;
+    @Autowired
+    private ScheduleRepository scheduleRepository;
+    @Autowired
+    private UserAlarmSettingRepository userAlarmSettingRepository;
+    @Autowired
+    private UserAlarmStatusRepository userAlarmStatusRepository;
+    @Autowired
+    private UserDeviceRepository userDeviceRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -60,7 +105,17 @@ class UserAuthServiceTest {
     @AfterEach
     void tearDown() {
         accountDeletionFeedbackRepository.deleteAllInBatch();
+        userAlarmStatusRepository.deleteAllInBatch();
+        userDeviceRepository.deleteAllInBatch();
+        notificationScheduleRepository.deleteAllInBatch();
+        preparationScheduleRepository.deleteAllInBatch();
+        scheduleRepository.deleteAllInBatch();
+        preparationUserRepository.deleteAllInBatch();
+        feedbackRepository.deleteAllInBatch();
+        friendshipRepository.deleteAllInBatch();
+        userAlarmSettingRepository.deleteAllInBatch();
         userSettingRepository.deleteAllInBatch();
+        placeRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -343,6 +398,142 @@ class UserAuthServiceTest {
         assertThat(deletedUserId).isEqualTo(targetUserId);
         assertThat(userRepository.findById(targetUserId)).isEmpty();
         assertThat(accountDeletionFeedbackRepository.findAll()).isEmpty();
+    }
+
+    @DisplayName("소셜 계정 삭제 시 사용자 소유 데이터는 삭제하고 탈퇴 피드백만 익명화해 보존한다")
+    @ParameterizedTest
+    @EnumSource(SocialType.class)
+    void deleteSocialUserRemovesAssociatedDataAndRetainsAnonymizedDeletionFeedback(SocialType socialType) {
+        // given
+        User targetUser = User.builder()
+                .email(socialType.name().toLowerCase() + "@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("delete-target-" + socialType.name().toLowerCase())
+                .role(Role.USER)
+                .socialType(socialType)
+                .socialId("social-id-" + socialType.name().toLowerCase())
+                .firebaseToken("firebase-token")
+                .accessToken("access-token")
+                .refreshToken("refresh-token")
+                .socialLoginToken("provider-refresh-token")
+                .build();
+        UserSetting userSetting = UserSetting.builder()
+                .userSettingId(UUID.randomUUID())
+                .user(targetUser)
+                .build();
+        targetUser.setUserSetting(userSetting);
+        userRepository.saveAndFlush(targetUser);
+
+        User friendUser = userRepository.saveAndFlush(User.builder()
+                .email("friend-" + socialType.name().toLowerCase() + "@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("friend-" + socialType.name().toLowerCase())
+                .role(Role.USER)
+                .build());
+
+        Place place = placeRepository.save(Place.builder()
+                .placeId(UUID.randomUUID())
+                .placeName("Office")
+                .build());
+        Schedule schedule = scheduleRepository.save(Schedule.builder()
+                .scheduleId(UUID.randomUUID())
+                .user(targetUser)
+                .place(place)
+                .scheduleName("Release check")
+                .moveTime(20)
+                .scheduleTime(LocalDateTime.of(2026, 5, 9, 10, 0))
+                .isChange(false)
+                .isStarted(false)
+                .doneStatus(DoneStatus.NOT_ENDED)
+                .scheduleSpareTime(10)
+                .latenessTime(null)
+                .scheduleNote("Delete cascade verification")
+                .build());
+        preparationScheduleRepository.save(PreparationSchedule.builder()
+                .preparationScheduleId(UUID.randomUUID())
+                .schedule(schedule)
+                .preparationName("Pack")
+                .preparationTime(5)
+                .build());
+        notificationScheduleRepository.save(NotificationSchedule.builder()
+                .schedule(schedule)
+                .notificationTime(LocalDateTime.of(2026, 5, 9, 9, 45))
+                .isSent(false)
+                .build());
+        preparationUserRepository.save(PreparationUser.builder()
+                .preparationUserId(UUID.randomUUID())
+                .user(targetUser)
+                .preparationName("Brush teeth")
+                .preparationTime(3)
+                .build());
+        feedbackRepository.save(Feedback.builder()
+                .feedbackId(UUID.randomUUID())
+                .user(targetUser)
+                .message("general feedback")
+                .createAt(LocalDateTime.of(2026, 5, 9, 8, 0))
+                .build());
+        friendshipRepository.save(FriendShip.builder()
+                .friendShipId(UUID.randomUUID())
+                .requesterId(targetUser.getId())
+                .receiverId(friendUser.getId())
+                .acceptStatus("ACCEPTED")
+                .build());
+        userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(targetUser));
+        UserDevice userDevice = UserDevice.create(targetUser, "device-" + socialType.name().toLowerCase());
+        userDevice.activate("ios", "1.0.0", "17.0", true, "native", "fcm", Instant.now());
+        userDevice.bindSession("session-access-token", "session-refresh-token");
+        userDevice.updateFirebaseToken("device-firebase-token");
+        userDeviceRepository.save(userDevice);
+        UserAlarmStatus alarmStatus = UserAlarmStatus.create(targetUser, userDevice);
+        alarmStatus.replace(
+                Instant.now(),
+                LocalDateTime.of(2026, 5, 9, 0, 0),
+                LocalDateTime.of(2026, 5, 10, 0, 0),
+                LocalDateTime.of(2026, 5, 9, 9, 30),
+                LocalDateTime.of(2026, 5, 9, 10, 0),
+                "READY",
+                null,
+                "native",
+                "fcm",
+                1,
+                "[\"" + schedule.getScheduleId() + "\"]",
+                0,
+                null
+        );
+        userAlarmStatusRepository.save(alarmStatus);
+
+        UUID deletionFeedbackId = UUID.randomUUID();
+        FeedbackAddDto feedbackAddDto = FeedbackAddDto.builder()
+                .feedbackId(deletionFeedbackId)
+                .message("delete feedback")
+                .build();
+
+        // when
+        Long deletedUserId = userAuthService.deleteUser(targetUser.getId(), feedbackAddDto);
+
+        // then
+        assertThat(deletedUserId).isEqualTo(targetUser.getId());
+        assertThat(userRepository.findById(targetUser.getId())).isEmpty();
+        assertThat(userRepository.findById(friendUser.getId())).isPresent();
+        assertThat(scheduleRepository.findById(schedule.getScheduleId())).isEmpty();
+        assertThat(preparationScheduleRepository.count()).isZero();
+        assertThat(notificationScheduleRepository.count()).isZero();
+        assertThat(preparationUserRepository.count()).isZero();
+        assertThat(feedbackRepository.count()).isZero();
+        assertThat(friendshipRepository.count()).isZero();
+        assertThat(userSettingRepository.findByUserId(targetUser.getId())).isEmpty();
+        assertThat(userAlarmSettingRepository.findByUserId(targetUser.getId())).isEmpty();
+        assertThat(userDeviceRepository.findByUserIdAndDeviceId(targetUser.getId(), userDevice.getDeviceId())).isEmpty();
+        assertThat(userAlarmStatusRepository.findByUserDeviceUserDeviceId(userDevice.getUserDeviceId())).isEmpty();
+
+        AccountDeletionFeedback deletionFeedback = accountDeletionFeedbackRepository.findById(deletionFeedbackId)
+                .orElseThrow();
+        assertThat(deletionFeedback.getDeletedUserId()).isEqualTo(targetUser.getId());
+        assertThat(deletionFeedback.getSocialType()).isEqualTo(socialType);
+        assertThat(deletionFeedback.getMessage()).isEqualTo("delete feedback");
+        assertThat(deletionFeedback.getEmailHash()).hasSize(64);
+        assertThat(deletionFeedback.getEmailHash()).doesNotContain(targetUser.getEmail());
+        assertThat(deletionFeedback.getCreatedAt()).isNotNull();
     }
 
 
