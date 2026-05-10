@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -58,7 +59,13 @@ public class GoogleLoginService {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.userAlarmSettingRepository = userAlarmSettingRepository;
-        this.validClientIds = List.of(webClientId, appClientId);
+        this.validClientIds = Stream.concat(
+                        Stream.of(webClientId),
+                        Stream.of(appClientId.split(","))
+                )
+                .map(String::trim)
+                .filter(clientId -> !clientId.isBlank())
+                .toList();
     }
 
 

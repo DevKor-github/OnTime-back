@@ -30,7 +30,7 @@ The workflow builds a Docker image, pushes it to GHCR, uploads `docker-compose.y
 - `JWT_ACCESS_HEADER`
 - `JWT_REFRESH_HEADER`
 - `GOOGLE_WEB_CLIENT_ID`
-- `GOOGLE_APP_CLIENT_ID`
+- `GOOGLE_APP_CLIENT_ID` (comma-separated iOS and Android client IDs when both platforms are enabled)
 - `APPLE_CLIENT_ID`
 - `APPLE_LOGIN_KEY`
 - `APPLE_TEAM_ID`
