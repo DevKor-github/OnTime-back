@@ -54,8 +54,9 @@ request timestamp, response, owner, and evidence link.
 | Schedule preparation steps | `preparation_schedule` | Deleted in local integration test | N/A after deletion | Foreign-key cascade from schedule | Test asserts preparation schedule rows are absent | Backend repo; release env owner TBD |
 | Spare time setting | `user.spare_time`, `user_setting` | Deleted in local integration test | N/A after deletion | Account deletion hard-delete and setting cascade | Test asserts user setting row is absent | Backend repo; release env owner TBD |
 | General feedback sent through `/feedback` | `feedback` | Deleted in local integration test | N/A after deletion | Foreign-key cascade from user | Test asserts feedback rows are absent | Backend repo; release env owner TBD |
-| Account deletion feedback sent in delete request body | `account_deletion_feedback` | Retained with anonymized email hash in local integration test | TBD by privacy/product policy | Product analytics/support reason TBD | `saveAccountDeletionFeedback` stores deleted user ID, social type, SHA-256 normalized email hash, message, and created timestamp without a user foreign key; test asserts retained row and no plaintext email | Backend repo; privacy owner TBD |
-| Operational logs, audit logs, crash logs, analytics, or monitoring events | App logs, hosting logs, monitoring/analytics tools | TBD | TBD | TBD | Requires release environment/tooling review | Backend/environment owner |
+| Account deletion feedback sent in delete request body | `account_deletion_feedback` | Retained with anonymized email hash in local integration test, then scheduled for cleanup | Up to 1 year | Service quality review and deletion-related support issues | `saveAccountDeletionFeedback` stores deleted user ID, social type, SHA-256 normalized email hash, message, and created timestamp without a user foreign key; `RetentionCleanupService` deletes rows older than 1 year; tests assert retained row has no plaintext email and cleanup honors the cutoff | Backend repo |
+| Backend API request logs | `api_log` | Retained as operational metadata, then scheduled for cleanup | Up to 90 days | Service operation and debugging | `LoggingAspect` stores route, method, actor, client IP, status, latency, and timestamp without request bodies; `RetentionCleanupService` deletes rows older than 90 days; tests assert cleanup honors the cutoff | Backend repo |
+| Hosting logs, audit logs, crash logs, analytics, monitoring events, or security records | Hosting/logging/monitoring/analytics/security tools | TBD | TBD | TBD | Requires release environment/tooling review | Backend/environment owner |
 | Backups or disaster recovery snapshots | Database backups/snapshots | TBD | TBD | TBD | Requires backup policy review | Backend/environment owner |
 
 ## Social Token Revocation Decision
@@ -77,5 +78,6 @@ the release environment.
 - Confirm provider-side unlink/re-login behavior for Google and Apple.
 - Confirm operational log, crash log, analytics, monitoring, and backup
   retention behavior.
-- Record retention duration and reason for account deletion feedback.
+- Confirm hosting/application log, monitoring, analytics, audit, and security
+  event retention behavior outside the backend database.
 - Compare the final evidence with the privacy policy draft before closing #439.
