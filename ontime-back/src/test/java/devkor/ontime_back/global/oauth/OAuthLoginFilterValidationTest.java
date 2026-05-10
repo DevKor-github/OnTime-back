@@ -18,11 +18,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OAuthLoginFilterValidationTest {
@@ -63,6 +66,29 @@ class OAuthLoginFilterValidationTest {
 
         assertValidationResponse(response);
         verifyNoInteractions(googleLoginService, userRepository);
+    }
+
+    @Test
+    @DisplayName("구글 로그인 필터가 검증 실패한 idToken을 인증 실패로 처리한다")
+    void googleLoginFilterRejectsUnverifiedIdToken() throws Exception {
+        GoogleLoginFilter filter = new GoogleLoginFilter(
+                "/oauth2/google/login",
+                objectMapper,
+                validator,
+                googleLoginService,
+                userRepository);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(googleLoginService.verifyIdentityToken("invalid-token")).thenReturn(null);
+
+        assertThatThrownBy(() -> filter.attemptAuthentication(
+                request("/oauth2/google/login", "{\"idToken\":\"invalid-token\"}"),
+                response))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Invalid Google identity token");
+
+        verify(googleLoginService).verifyIdentityToken("invalid-token");
+        verifyNoInteractions(userRepository);
     }
 
     @Test
