@@ -6,7 +6,9 @@ Frontend integration guide for deleting an OnTime account with optional withdraw
 
 Account deletion hard-deletes the user from OnTime. The request can optionally include feedback. If feedback is provided, the backend stores it separately from the `User` table so it remains available after the account is deleted.
 
-For Google and Apple social accounts, the backend first tries to revoke the social login token, then deletes the local OnTime account.
+For Google and Apple social accounts, the backend first tries to revoke the social login token, then deletes the local OnTime account. If provider token revocation fails, the backend logs a warning and still deletes the local OnTime account.
+
+For release/privacy evidence by data category, see `docs/account-deletion-verification-evidence.md`.
 
 ## Authentication
 
@@ -99,14 +101,19 @@ Content-Type: application/json
 
 Success response:
 
-```text
-구글 로그인 회원탈퇴 성공
+```json
+{
+  "status": "success",
+  "code": "200",
+  "message": "구글 로그인 회원탈퇴 성공",
+  "data": null
+}
 ```
 
 Behavior:
 
 - Revokes the stored Google OAuth token for OnTime.
-- Deletes the local OnTime account.
+- Deletes the local OnTime account even if Google token revocation fails.
 - Saves optional feedback if `message` is nonblank.
 - Does not delete the user's actual Google account.
 
@@ -118,7 +125,7 @@ Expected frontend result after successful revoke:
 Important caveat:
 
 - The Google unlink only works if the backend has a valid Google refresh/access token saved in `socialLoginToken`.
-- If the client never provided a real Google refresh token, Google revoke may fail and the endpoint may return an error before local deletion.
+- If the client never provided a real Google refresh token, Google revoke may fail. The backend logs the revoke failure and still deletes the local OnTime account.
 
 ## Apple Account Deletion
 
@@ -143,14 +150,19 @@ Content-Type: application/json
 
 Success response:
 
-```text
-애플 로그인 회원탈퇴 성공
+```json
+{
+  "status": "success",
+  "code": "200",
+  "message": "애플 로그인 회원탈퇴 성공",
+  "data": null
+}
 ```
 
 Behavior:
 
 - Revokes the stored Apple OAuth token for OnTime.
-- Deletes the local OnTime account.
+- Deletes the local OnTime account even if Apple token revocation fails.
 - Saves optional feedback if `message` is nonblank.
 - Does not delete the user's Apple ID.
 
@@ -177,4 +189,4 @@ Feedback is not linked by foreign key to the deleted user.
 - Use `/oauth2/apple/me` for Apple-linked accounts if the product requirement is to unlink Apple access.
 - Use `/users/me/delete` for normal local deletion.
 - After a successful deletion response, clear local auth state and navigate to the logged-out screen.
-- Do not retry automatically on social revoke errors without showing the user, because the local account may not have been deleted.
+- If social provider revocation fails, the backend still returns success after deleting the local account. Follow up through support or backend logs if provider unlink confirmation is required.
