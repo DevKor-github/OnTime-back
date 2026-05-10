@@ -72,7 +72,7 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(frameOptions -> frameOptions.disable()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/css/**", "/images/**", "/js/**", "/favicon.ico", "/h2-console/**").permitAll()
+                        .requestMatchers("/", "/account-deletion", "/css/**", "/images/**", "/js/**", "/favicon.ico", "/h2-console/**").permitAll()
                         .requestMatchers("/health", "/actuator/health/**", "/oauth2/sign-up", "oauth2/success", "login/success", "/oauth2/google/login", "/oauth2/kakao/login", "/oauth2/apple/login", "/sign-up", "/*/additional-info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-resources/**", "/webjars/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()

@@ -32,7 +32,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final List<String> NO_CHECK_URLS = List.of("/login", "/health", "/actuator/health", "/swagger-ui", "/sign-up", "/v3/api-docs", "/oauth2/google/login", "/oauth2/kakao/login", "/oauth2/apple/login");
+    private static final List<String> NO_CHECK_URLS = List.of("/login", "/health", "/actuator/health", "/swagger-ui", "/sign-up", "/account-deletion", "/v3/api-docs", "/oauth2/google/login", "/oauth2/kakao/login", "/oauth2/apple/login");
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
