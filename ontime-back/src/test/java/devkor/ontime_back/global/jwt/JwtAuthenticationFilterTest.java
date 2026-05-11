@@ -16,7 +16,7 @@ class JwtAuthenticationFilterTest {
 
     @DisplayName("공개 HTML 페이지는 액세스 토큰 없이 JWT 필터를 통과한다.")
     @ParameterizedTest
-    @ValueSource(strings = {"/account-deletion", "/privacy-policy"})
+    @ValueSource(strings = {"/account-deletion", "/account-deletion/en", "/privacy-policy", "/privacy-policy/en"})
     void skipsPublicHtmlPages(String path) throws Exception {
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         UserRepository userRepository = mock(UserRepository.class);
