@@ -1,0 +1,1 @@
+ALTER TABLE schedule ADD COLUMN finished_at TIMESTAMP NULL;

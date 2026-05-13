@@ -372,6 +372,48 @@ public class PreparationScheduleServiceTest {
                 .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
     }
 
+    @Test
+    @DisplayName("시작된 스케줄의 준비과정 수정은 실패한다.")
+    void updatePreparationSchedules_rejectsStartedSchedule() {
+        User user = User.builder()
+                .email("started-prep@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("jinsuh")
+                .punctualityScore(-1f)
+                .scheduleCountAfterReset(0)
+                .latenessCountAfterReset(0)
+                .build();
+        userRepository.save(user);
+
+        Place place = Place.builder()
+                .placeId(UUID.randomUUID())
+                .placeName("과학도서관")
+                .build();
+        placeRepository.save(place);
+
+        Schedule schedule = Schedule.builder()
+                .scheduleId(UUID.randomUUID())
+                .scheduleName("공부하기")
+                .scheduleTime(LocalDateTime.of(2027, 2, 23, 7, 0))
+                .moveTime(10)
+                .latenessTime(-1)
+                .doneStatus(DoneStatus.NOT_ENDED)
+                .startedAt(java.time.Instant.now())
+                .isStarted(true)
+                .isChange(true)
+                .place(place)
+                .user(user)
+                .build();
+        scheduleRepository.save(schedule);
+
+        List<PreparationDto> preparationDtoList = List.of(
+                new PreparationDto(UUID.randomUUID(), "세면", 10, null)
+        );
+
+        assertThatThrownBy(() -> preparationScheduleService.updatePreparationSchedules(user.getId(), schedule.getScheduleId(), preparationDtoList))
+                .isInstanceOf(GeneralException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_ALREADY_STARTED);
+    }
 
 }
-

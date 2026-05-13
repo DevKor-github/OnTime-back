@@ -8,10 +8,10 @@ import lombok.Getter;
 public class ApiResponseForm<T> {
     // 제네릭 api 응답 객체
     private String status;
-    private int code;
+    private Object code;
     private String message;
     private final T data;
-    public ApiResponseForm(String status, int code, String message, T data) {
+    public ApiResponseForm(String status, Object code, String message, T data) {
         this.status = status; // HttpResponse의 생성자 호출 (부모 클래스의 생성자 또는 메서드를 호출, 자식 클래스는 부모 클래스의 private 필드에 직접 접근 X)
         this.code = code;
         this.message = message;
@@ -52,6 +52,10 @@ public class ApiResponseForm<T> {
 
     public static <T> ApiResponseForm<T> error(int code, String message, T data) {
         return new ApiResponseForm<>("error", code, message, data);
+    }
+
+    public static <T> ApiResponseForm<T> error(String code, String message) {
+        return new ApiResponseForm<>("error", code, message, null);
     }
 
 }
