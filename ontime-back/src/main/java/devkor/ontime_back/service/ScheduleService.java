@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,7 +185,7 @@ public class ScheduleService {
         assertScheduleNotFinished(schedule);
 
         if (schedule.getStartedAt() == null) {
-            schedule.startSchedule(Instant.now());
+            schedule.startSchedule(nowForPersistence());
             freezePreparationSnapshotIfNeeded(schedule);
             scheduleRepository.save(schedule);
         }
@@ -277,7 +278,7 @@ public class ScheduleService {
     // 지각 시간 업데이트
     @Transactional
     public void updateLatenessTime(Schedule schedule, Integer latenessTime) {
-        schedule.finish(latenessTime, Instant.now());
+        schedule.finish(latenessTime, nowForPersistence());
         scheduleRepository.save(schedule);
     }
 
@@ -300,7 +301,7 @@ public class ScheduleService {
             throw new GeneralException(SCHEDULE_NOT_STARTED);
         }
 
-        schedule.finish(finishPreparationDto.getLatenessTime(), Instant.now());
+        schedule.finish(finishPreparationDto.getLatenessTime(), nowForPersistence());
         scheduleRepository.save(schedule);
         userService.updatePunctualityScore(userId, schedule.getDoneStatus());
     }
@@ -435,6 +436,10 @@ public class ScheduleService {
 
     private Integer defaultNonNegative(Integer value) {
         return value == null ? 0 : Math.max(value, 0);
+    }
+
+    private Instant nowForPersistence() {
+        return Instant.now().truncatedTo(ChronoUnit.SECONDS);
     }
 
 }

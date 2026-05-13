@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.data.Offset.offset;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -265,9 +266,10 @@ class UserServiceTest {
 
         User updatedUser = userService.updatePunctualityScore(addedUser.getId(), DoneStatus.ABNORMAL);
 
+        assertThat(updatedUser.getPunctualityScore()).isCloseTo(calculatePunctualityScore(3, 1), offset(0.0001f));
         assertThat(updatedUser)
-                .extracting("punctualityScore", "scheduleCountAfterReset", "latenessCountAfterReset")
-                .contains(calculatePunctualityScore(3, 1), 3, 1);
+                .extracting("scheduleCountAfterReset", "latenessCountAfterReset")
+                .contains(3, 1);
     }
 
     @DisplayName("성실도 점수 업데이트할 때 존재하지 않는 유저id를 인자로 넘기는 경우 예외가 발생한다.")
