@@ -4,6 +4,7 @@ import devkor.ontime_back.entity.DoneStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +20,8 @@ public class AlarmWindowScheduleDto {
     private Integer moveTime;
     private Integer scheduleSpareTime;
     private DoneStatus doneStatus;
+    private Instant startedAt;
+    private Instant finishedAt;
     private LocalDateTime preparationStartTime;
     private LocalDateTime defaultAlarmTime;
     private List<PreparationDto> preparations;

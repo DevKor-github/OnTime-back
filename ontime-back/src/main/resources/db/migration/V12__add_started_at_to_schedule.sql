@@ -1,0 +1,1 @@
+ALTER TABLE schedule ADD COLUMN started_at TIMESTAMP NULL;

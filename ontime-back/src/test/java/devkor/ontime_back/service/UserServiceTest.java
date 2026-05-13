@@ -3,6 +3,7 @@ package devkor.ontime_back.service;
 import devkor.ontime_back.dto.UpdateSpareTimeDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserOnboardingDto;
+import devkor.ontime_back.entity.DoneStatus;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -152,7 +153,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 0);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.NORMAL);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -181,7 +182,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 1);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.LATE);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -210,7 +211,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 0);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.NORMAL);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -239,7 +240,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 1);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.LATE);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -247,6 +248,26 @@ class UserServiceTest {
         assertThat(updatedUser)
                 .extracting("punctualityScore", "scheduleCountAfterReset", "latenessCountAfterReset")
                 .contains(calculatePunctualityScore(4, 2), 4, 2);
+    }
+
+    @DisplayName("ABNORMAL 상태는 성실도 점수 계산에 포함하지 않는다.")
+    @Test
+    void updatePunctualityWithAbnormalDoesNotCount(){
+        User addedUser = User.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .punctualityScore(calculatePunctualityScore(3, 1))
+                .scheduleCountAfterReset(3)
+                .latenessCountAfterReset(1)
+                .build();
+        userRepository.save(addedUser);
+
+        User updatedUser = userService.updatePunctualityScore(addedUser.getId(), DoneStatus.ABNORMAL);
+
+        assertThat(updatedUser)
+                .extracting("punctualityScore", "scheduleCountAfterReset", "latenessCountAfterReset")
+                .contains(calculatePunctualityScore(3, 1), 3, 1);
     }
 
     @DisplayName("성실도 점수 업데이트할 때 존재하지 않는 유저id를 인자로 넘기는 경우 예외가 발생한다.")
@@ -265,7 +286,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId() + 1;
 
         // when // then
-        assertThatThrownBy(() -> userService.updatePunctualityScore(targetId, 1))
+        assertThatThrownBy(() -> userService.updatePunctualityScore(targetId, DoneStatus.LATE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("존재하지 않는 유저 id입니다.");
     }

@@ -50,6 +50,9 @@ class ScheduleServiceTest {
     @Autowired
     private NotificationScheduleRepository notificationScheduleRepository;
 
+    @Autowired
+    private PreparationUserService preparationUserService;
+
     @AfterEach
     void tearDown() {
         preparationUserRepository.deleteAll();
@@ -823,7 +826,8 @@ class ScheduleServiceTest {
         assertThat(updatedSchedule.getScheduleNote()).isEqualTo("늦으면 안됨");
         assertThat(updatedSchedule.getMoveTime()).isEqualTo(20);
         assertThat(updatedSchedule.getScheduleSpareTime()).isEqualTo(5);
-        assertThat(updatedSchedule.getLatenessTime()).isEqualTo(10);
+        assertThat(updatedSchedule.getLatenessTime()).isEqualTo(-1);
+        assertThat(updatedSchedule.getFinishedAt()).isNull();
 
     }
 
@@ -1223,6 +1227,7 @@ class ScheduleServiceTest {
                 .scheduleName("을사년 새해")
                 .scheduleTime(LocalDateTime.of(2025, 1, 1, 0, 0))
                 .latenessTime(-1)
+                .startedAt(java.time.Instant.now())
                 .user(addedUser)
                 .build();
         scheduleRepository.save(addedSchedule);
@@ -1260,6 +1265,7 @@ class ScheduleServiceTest {
                 .scheduleName("을사년 새해")
                 .scheduleTime(LocalDateTime.of(2025, 1, 1, 0, 0))
                 .latenessTime(-1)
+                .startedAt(java.time.Instant.now())
                 .user(addedUser)
                 .build();
         scheduleRepository.save(addedSchedule);
@@ -1304,6 +1310,7 @@ class ScheduleServiceTest {
                 .scheduleName("을사년 새해")
                 .scheduleTime(LocalDateTime.of(2025, 1, 1, 0, 0))
                 .latenessTime(-1)
+                .startedAt(java.time.Instant.now())
                 .user(addedUser)
                 .build();
         scheduleRepository.save(addedSchedule);
@@ -1318,7 +1325,53 @@ class ScheduleServiceTest {
         // then
         assertThat(scheduleRepository.findById(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
                 .get().getLatenessTime()).isEqualTo(1);
+        assertThat(scheduleRepository.findById(UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5"))
+                .get().getFinishedAt()).isNotNull();
         assertThat(userRepository.findById(addedUser.getId()).get().getPunctualityScore()).isEqualTo(0f);
+    }
+
+    @DisplayName("시작하지 않은 약속은 종료할 수 없고 성실도점수를 계산하지 않는다.")
+    @Test
+    void finishScheduleWithNotStartedSchedule(){
+        User addedUser = User.builder()
+                .email("not-started@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .punctualityScore(-1f)
+                .scheduleCountAfterReset(0)
+                .latenessCountAfterReset(0)
+                .build();
+        userRepository.save(addedUser);
+
+        Schedule addedSchedule = Schedule.builder()
+                .scheduleId(UUID.randomUUID())
+                .scheduleName("을사년 새해")
+                .scheduleTime(LocalDateTime.of(2025, 1, 1, 0, 0))
+                .latenessTime(-1)
+                .doneStatus(DoneStatus.NOT_ENDED)
+                .startedAt(null)
+                .user(addedUser)
+                .build();
+        scheduleRepository.save(addedSchedule);
+
+        FinishPreparationDto finishPreparationDto = FinishPreparationDto.builder()
+                .scheduleId(addedSchedule.getScheduleId())
+                .latenessTime(1)
+                .build();
+
+        assertThatThrownBy(() -> scheduleService.finishSchedule(addedUser.getId(), addedSchedule.getScheduleId(), finishPreparationDto))
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.SCHEDULE_NOT_STARTED.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_STARTED);
+
+        User user = userRepository.findById(addedUser.getId()).orElseThrow();
+        Schedule schedule = scheduleRepository.findById(addedSchedule.getScheduleId()).orElseThrow();
+        assertThat(schedule.getDoneStatus()).isEqualTo(DoneStatus.NOT_ENDED);
+        assertThat(schedule.getLatenessTime()).isEqualTo(-1);
+        assertThat(user.getPunctualityScore()).isEqualTo(-1f);
+        assertThat(user.getScheduleCountAfterReset()).isEqualTo(0);
+        assertThat(user.getLatenessCountAfterReset()).isEqualTo(0);
     }
 
     @DisplayName("약속을 종료할 때, 잘못된 유저id를 인자로 넘기는 경우 예외가 발생한다.")
@@ -1691,5 +1744,184 @@ class ScheduleServiceTest {
                 .hasMessage(ErrorCode.UNAUTHORIZED_ACCESS.getMessage())
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED_ACCESS);
+    }
+
+    @Test
+    @DisplayName("준비 시작 시 startedAt을 설정하고 기본 준비과정을 스케줄 스냅샷으로 복사한다.")
+    void startSchedule_snapshotsDefaultPreparations() {
+        User user = saveUser("start-user@example.com");
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, null);
+        saveDefaultPreparations(user, "세면", "옷입기");
+
+        StartScheduleResponseDto response = scheduleService.startSchedule(user.getId(), schedule.getScheduleId());
+
+        Schedule startedSchedule = scheduleRepository.findById(schedule.getScheduleId()).orElseThrow();
+        assertThat(startedSchedule.getStartedAt()).isNotNull();
+        assertThat(startedSchedule.getIsChange()).isTrue();
+        assertThat(response.getSchedule().getStartedAt()).isNotNull();
+        assertThat(response.getPreparations())
+                .extracting(PreparationDto::getPreparationName)
+                .containsExactlyInAnyOrder("세면", "옷입기");
+        assertThat(preparationScheduleRepository.findByScheduleWithNextPreparation(startedSchedule)).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("준비 시작은 idempotent 하며 기존 startedAt과 스냅샷을 유지한다.")
+    void startSchedule_isIdempotent() {
+        User user = saveUser("idempotent-user@example.com");
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, null);
+        saveDefaultPreparations(user, "세면", "옷입기");
+
+        StartScheduleResponseDto firstResponse = scheduleService.startSchedule(user.getId(), schedule.getScheduleId());
+        long firstSnapshotCount = preparationScheduleRepository.count();
+        StartScheduleResponseDto secondResponse = scheduleService.startSchedule(user.getId(), schedule.getScheduleId());
+
+        assertThat(secondResponse.getSchedule().getStartedAt()).isEqualTo(firstResponse.getSchedule().getStartedAt());
+        assertThat(preparationScheduleRepository.count()).isEqualTo(firstSnapshotCount);
+    }
+
+    @Test
+    @DisplayName("시작된 스케줄은 기본 준비과정 변경 후에도 스냅샷 준비과정을 읽는다.")
+    void startedScheduleReadsFrozenPreparationsAfterDefaultUpdate() {
+        User user = saveUser("frozen-user@example.com");
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, null);
+        saveDefaultPreparations(user, "세면", "옷입기");
+        scheduleService.startSchedule(user.getId(), schedule.getScheduleId());
+
+        List<PreparationDto> updatedDefaults = List.of(
+                new PreparationDto(UUID.randomUUID(), "운동하기", 5, null)
+        );
+        preparationUserService.updatePreparationUsers(user.getId(), updatedDefaults);
+
+        assertThat(scheduleService.getPreparations(user.getId(), schedule.getScheduleId()))
+                .extracting(PreparationDto::getPreparationName)
+                .containsExactlyInAnyOrder("세면", "옷입기");
+        assertThat(preparationUserService.showAllPreparationUsers(user.getId()))
+                .extracting(PreparationDto::getPreparationName)
+                .containsExactly("운동하기");
+    }
+
+    @Test
+    @DisplayName("시작된 스케줄 수정은 SCHEDULE_ALREADY_STARTED로 실패한다.")
+    void modifySchedule_rejectsStartedSchedule() {
+        User user = saveUser("modify-started@example.com");
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, java.time.Instant.now());
+        saveNotification(schedule);
+
+        ScheduleModDto scheduleModDto = ScheduleModDto.builder()
+                .scheduleName("변경")
+                .scheduleTime(LocalDateTime.of(2027, 2, 24, 14, 0))
+                .moveTime(20)
+                .scheduleNote("변경")
+                .placeId(place.getPlaceId())
+                .placeName(place.getPlaceName())
+                .scheduleSpareTime(5)
+                .latenessTime(null)
+                .build();
+
+        assertThatThrownBy(() -> scheduleService.modifySchedule(user.getId(), schedule.getScheduleId(), scheduleModDto))
+                .isInstanceOf(GeneralException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_ALREADY_STARTED);
+    }
+
+    @Test
+    @DisplayName("시작되었지만 끝나지 않은 스케줄은 삭제할 수 있다.")
+    void deleteSchedule_allowsStartedUnfinishedSchedule() {
+        User user = saveUser("delete-started@example.com");
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, java.time.Instant.now());
+        saveNotification(schedule);
+
+        scheduleService.deleteSchedule(schedule.getScheduleId(), user.getId());
+
+        assertThat(scheduleRepository.findById(schedule.getScheduleId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("종료된 스케줄은 시작할 수 없다.")
+    void startSchedule_rejectsFinishedSchedule() {
+        User user = saveUser("finished-start@example.com");
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NORMAL, null);
+
+        assertThatThrownBy(() -> scheduleService.startSchedule(user.getId(), schedule.getScheduleId()))
+                .isInstanceOf(GeneralException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_ALREADY_FINISHED);
+    }
+
+    @Test
+    @DisplayName("알람 윈도우 스케줄 응답에 startedAt을 포함한다.")
+    void getAlarmWindowSchedules_includesStartedAt() {
+        User user = saveUser("alarm-window@example.com");
+        user.updateAdditionalInfo(5, null);
+        userRepository.save(user);
+        Place place = savePlace();
+        java.time.Instant startedAt = java.time.Instant.parse("2026-05-13T10:15:30Z");
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, startedAt);
+
+        List<AlarmWindowScheduleDto> schedules = scheduleService.getAlarmWindowSchedules(
+                user.getId(),
+                schedule.getScheduleTime().minusHours(1),
+                schedule.getScheduleTime().plusHours(1)
+        );
+
+        assertThat(schedules).hasSize(1);
+        assertThat(schedules.get(0).getStartedAt()).isEqualTo(startedAt);
+    }
+
+    private User saveUser(String email) {
+        User user = User.builder()
+                .email(email)
+                .password(passwordEncoder.encode("password1234"))
+                .name(UUID.randomUUID().toString().substring(0, 8))
+                .punctualityScore(-1f)
+                .scheduleCountAfterReset(0)
+                .latenessCountAfterReset(0)
+                .build();
+        return userRepository.save(user);
+    }
+
+    private Place savePlace() {
+        return placeRepository.save(Place.builder()
+                .placeId(UUID.randomUUID())
+                .placeName("과학도서관")
+                .build());
+    }
+
+    private Schedule saveSchedule(User user, Place place, DoneStatus doneStatus, java.time.Instant startedAt) {
+        return scheduleRepository.save(Schedule.builder()
+                .scheduleId(UUID.randomUUID())
+                .scheduleName("공부하기")
+                .scheduleTime(LocalDateTime.of(2027, 2, 23, 7, 0))
+                .moveTime(10)
+                .latenessTime(-1)
+                .doneStatus(doneStatus)
+                .isStarted(startedAt != null)
+                .startedAt(startedAt)
+                .isChange(false)
+                .place(place)
+                .user(user)
+                .build());
+    }
+
+    private void saveDefaultPreparations(User user, String firstName, String secondName) {
+        PreparationUser second = preparationUserRepository.save(new PreparationUser(
+                UUID.randomUUID(), user, secondName, 15, null));
+        preparationUserRepository.save(new PreparationUser(
+                UUID.randomUUID(), user, firstName, 10, second));
+    }
+
+    private void saveNotification(Schedule schedule) {
+        notificationScheduleRepository.save(NotificationSchedule.builder()
+                .notificationTime(LocalDateTime.of(2027, 2, 23, 6, 55))
+                .isSent(false)
+                .schedule(schedule)
+                .build());
     }
 }

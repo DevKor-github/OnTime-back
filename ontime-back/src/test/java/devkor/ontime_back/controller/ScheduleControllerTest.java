@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -285,6 +286,75 @@ class ScheduleControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.message").value("지각시간과 성실도점수가 성공적으로 업데이트 되었습니다!"));
 
         verify(scheduleService, times(1)).finishSchedule(eq(userId), eq(scheduleId), any(FinishPreparationDto.class));
+    }
+
+    @DisplayName("준비 시작에 성공하면 startedAt과 준비과정을 반환한다.")
+    @Test
+    void startSchedule_success() throws Exception {
+        Long userId = 1L;
+        UUID scheduleId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5");
+        Instant startedAt = Instant.parse("2026-05-13T10:15:30Z");
+        ScheduleDto scheduleDto = new ScheduleDto(
+                scheduleId,
+                new PlaceDto(UUID.randomUUID(), "과학도서관"),
+                "공부하기",
+                10,
+                LocalDateTime.of(2026, 5, 13, 19, 0),
+                5,
+                "늦으면 안됨",
+                -1,
+                DoneStatus.NOT_ENDED,
+                startedAt
+        );
+        List<PreparationDto> preparations = List.of(
+                new PreparationDto(UUID.randomUUID(), "세면", 10, null)
+        );
+
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(userId);
+        when(scheduleService.startSchedule(userId, scheduleId))
+                .thenReturn(new StartScheduleResponseDto(scheduleDto, preparations));
+
+        mockMvc.perform(post("/schedules/{scheduleId}/start", scheduleId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.schedule.scheduleId").value(scheduleId.toString()))
+                .andExpect(jsonPath("$.data.schedule.startedAt").value("2026-05-13T10:15:30Z"))
+                .andExpect(jsonPath("$.data.preparations[0].preparationName").value("세면"));
+
+        verify(scheduleService, times(1)).startSchedule(userId, scheduleId);
+    }
+
+    @DisplayName("시작된 스케줄 수정 시 안정적인 문자열 에러 코드를 반환한다.")
+    @Test
+    void modifySchedule_failByAlreadyStarted() throws Exception {
+        Long userId = 1L;
+        UUID scheduleId = UUID.fromString("3fa85f64-5717-4562-b3fc-2c963f66afe5");
+        ScheduleModDto scheduleModDto = new ScheduleModDto(
+                UUID.randomUUID(),
+                "애기능생활관",
+                "학식먹기",
+                10,
+                LocalDateTime.of(2026, 5, 13, 10, 0),
+                20,
+                null,
+                "점심 식단 확인하자."
+        );
+
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(userId);
+        doThrow(new GeneralException(ErrorCode.SCHEDULE_ALREADY_STARTED))
+                .when(scheduleService).modifySchedule(eq(userId), eq(scheduleId), any(ScheduleModDto.class));
+
+        mockMvc.perform(put("/schedules/{scheduleId}", scheduleId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(scheduleModDto)))
+                .andDo(print())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value("error"))
+                .andExpect(jsonPath("$.code").value("SCHEDULE_ALREADY_STARTED"))
+                .andExpect(jsonPath("$.message").value("Started schedules cannot be edited."));
     }
 
     @DisplayName("약속 종료 요청에서 경로와 본문의 scheduleId가 다르면 400을 반환한다.")

@@ -6,13 +6,15 @@ import devkor.ontime_back.repository.*;
 import devkor.ontime_back.response.GeneralException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -46,6 +48,37 @@ public class ScheduleService {
         }
 
         return schedule;
+    }
+
+    private Schedule getLockedScheduleWithAuthorization(UUID scheduleId, Long userId) {
+        Schedule schedule = scheduleRepository.findByIdWithUserAndPlaceForUpdate(scheduleId)
+                .orElseThrow(() -> new GeneralException(SCHEDULE_NOT_FOUND));
+
+        if (!schedule.getUser().getId().equals(userId)) {
+            throw new GeneralException(UNAUTHORIZED_ACCESS);
+        }
+
+        return schedule;
+    }
+
+    public void assertScheduleEditable(Schedule schedule) {
+        if (isFinished(schedule)) {
+            throw new GeneralException(SCHEDULE_ALREADY_FINISHED);
+        }
+        if (schedule.getStartedAt() != null) {
+            throw new GeneralException(SCHEDULE_ALREADY_STARTED);
+        }
+    }
+
+    private void assertScheduleNotFinished(Schedule schedule) {
+        if (isFinished(schedule)) {
+            throw new GeneralException(SCHEDULE_ALREADY_FINISHED);
+        }
+    }
+
+    private boolean isFinished(Schedule schedule) {
+        return schedule.getFinishedAt() != null
+                || (schedule.getDoneStatus() != null && schedule.getDoneStatus() != DoneStatus.NOT_ENDED);
     }
 
     // 특정 기간의 약속 조회
@@ -84,7 +117,8 @@ public class ScheduleService {
     // schedule 삭제
     @Transactional
     public void deleteSchedule(UUID scheduleId, Long userId) {
-        getScheduleWithAuthorization(scheduleId, userId);
+        Schedule schedule = getLockedScheduleWithAuthorization(scheduleId, userId);
+        assertScheduleNotFinished(schedule);
         NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
                 .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
         scheduleRepository.deleteByScheduleId(scheduleId);
@@ -94,7 +128,8 @@ public class ScheduleService {
     @Transactional
     public void modifySchedule(Long userId, UUID scheduleId, ScheduleModDto scheduleModDto) {
         User user = userRepository.findById(userId).orElseThrow(() -> new GeneralException(USER_NOT_FOUND));
-        Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
+        Schedule schedule = getLockedScheduleWithAuthorization(scheduleId, userId);
+        assertScheduleEditable(schedule);
 
         Place place = placeRepository.findByPlaceName(scheduleModDto.getPlaceName())
                 .orElseGet(() -> placeRepository.save(new Place(scheduleModDto.getPlaceId(), scheduleModDto.getPlaceName())));
@@ -143,6 +178,74 @@ public class ScheduleService {
         notificationService.scheduleReminder(notification);
     }
 
+    @Transactional
+    public StartScheduleResponseDto startSchedule(Long userId, UUID scheduleId) {
+        Schedule schedule = getLockedScheduleWithAuthorization(scheduleId, userId);
+        assertScheduleNotFinished(schedule);
+
+        if (schedule.getStartedAt() == null) {
+            schedule.startSchedule(Instant.now());
+            freezePreparationSnapshotIfNeeded(schedule);
+            scheduleRepository.save(schedule);
+        }
+
+        return new StartScheduleResponseDto(
+                mapToDto(schedule),
+                getPreparations(userId, scheduleId)
+        );
+    }
+
+    private void freezePreparationSnapshotIfNeeded(Schedule schedule) {
+        boolean hasScheduleSpecificPreparations = preparationScheduleRepository.existsBySchedule(schedule);
+        if (!hasScheduleSpecificPreparations) {
+            copyDefaultPreparationsToSchedule(schedule);
+        }
+        schedule.changePreparationSchedule();
+    }
+
+    private void copyDefaultPreparationsToSchedule(Schedule schedule) {
+        List<PreparationUser> defaultPreparations = preparationUserRepository.findByUserIdWithNextPreparation(schedule.getUser().getId());
+        Map<UUID, PreparationSchedule> preparationMap = new HashMap<>();
+
+        List<PreparationSchedule> snapshots = defaultPreparations.stream()
+                .map(defaultPreparation -> {
+                    PreparationSchedule snapshot = new PreparationSchedule(
+                            UUID.randomUUID(),
+                            schedule,
+                            defaultPreparation.getPreparationName(),
+                            defaultPreparation.getPreparationTime(),
+                            null
+                    );
+                    preparationMap.put(defaultPreparation.getPreparationUserId(), snapshot);
+                    return snapshot;
+                })
+                .collect(Collectors.toList());
+
+        preparationScheduleRepository.saveAll(snapshots);
+
+        defaultPreparations.stream()
+                .filter(defaultPreparation -> defaultPreparation.getNextPreparation() != null)
+                .forEach(defaultPreparation -> {
+                    PreparationSchedule current = preparationMap.get(defaultPreparation.getPreparationUserId());
+                    PreparationSchedule next = preparationMap.get(defaultPreparation.getNextPreparation().getPreparationUserId());
+                    if (current != null && next != null) {
+                        current.updateNextPreparation(next);
+                    }
+                });
+
+        preparationScheduleRepository.saveAll(snapshots);
+    }
+
+    @Transactional
+    public int repairStartedSchedulePreparationSnapshots() {
+        List<Schedule> schedules = scheduleRepository.findStartedSchedulesWithoutPreparationSnapshot();
+        schedules.forEach(schedule -> {
+            freezePreparationSnapshotIfNeeded(schedule);
+            scheduleRepository.save(schedule);
+        });
+        return schedules.size();
+    }
+
     public LocalDateTime getNotificationTime(Schedule schedule, User user) {
         Integer preparationTime = calculatePreparationTime(schedule, user);
         Integer moveTime = defaultNonNegative(schedule.getMoveTime());
@@ -174,7 +277,7 @@ public class ScheduleService {
     // 지각 시간 업데이트
     @Transactional
     public void updateLatenessTime(Schedule schedule, Integer latenessTime) {
-        schedule.updateLatenessTime(latenessTime);
+        schedule.finish(latenessTime, Instant.now());
         scheduleRepository.save(schedule);
     }
 
@@ -187,22 +290,26 @@ public class ScheduleService {
             throw new GeneralException(SCHEDULE_ID_MISMATCH);
         }
 
-        Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
+        Schedule schedule = getLockedScheduleWithAuthorization(scheduleId, userId);
         boolean alreadyFinishedByDoneStatus = schedule.getDoneStatus() != null && schedule.getDoneStatus() != DoneStatus.NOT_ENDED;
         boolean alreadyFinishedByLatenessTime = schedule.getLatenessTime() != null && schedule.getLatenessTime() != -1;
-        if (alreadyFinishedByDoneStatus || alreadyFinishedByLatenessTime) {
+        if (schedule.getFinishedAt() != null || alreadyFinishedByDoneStatus || alreadyFinishedByLatenessTime) {
             throw new GeneralException(SCHEDULE_ALREADY_FINISHED);
         }
+        if (schedule.getStartedAt() == null) {
+            throw new GeneralException(SCHEDULE_NOT_STARTED);
+        }
 
-        updateLatenessTime(schedule, finishPreparationDto.getLatenessTime());
-        userService.updatePunctualityScore(userId, finishPreparationDto.getLatenessTime());
+        schedule.finish(finishPreparationDto.getLatenessTime(), Instant.now());
+        scheduleRepository.save(schedule);
+        userService.updatePunctualityScore(userId, schedule.getDoneStatus());
     }
 
     // schedule에 따른 preparation 조회
     public List<PreparationDto> getPreparations(Long userId, UUID scheduleId) {
         Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
 
-        if (Boolean.TRUE.equals(schedule.getIsChange())) {
+        if (schedule.getStartedAt() != null || Boolean.TRUE.equals(schedule.getIsChange())) {
             return preparationScheduleRepository.findByScheduleWithNextPreparation(schedule).stream()
                     .map(preparationSchedule -> new PreparationDto(
                             preparationSchedule.getPreparationScheduleId(),
@@ -256,12 +363,14 @@ public class ScheduleService {
                 (schedule.getScheduleSpareTime() == null) ? schedule.getUser().getSpareTime() : schedule.getScheduleSpareTime(),
                 schedule.getScheduleNote(),
                 schedule.getLatenessTime(),
-                schedule.getDoneStatus()
+                schedule.getDoneStatus(),
+                schedule.getStartedAt(),
+                schedule.getFinishedAt()
         );
     }
 
     private AlarmWindowScheduleDto mapToAlarmWindowDto(Schedule schedule, List<PreparationDto> userPreparations, Integer defaultAlarmOffsetMinutes) {
-        List<PreparationDto> preparations = Boolean.TRUE.equals(schedule.getIsChange())
+        List<PreparationDto> preparations = schedule.getStartedAt() != null || Boolean.TRUE.equals(schedule.getIsChange())
                 ? preparationScheduleRepository.findByScheduleWithNextPreparation(schedule).stream()
                 .map(this::mapPreparationScheduleToDto)
                 .collect(Collectors.toList())
@@ -286,6 +395,8 @@ public class ScheduleService {
                 .moveTime(moveTime)
                 .scheduleSpareTime(scheduleSpareTime)
                 .doneStatus(schedule.getDoneStatus())
+                .startedAt(schedule.getStartedAt())
+                .finishedAt(schedule.getFinishedAt())
                 .preparationStartTime(preparationStartTime)
                 .defaultAlarmTime(defaultAlarmTime)
                 .preparations(preparations)
