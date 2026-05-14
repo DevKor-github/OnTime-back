@@ -18,8 +18,11 @@ public interface PreparationUserRepository extends JpaRepository<PreparationUser
     // user 객체를 생성하는 대신, userId로 preparationUser 가져오는 메서드 생성
     @Query("SELECT pu FROM PreparationUser pu " +
             "LEFT JOIN FETCH pu.nextPreparation " +
-            "WHERE pu.user.id = :userId")
+            "WHERE pu.user.id = :userId " +
+            "ORDER BY pu.orderIndex ASC, pu.preparationUserId ASC")
     List<PreparationUser> findByUserIdWithNextPreparation(@Param("userId") Long userId);
+
+    boolean existsByPreparationUserIdAndUser_Id(UUID preparationUserId, Long userId);
 
     @Query("SELECT pu FROM PreparationUser pu " +
             "LEFT JOIN FETCH pu.nextPreparation " +

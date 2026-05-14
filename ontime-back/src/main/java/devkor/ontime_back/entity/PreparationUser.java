@@ -29,6 +29,9 @@ public class PreparationUser {
 
     private Integer preparationTime;
 
+    @Column(name = "order_index")
+    private Integer orderIndex;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "next_preparation_id")
     @OnDelete(action = OnDeleteAction.SET_NULL)
@@ -36,6 +39,10 @@ public class PreparationUser {
 
     public void updateNextPreparation(PreparationUser nextPreparation) {
         this.nextPreparation = nextPreparation;
+    }
+
+    public PreparationUser(UUID preparationUserId, User user, String preparationName, Integer preparationTime, PreparationUser nextPreparation) {
+        this(preparationUserId, user, preparationName, preparationTime, null, nextPreparation);
     }
 
 }

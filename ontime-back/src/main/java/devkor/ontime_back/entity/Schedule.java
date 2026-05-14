@@ -56,6 +56,14 @@ public class Schedule {
     @Enumerated(EnumType.STRING)
     private DoneStatus doneStatus;
 
+    @Enumerated(EnumType.STRING)
+    private PreparationMode preparationMode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preparation_template_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    private PreparationTemplate preparationTemplate;
+
     private Integer scheduleSpareTime; // 스케줄 별 여유시간
 
     private Integer latenessTime; // 지각 시간 (NULL이면 약속 전, 0이면 약속 성공, N(양수)면 N분 지각)
@@ -79,6 +87,31 @@ public class Schedule {
     }
 
     public void changePreparationSchedule() {this.isChange = true;}
+
+    public void useDefaultPreparation() {
+        this.preparationMode = PreparationMode.DEFAULT;
+        this.preparationTemplate = null;
+        this.isChange = false;
+    }
+
+    public void useTemplatePreparation(PreparationTemplate preparationTemplate) {
+        this.preparationMode = PreparationMode.TEMPLATE;
+        this.preparationTemplate = preparationTemplate;
+        this.isChange = false;
+    }
+
+    public void useCustomPreparation() {
+        this.preparationMode = PreparationMode.CUSTOM;
+        this.preparationTemplate = null;
+        this.isChange = true;
+    }
+
+    public PreparationMode effectivePreparationMode() {
+        if (preparationMode != null) {
+            return preparationMode;
+        }
+        return Boolean.TRUE.equals(isChange) ? PreparationMode.CUSTOM : PreparationMode.DEFAULT;
+    }
 
     public void updateLatenessTime(Integer latenessTime) {
         this.latenessTime = latenessTime;

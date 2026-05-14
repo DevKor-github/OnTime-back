@@ -4,6 +4,7 @@ import devkor.ontime_back.entity.DoneStatus;
 import devkor.ontime_back.entity.Place;
 import devkor.ontime_back.entity.Schedule;
 import devkor.ontime_back.entity.User;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -15,6 +16,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -41,6 +43,8 @@ public class ScheduleAddDto {
     private LocalDateTime scheduleTime; // 약속시각
     private Boolean isChange; // 변경여부
     private Boolean isStarted; // 버튼누름여부
+    private UUID preparationTemplateId;
+    private List<@Valid OrderedPreparationDto> customPreparations;
     @Min(value = 0, message = "여유 시간은 0 이상이어야 합니다.")
     @Max(value = 1440, message = "여유 시간은 1440 이하여야 합니다.")
     private Integer scheduleSpareTime; // 스케줄 별 여유시간
@@ -58,6 +62,8 @@ public class ScheduleAddDto {
                 .isStarted(false)
                 .startedAt(null)
                 .finishedAt(null)
+                .preparationMode(null)
+                .preparationTemplate(null)
                 .scheduleSpareTime(this.scheduleSpareTime)
                 .latenessTime(-1)
                 .scheduleNote(this.scheduleNote)
