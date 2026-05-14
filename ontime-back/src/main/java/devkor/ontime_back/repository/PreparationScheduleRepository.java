@@ -16,10 +16,13 @@ public interface PreparationScheduleRepository extends JpaRepository<Preparation
 
     @Query("SELECT ps FROM PreparationSchedule ps " +
             "LEFT JOIN FETCH ps.nextPreparation " +
-            "WHERE ps.schedule = :schedule")
+            "WHERE ps.schedule = :schedule " +
+            "ORDER BY ps.orderIndex ASC, ps.preparationScheduleId ASC")
     List<PreparationSchedule> findByScheduleWithNextPreparation(@Param("schedule") Schedule schedule);
 
     void deleteBySchedule(Schedule schedule);
 
     boolean existsBySchedule(Schedule schedule);
+
+    boolean existsByPreparationScheduleIdAndSchedule( UUID preparationScheduleId, Schedule schedule);
 }

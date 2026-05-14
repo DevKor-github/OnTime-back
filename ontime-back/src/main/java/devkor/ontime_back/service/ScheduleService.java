@@ -37,7 +37,10 @@ public class ScheduleService {
     private final PlaceRepository placeRepository;
     private final PreparationScheduleRepository preparationScheduleRepository;
     private final PreparationUserRepository preparationUserRepository;
+    private final PreparationTemplateRepository preparationTemplateRepository;
+    private final PreparationTemplateStepRepository preparationTemplateStepRepository;
     private final NotificationScheduleRepository notificationScheduleRepository;
+    private final PreparationStepService preparationStepService;
 
     // scheduleId, userId를 통한 권한 확인
     private Schedule getScheduleWithAuthorization(UUID scheduleId, Long userId) {
@@ -136,13 +139,11 @@ public class ScheduleService {
                 .orElseGet(() -> placeRepository.save(new Place(scheduleModDto.getPlaceId(), scheduleModDto.getPlaceName())));
 
         schedule.updateSchedule(place, scheduleModDto);
+        applyModifyPreparationMode(schedule, userId, scheduleModDto);
 
         scheduleRepository.save(schedule);
 
-        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
-                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
-        LocalDateTime newNotificationTime = getNotificationTime(schedule, user);
-        updateAndRescheduleNotification(newNotificationTime, notification);
+        refreshScheduleNotification(schedule);
     }
 
     public void updateAndRescheduleNotification(LocalDateTime newNotificationTime, NotificationSchedule notification) {
@@ -165,7 +166,12 @@ public class ScheduleService {
                 .orElseGet(() -> placeRepository.save(new Place(scheduleAddDto.getPlaceId(), scheduleAddDto.getPlaceName())));
 
         Schedule schedule = scheduleAddDto.toEntity(user, place);
+        applyCreatePreparationMode(schedule, userId, scheduleAddDto);
         scheduleRepository.save(schedule);
+
+        if (schedule.effectivePreparationMode() == PreparationMode.CUSTOM) {
+            replaceSchedulePreparations(schedule, preparationStepService.normalizeOrdered(scheduleAddDto.getCustomPreparations()));
+        }
 
         LocalDateTime notificationTime = getNotificationTime(schedule, user);
 
@@ -197,44 +203,103 @@ public class ScheduleService {
     }
 
     private void freezePreparationSnapshotIfNeeded(Schedule schedule) {
-        boolean hasScheduleSpecificPreparations = preparationScheduleRepository.existsBySchedule(schedule);
-        if (!hasScheduleSpecificPreparations) {
+        PreparationMode mode = schedule.effectivePreparationMode();
+        if (mode == PreparationMode.CUSTOM) {
+            schedule.changePreparationSchedule();
+            return;
+        }
+        preparationScheduleRepository.deleteBySchedule(schedule);
+        if (mode == PreparationMode.TEMPLATE) {
+            copyTemplatePreparationsToSchedule(schedule);
+        } else {
             copyDefaultPreparationsToSchedule(schedule);
         }
+        preparationScheduleRepository.flush();
         schedule.changePreparationSchedule();
     }
 
     private void copyDefaultPreparationsToSchedule(Schedule schedule) {
         List<PreparationUser> defaultPreparations = preparationUserRepository.findByUserIdWithNextPreparation(schedule.getUser().getId());
-        Map<UUID, PreparationSchedule> preparationMap = new HashMap<>();
+        List<PreparationDto> linkedPreparations = preparationStepService.toLinkedDtoFromUser(defaultPreparations);
+        List<OrderedPreparationDto> orderedPreparations = new java.util.ArrayList<>();
+        for (int i = 0; i < linkedPreparations.size(); i++) {
+            PreparationDto defaultPreparation = linkedPreparations.get(i);
+            orderedPreparations.add(OrderedPreparationDto.builder()
+                        .preparationId(UUID.randomUUID())
+                        .preparationName(defaultPreparation.getPreparationName())
+                        .preparationTime(defaultPreparation.getPreparationTime())
+                        .orderIndex(i)
+                        .build());
+        }
+        saveSchedulePreparations(schedule, orderedPreparations);
+    }
 
-        List<PreparationSchedule> snapshots = defaultPreparations.stream()
-                .map(defaultPreparation -> {
-                    PreparationSchedule snapshot = new PreparationSchedule(
-                            UUID.randomUUID(),
+    private void copyTemplatePreparationsToSchedule(Schedule schedule) {
+        PreparationTemplate template = schedule.getPreparationTemplate();
+        if (template == null) {
+            throw new GeneralException(PREPARATION_TEMPLATE_NOT_FOUND);
+        }
+        List<OrderedPreparationDto> orderedPreparations = preparationTemplateStepRepository.findByPreparationTemplateOrdered(template).stream()
+                .map(templateStep -> OrderedPreparationDto.builder()
+                        .preparationId(UUID.randomUUID())
+                        .preparationName(templateStep.getPreparationName())
+                        .preparationTime(templateStep.getPreparationTime())
+                        .orderIndex(defaultNonNegative(templateStep.getOrderIndex()))
+                        .build())
+                .collect(Collectors.toList());
+        saveSchedulePreparations(schedule, orderedPreparations);
+    }
+
+    @Transactional
+    public void replaceScheduleCustomPreparations(Long userId, UUID scheduleId, List<PreparationDto> preparationDtoList, boolean shouldDelete) {
+        Schedule schedule = getLockedScheduleWithAuthorization(scheduleId, userId);
+        assertScheduleEditable(schedule);
+        List<OrderedPreparationDto> orderedPreparations = preparationStepService.normalizeLinked(preparationDtoList);
+        preparationStepService.assertStepIdsAvailableForSchedule(orderedPreparations, schedule);
+        if (shouldDelete || preparationScheduleRepository.existsBySchedule(schedule)) {
+            preparationScheduleRepository.deleteBySchedule(schedule);
+            preparationScheduleRepository.flush();
+        }
+        schedule.useCustomPreparation();
+        scheduleRepository.save(schedule);
+        saveSchedulePreparations(schedule, orderedPreparations);
+        refreshScheduleNotification(schedule);
+    }
+
+    private void replaceSchedulePreparations(Schedule schedule, List<OrderedPreparationDto> orderedPreparations) {
+        preparationStepService.assertStepIdsAvailableForSchedule(orderedPreparations, schedule);
+        preparationScheduleRepository.deleteBySchedule(schedule);
+        preparationScheduleRepository.flush();
+        saveSchedulePreparations(schedule, orderedPreparations);
+    }
+
+    private void saveSchedulePreparations(Schedule schedule, List<OrderedPreparationDto> orderedPreparations) {
+        Map<UUID, PreparationSchedule> preparationMap = new HashMap<>();
+        List<PreparationSchedule> preparationSchedules = orderedPreparations.stream()
+                .map(dto -> {
+                    PreparationSchedule preparation = new PreparationSchedule(
+                            dto.getPreparationId(),
                             schedule,
-                            defaultPreparation.getPreparationName(),
-                            defaultPreparation.getPreparationTime(),
+                            dto.getPreparationName(),
+                            dto.getPreparationTime(),
+                            dto.getOrderIndex(),
                             null
                     );
-                    preparationMap.put(defaultPreparation.getPreparationUserId(), snapshot);
-                    return snapshot;
+                    preparationMap.put(dto.getPreparationId(), preparation);
+                    return preparation;
                 })
                 .collect(Collectors.toList());
 
-        preparationScheduleRepository.saveAll(snapshots);
+        preparationScheduleRepository.saveAll(preparationSchedules);
+        preparationScheduleRepository.flush();
 
-        defaultPreparations.stream()
-                .filter(defaultPreparation -> defaultPreparation.getNextPreparation() != null)
-                .forEach(defaultPreparation -> {
-                    PreparationSchedule current = preparationMap.get(defaultPreparation.getPreparationUserId());
-                    PreparationSchedule next = preparationMap.get(defaultPreparation.getNextPreparation().getPreparationUserId());
-                    if (current != null && next != null) {
-                        current.updateNextPreparation(next);
-                    }
-                });
+        for (int i = 0; i < orderedPreparations.size() - 1; i++) {
+            PreparationSchedule current = preparationMap.get(orderedPreparations.get(i).getPreparationId());
+            PreparationSchedule nextPreparation = preparationMap.get(orderedPreparations.get(i + 1).getPreparationId());
+            current.updateNextPreparation(nextPreparation);
+        }
 
-        preparationScheduleRepository.saveAll(snapshots);
+        preparationScheduleRepository.saveAll(preparationSchedules);
     }
 
     @Transactional
@@ -310,29 +375,7 @@ public class ScheduleService {
     public List<PreparationDto> getPreparations(Long userId, UUID scheduleId) {
         Schedule schedule = getScheduleWithAuthorization(scheduleId, userId);
 
-        if (schedule.getStartedAt() != null || Boolean.TRUE.equals(schedule.getIsChange())) {
-            return preparationScheduleRepository.findByScheduleWithNextPreparation(schedule).stream()
-                    .map(preparationSchedule -> new PreparationDto(
-                            preparationSchedule.getPreparationScheduleId(),
-                            preparationSchedule.getPreparationName(),
-                            defaultNonNegative(preparationSchedule.getPreparationTime()),
-                            preparationSchedule.getNextPreparation() != null
-                                    ? preparationSchedule.getNextPreparation().getPreparationScheduleId()
-                                    : null
-                    ))
-                    .collect(Collectors.toList());
-        } else {
-            return preparationUserRepository.findByUserIdWithNextPreparation(schedule.getUser().getId()).stream()
-                    .map(preparationUser -> new PreparationDto(
-                            preparationUser.getPreparationUserId(),
-                            preparationUser.getPreparationName(),
-                            defaultNonNegative(preparationUser.getPreparationTime()),
-                            preparationUser.getNextPreparation() != null
-                                    ? preparationUser.getNextPreparation().getPreparationUserId()
-                                    : null
-                    ))
-                    .collect(Collectors.toList());
-        }
+        return resolvePreparationDtos(schedule);
     }
 
     public List<AlarmWindowScheduleDto> getAlarmWindowSchedules(Long userId, LocalDateTime startDate, LocalDateTime endDate) {
@@ -344,13 +387,10 @@ public class ScheduleService {
         }
 
         List<Schedule> schedules = scheduleRepository.findAlarmWindowSchedules(userId, startDate, endDate, DoneStatus.NOT_ENDED);
-        List<PreparationDto> userPreparations = preparationUserRepository.findByUserIdWithNextPreparation(userId).stream()
-                .map(this::mapPreparationUserToDto)
-                .collect(Collectors.toList());
         Integer defaultAlarmOffsetMinutes = alarmService.getDefaultAlarmOffsetMinutes(userId);
 
         return schedules.stream()
-                .map(schedule -> mapToAlarmWindowDto(schedule, userPreparations, defaultAlarmOffsetMinutes))
+                .map(schedule -> mapToAlarmWindowDto(schedule, defaultAlarmOffsetMinutes))
                 .collect(Collectors.toList());
     }
 
@@ -366,16 +406,17 @@ public class ScheduleService {
                 schedule.getLatenessTime(),
                 schedule.getDoneStatus(),
                 schedule.getStartedAt(),
-                schedule.getFinishedAt()
+                schedule.getFinishedAt(),
+                schedule.effectivePreparationMode(),
+                schedule.getPreparationTemplate() != null ? schedule.getPreparationTemplate().getPreparationTemplateId() : null,
+                schedule.getPreparationTemplate() != null ? schedule.getPreparationTemplate().getTemplateName() : null,
+                schedule.getPreparationTemplate() != null ? schedule.getPreparationTemplate().isDeleted() : false,
+                schedule.getStartedAt() != null
         );
     }
 
-    private AlarmWindowScheduleDto mapToAlarmWindowDto(Schedule schedule, List<PreparationDto> userPreparations, Integer defaultAlarmOffsetMinutes) {
-        List<PreparationDto> preparations = schedule.getStartedAt() != null || Boolean.TRUE.equals(schedule.getIsChange())
-                ? preparationScheduleRepository.findByScheduleWithNextPreparation(schedule).stream()
-                .map(this::mapPreparationScheduleToDto)
-                .collect(Collectors.toList())
-                : userPreparations;
+    private AlarmWindowScheduleDto mapToAlarmWindowDto(Schedule schedule, Integer defaultAlarmOffsetMinutes) {
+        List<PreparationDto> preparations = resolvePreparationDtos(schedule);
 
         int totalPreparationTime = preparations.stream()
                 .map(PreparationDto::getPreparationTime)
@@ -398,6 +439,11 @@ public class ScheduleService {
                 .doneStatus(schedule.getDoneStatus())
                 .startedAt(schedule.getStartedAt())
                 .finishedAt(schedule.getFinishedAt())
+                .preparationMode(schedule.effectivePreparationMode())
+                .preparationTemplateId(schedule.getPreparationTemplate() != null ? schedule.getPreparationTemplate().getPreparationTemplateId() : null)
+                .preparationTemplateName(schedule.getPreparationTemplate() != null ? schedule.getPreparationTemplate().getTemplateName() : null)
+                .preparationTemplateDeleted(schedule.getPreparationTemplate() != null && schedule.getPreparationTemplate().isDeleted())
+                .preparationFrozen(schedule.getStartedAt() != null)
                 .preparationStartTime(preparationStartTime)
                 .defaultAlarmTime(defaultAlarmTime)
                 .preparations(preparations)
@@ -414,6 +460,116 @@ public class ScheduleService {
                         ? preparationSchedule.getNextPreparation().getPreparationScheduleId()
                         : null
         );
+    }
+
+    private List<PreparationDto> resolvePreparationDtos(Schedule schedule) {
+        if (schedule.getStartedAt() != null || schedule.effectivePreparationMode() == PreparationMode.CUSTOM) {
+            return preparationStepService.toLinkedDtoFromSchedule(
+                    preparationScheduleRepository.findByScheduleWithNextPreparation(schedule)
+            );
+        }
+        if (schedule.effectivePreparationMode() == PreparationMode.TEMPLATE) {
+            if (schedule.getPreparationTemplate() == null) {
+                throw new GeneralException(PREPARATION_TEMPLATE_NOT_FOUND);
+            }
+            return preparationStepService.toLinkedDtoFromTemplate(
+                    preparationTemplateStepRepository.findByPreparationTemplateOrdered(schedule.getPreparationTemplate())
+            );
+        }
+        return preparationStepService.toLinkedDtoFromUser(
+                preparationUserRepository.findByUserIdWithNextPreparation(schedule.getUser().getId())
+        );
+    }
+
+    private void applyCreatePreparationMode(Schedule schedule, Long userId, ScheduleAddDto scheduleAddDto) {
+        boolean hasTemplate = scheduleAddDto.getPreparationTemplateId() != null;
+        boolean hasCustom = scheduleAddDto.getCustomPreparations() != null;
+        if (hasCustom && scheduleAddDto.getCustomPreparations().isEmpty()) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+        if (hasTemplate && hasCustom) {
+            throw new GeneralException(INVALID_INPUT);
+        }
+        if (hasTemplate) {
+            schedule.useTemplatePreparation(findActiveTemplate(userId, scheduleAddDto.getPreparationTemplateId()));
+        } else if (hasCustom) {
+            schedule.useCustomPreparation();
+        } else {
+            schedule.useDefaultPreparation();
+        }
+    }
+
+    private void applyModifyPreparationMode(Schedule schedule, Long userId, ScheduleModDto scheduleModDto) {
+        if (scheduleModDto.getPreparationMode() == null) {
+            if (scheduleModDto.getPreparationTemplateId() != null
+                    || scheduleModDto.getCustomPreparations() != null) {
+                throw new GeneralException(INVALID_INPUT);
+            }
+            return;
+        }
+
+        switch (scheduleModDto.getPreparationMode()) {
+            case DEFAULT -> {
+                if (scheduleModDto.getPreparationTemplateId() != null
+                        || scheduleModDto.getCustomPreparations() != null) {
+                    throw new GeneralException(INVALID_INPUT);
+                }
+                preparationScheduleRepository.deleteBySchedule(schedule);
+                preparationScheduleRepository.flush();
+                schedule.useDefaultPreparation();
+            }
+            case TEMPLATE -> {
+                if (scheduleModDto.getPreparationTemplateId() == null
+                        || scheduleModDto.getCustomPreparations() != null) {
+                    throw new GeneralException(INVALID_INPUT);
+                }
+                preparationScheduleRepository.deleteBySchedule(schedule);
+                preparationScheduleRepository.flush();
+                schedule.useTemplatePreparation(findActiveTemplate(userId, scheduleModDto.getPreparationTemplateId()));
+            }
+            case CUSTOM -> {
+                if (scheduleModDto.getPreparationTemplateId() != null
+                        || scheduleModDto.getCustomPreparations() == null
+                        || scheduleModDto.getCustomPreparations().isEmpty()) {
+                    throw new GeneralException(INVALID_INPUT);
+                }
+                schedule.useCustomPreparation();
+                replaceSchedulePreparations(schedule, preparationStepService.normalizeOrdered(scheduleModDto.getCustomPreparations()));
+            }
+        }
+    }
+
+    private PreparationTemplate findActiveTemplate(Long userId, UUID templateId) {
+        PreparationTemplate template = preparationTemplateRepository.findByIdAndUserId(templateId, userId)
+                .orElseThrow(() -> new GeneralException(PREPARATION_TEMPLATE_NOT_FOUND));
+        if (template.isDeleted()) {
+            throw new GeneralException(PREPARATION_TEMPLATE_DELETED);
+        }
+        return template;
+    }
+
+    public void refreshNotStartedTemplateModeSchedules(UUID templateId) {
+        scheduleRepository.findNotStartedTemplateModeSchedules(templateId)
+                .forEach(this::refreshScheduleNotification);
+    }
+
+    public void refreshNotStartedDefaultModeSchedules(Long userId) {
+        scheduleRepository.findNotStartedDefaultModeSchedules(userId)
+                .forEach(this::refreshScheduleNotification);
+    }
+
+    private void refreshScheduleNotification(Schedule schedule) {
+        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(schedule.getScheduleId())
+                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
+        LocalDateTime newNotificationTime = getNotificationTime(schedule, schedule.getUser());
+        if (newNotificationTime.equals(notification.getNotificationTime())) {
+            notificationService.cancelScheduledNotification(notification.getId());
+            notification.markAsUnsent();
+            notificationScheduleRepository.save(notification);
+            notificationService.scheduleReminder(notification);
+            return;
+        }
+        updateAndRescheduleNotification(newNotificationTime, notification);
     }
 
     private PreparationDto mapPreparationUserToDto(PreparationUser preparationUser) {
