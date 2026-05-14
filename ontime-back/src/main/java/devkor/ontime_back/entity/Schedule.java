@@ -6,7 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
-import java.sql.Time;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -47,6 +47,12 @@ public class Schedule {
 
     private Boolean isStarted; // 버튼누름여부
 
+    @Column(name = "started_at")
+    private Instant startedAt;
+
+    @Column(name = "finished_at")
+    private Instant finishedAt;
+
     @Enumerated(EnumType.STRING)
     private DoneStatus doneStatus;
 
@@ -64,13 +70,12 @@ public class Schedule {
         this.moveTime = scheduleModDto.getMoveTime();
         this.scheduleTime = scheduleModDto.getScheduleTime();
         this.scheduleSpareTime = scheduleModDto.getScheduleSpareTime();
-        this.latenessTime = scheduleModDto.getLatenessTime();
         this.scheduleNote = scheduleModDto.getScheduleNote();
-        syncDoneStatusFromLatenessTime();
     }
 
-    public void startSchedule() {
+    public void startSchedule(Instant startedAt) {
         this.isStarted = true;
+        this.startedAt = startedAt;
     }
 
     public void changePreparationSchedule() {this.isChange = true;}
@@ -79,6 +84,18 @@ public class Schedule {
         this.latenessTime = latenessTime;
 
         syncDoneStatusFromLatenessTime();
+    }
+
+    public void finish(Integer latenessTime, Instant finishedAt) {
+        this.latenessTime = latenessTime;
+        this.finishedAt = finishedAt;
+        if (latenessTime == null) {
+            this.doneStatus = DoneStatus.ABNORMAL;
+        } else if (latenessTime > 0) {
+            this.doneStatus = DoneStatus.LATE;
+        } else {
+            this.doneStatus = DoneStatus.NORMAL;
+        }
     }
 
     private void syncDoneStatusFromLatenessTime() {
@@ -94,4 +111,3 @@ public class Schedule {
         }
     }
 }
-

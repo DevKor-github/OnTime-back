@@ -56,6 +56,8 @@ public class ScheduleAddDto {
                 .scheduleTime(this.scheduleTime)
                 .isChange(false)
                 .isStarted(false)
+                .startedAt(null)
+                .finishedAt(null)
                 .scheduleSpareTime(this.scheduleSpareTime)
                 .latenessTime(-1)
                 .scheduleNote(this.scheduleNote)

@@ -145,6 +145,24 @@ public class ScheduleController {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(schedule));
     }
 
+    @Operation(summary = "준비 시작")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "준비 시작 성공"),
+            @ApiResponse(responseCode = "409", description = "이미 종료된 약속")
+    })
+    @PostMapping("/{scheduleId}/start")
+    public ResponseEntity<ApiResponseForm<StartScheduleResponseDto>> startSchedule(
+            HttpServletRequest request,
+            @Parameter(description = "준비를 시작할 스케줄 ID (UUID 형식)",
+                    required = true,
+                    example = "3fa85f64-5717-4562-b3fc-2c963f66afe5")
+            @PathVariable UUID scheduleId) {
+
+        Long userId = userAuthService.getUserIdFromToken(request);
+        StartScheduleResponseDto response = scheduleService.startSchedule(userId, scheduleId);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponseForm.success(response));
+    }
+
     // 약속 삭제
     @Operation(summary = "사용자 일정 삭제",
             parameters = {

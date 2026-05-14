@@ -192,7 +192,7 @@ public class GoogleLoginService {
             Long expirationTimeSeconds = payload.getExpirationTimeSeconds();
             long nowSeconds = System.currentTimeMillis() / 1000;
             log.info(
-                    "Google identity token claims aud={}, azp={}, iss={}, exp={}, now={}, secondsUntilExp={}, audienceAllowed={}",
+                    "Google identity credential claims aud={}, azp={}, iss={}, exp={}, now={}, secondsUntilExp={}, audienceAllowed={}",
                     maskClientId(audience),
                     payload.get("azp"),
                     payload.getIssuer(),
@@ -202,7 +202,7 @@ public class GoogleLoginService {
                     validClientIds.contains(audience)
             );
         } catch (Exception e) {
-            log.info("Google identity token claim parsing failed: {}", e.getClass().getSimpleName());
+            log.info("Google identity credential claim parsing failed: {}", e.getClass().getSimpleName());
         }
     }
 

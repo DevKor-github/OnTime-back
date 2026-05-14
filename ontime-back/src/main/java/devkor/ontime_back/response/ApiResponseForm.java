@@ -17,14 +17,14 @@ public class ApiResponseForm<T> {
     private String status;
 
     @Schema(description = "애플리케이션 응답 코드", example = "200")
-    private int code;
+    private Object code;
 
     @Schema(description = "응답 메시지", example = "OK")
     private String message;
 
     @Schema(description = "응답 데이터. 오류 응답에서는 null일 수 있습니다.", nullable = true)
     private final T data;
-    public ApiResponseForm(String status, int code, String message, T data) {
+    public ApiResponseForm(String status, Object code, String message, T data) {
         this.status = status; // HttpResponse의 생성자 호출 (부모 클래스의 생성자 또는 메서드를 호출, 자식 클래스는 부모 클래스의 private 필드에 직접 접근 X)
         this.code = code;
         this.message = message;
@@ -65,6 +65,10 @@ public class ApiResponseForm<T> {
 
     public static <T> ApiResponseForm<T> error(int code, String message, T data) {
         return new ApiResponseForm<>("error", code, message, data);
+    }
+
+    public static <T> ApiResponseForm<T> error(String code, String message) {
+        return new ApiResponseForm<>("error", code, message, null);
     }
 
 }

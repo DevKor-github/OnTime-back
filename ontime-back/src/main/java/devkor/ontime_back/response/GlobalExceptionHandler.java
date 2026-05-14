@@ -27,6 +27,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponseForm<Void>> handleGeneralException(GeneralException e) {
         // GeneralException에서 ErrorCode를 가져와 처리
         ErrorCode errorCode = e.getErrorCode();
+        if (errorCode == ErrorCode.SCHEDULE_ALREADY_STARTED
+                || errorCode == ErrorCode.SCHEDULE_ALREADY_FINISHED
+                || errorCode == ErrorCode.SCHEDULE_NOT_STARTED) {
+            return ResponseEntity.status(errorCode.getHttpStatus())
+                    .body(ApiResponseForm.error(errorCode.name(), errorCode.getMessage()));
+        }
         return ResponseEntity.status(errorCode.getHttpStatus())
                 .body(ApiResponseForm.error(errorCode.getCode(), errorCode.getMessage()));
     }

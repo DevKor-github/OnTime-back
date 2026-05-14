@@ -20,4 +20,6 @@ public interface PreparationScheduleRepository extends JpaRepository<Preparation
     List<PreparationSchedule> findByScheduleWithNextPreparation(@Param("schedule") Schedule schedule);
 
     void deleteBySchedule(Schedule schedule);
+
+    boolean existsBySchedule(Schedule schedule);
 }

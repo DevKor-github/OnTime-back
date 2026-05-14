@@ -3,7 +3,9 @@ package devkor.ontime_back.repository;
 
 import devkor.ontime_back.entity.DoneStatus;
 import devkor.ontime_back.entity.Schedule;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +26,10 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     // getScheduleWithAuthorization에서 Lazy Loading으로 인해 추가 SELECT 발생 가능 -> JOIN FETCH를 사용하여 Schedule과 User를 한 번의 쿼리로 조회
     @Query("SELECT s FROM Schedule s JOIN FETCH s.user WHERE s.scheduleId = :scheduleId")
     Optional<Schedule> findByIdWithUser(@Param("scheduleId") UUID scheduleId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.user LEFT JOIN FETCH s.place WHERE s.scheduleId = :scheduleId")
+    Optional<Schedule> findByIdWithUserAndPlaceForUpdate(@Param("scheduleId") UUID scheduleId);
 
     // deleteById()는 내부적으로 findById()를 실행하여 엔티티를 로드 후 삭제 -> JPQL DELETE를 사용해 한 번의 DELETE 쿼리만 실행
     @Modifying
@@ -64,5 +70,10 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
                                             @Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate,
                                             @Param("doneStatus") DoneStatus doneStatus);
+
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.user " +
+            "WHERE s.startedAt IS NOT NULL " +
+            "AND NOT EXISTS (SELECT ps FROM PreparationSchedule ps WHERE ps.schedule = s)")
+    List<Schedule> findStartedSchedulesWithoutPreparationSnapshot();
 
 }
