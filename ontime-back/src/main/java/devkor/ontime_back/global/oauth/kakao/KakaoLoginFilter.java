@@ -151,7 +151,6 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
         log.info("카카오 로그인 성공");
         SecurityContextHolder.getContext().setAuthentication(authResult);
         response.setStatus(HttpServletResponse.SC_OK);
-        response.getWriter().write("{\"status\":\"success\", \"data\":\"login/register\"}");
     }
 
     // 인증 실패 처리

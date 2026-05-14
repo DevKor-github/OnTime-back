@@ -5,11 +5,10 @@ import devkor.ontime_back.dto.FeedbackAddDto;
 import devkor.ontime_back.dto.LoginRequestDto;
 import devkor.ontime_back.dto.UserInfoResponse;
 import devkor.ontime_back.dto.UserSignUpDto;
-import devkor.ontime_back.entity.User;
-import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.ApiResponseForm;
 import devkor.ontime_back.service.UserAuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -34,15 +33,18 @@ public class UserAuthController {
                     description = "회원가입 요청 JSON 데이터",
                     required = true,
                     content = @Content(
-                            schema = @Schema(type = "object", example = "{\"email\": \"user@example.com\", \"password\": \"password123\", \"name\": \"junbeom\"}")
+                            schema = @Schema(implementation = UserSignUpDto.class, example = "{\"email\": \"user@example.com\", \"password\": \"password123!\", \"name\": \"junbeom\"}")
                     )
             )
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "회원가입 성공", content = @Content(
+            @ApiResponse(responseCode = "200", description = "회원가입 성공", headers = {
+                    @Header(name = "Authorization", description = "Bearer access token"),
+                    @Header(name = "Authorization-refresh", description = "Bearer refresh token")
+            }, content = @Content(
                     mediaType = "application/json",
                     schema = @Schema(
-                            example = "{\n  \"status\": \"success\",\n  \"code\": \"200\",\n  \"message\": \"회원가입이 성공적으로 완료되었습니다. 온보딩을 진행해주세요( /user/onboarding )\",\n  \"data\": {\n    \"userId\": 1\n  }}"
+                            example = "{\n  \"status\": \"success\",\n  \"code\": 200,\n  \"message\": \"회원가입이 성공적으로 완료되었습니다. 온보딩을 진행해주세요( /user/onboarding )\",\n  \"data\": {\n    \"userId\": 1,\n    \"email\": \"user@example.com\",\n    \"name\": \"junbeom\",\n    \"spareTime\": null,\n    \"note\": null,\n    \"punctualityScore\": null,\n    \"role\": \"GUEST\",\n    \"socialType\": null\n  }\n}"
                     )
             )),
             @ApiResponse(responseCode = "4XX", description = "회원가입 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(이메일이 이미 존재할 경우, 이름이 이미 존재할 경우 다르게 출력)")))
@@ -57,7 +59,10 @@ public class UserAuthController {
 
     @Operation(summary = "일반 로그인 (로그인 요청을 통해 JWT 토큰을 발급받음)")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "일반 로그인 성공(반환 문자열 없음. 헤더에 토큰 반환)", content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n  \"message\": \"유저의 ROLE이 GUEST이므로 온보딩API를 호출해 온보딩을 진행해야합니다.\", \"role\": \"GUEST\"}"))),
+            @ApiResponse(responseCode = "200", description = "일반 로그인 성공. 토큰은 응답 헤더에 반환됨", headers = {
+                    @Header(name = "Authorization", description = "Bearer access token"),
+                    @Header(name = "Authorization-refresh", description = "Bearer refresh token")
+            }, content = @Content(mediaType = "application/json", schema = @Schema(example = "{\n  \"status\": \"success\",\n  \"code\": \"200\",\n  \"message\": \"로그인에 성공하였습니다.\",\n  \"data\": {\n    \"userId\": 1,\n    \"email\": \"user@example.com\",\n    \"name\": \"junbeom\",\n    \"spareTime\": 10,\n    \"note\": null,\n    \"punctualityScore\": 100.0,\n    \"role\": \"USER\"\n  }\n}"))),
             @ApiResponse(responseCode = "4XX", description = "일반 로그인 실패", content = @Content(mediaType = "application/json", schema = @Schema(example = "실패 메세지(정확히 어떤 메세지인지는 모름)")))
     })
     @PostMapping("/login")
@@ -66,7 +71,7 @@ public class UserAuthController {
                     description = "로그인 요청 JSON 데이터",
                     required = true,
                     content = @Content(
-                            schema = @Schema(type = "object", example = "{\"email\": \"user@example.com\", \"password\": \"password123\"}")
+                            schema = @Schema(implementation = LoginRequestDto.class, example = "{\"email\": \"user@example.com\", \"password\": \"password123!\"}")
                     )
             )
             @Valid @RequestBody LoginRequestDto loginRequest) {
@@ -81,7 +86,7 @@ public class UserAuthController {
                     required = true,
                     content = @Content(
                             schema = @Schema(
-                                    type = "object",
+                                    implementation = ChangePasswordDto.class,
                                     example = "{\"currentPassword\": \"password123\", \"newPassword\": \"1q2w3e4r!\"}"
                             )
                     )
@@ -111,7 +116,7 @@ public class UserAuthController {
                     description = "계정 삭제 요청 JSON 데이터는 선택사항. 탈퇴 피드백을 남기려면 feedbackId, message를 전달",
                     content = @Content(
                             schema = @Schema(
-                                    type = "object",
+                                    implementation = FeedbackAddDto.class,
                                     example = "{\"feedbackId\": \"d784cde3-9ff9-4054-872a-500bbcc2198a\", \"message\": \"탈퇴 피드백입니다.\"}"
                             )
                     )
