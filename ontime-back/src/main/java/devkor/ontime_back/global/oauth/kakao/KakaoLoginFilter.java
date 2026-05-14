@@ -119,7 +119,7 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
 
         User savedUser = userRepository.save(newUser);
 
-        String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
+        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getEmail(), savedUser.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
         savedUser.updateAccessToken(accessToken);
@@ -151,7 +151,6 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
         log.info("카카오 로그인 성공");
         SecurityContextHolder.getContext().setAuthentication(authResult);
         response.setStatus(HttpServletResponse.SC_OK);
-        response.getWriter().write("{\"status\":\"success\", \"data\":\"login/register\"}");
     }
 
     // 인증 실패 처리

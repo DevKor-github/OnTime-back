@@ -2,6 +2,7 @@ package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.UpdateSpareTimeDto;
 import devkor.ontime_back.dto.UserOnboardingDto;
+import devkor.ontime_back.entity.DoneStatus;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,18 +38,23 @@ public class UserService {
 
     // 성실도 점수 업데이트
     @Transactional
-    public User updatePunctualityScore(Long userId, Integer latenessTime) {
+    public User updatePunctualityScore(Long userId, DoneStatus doneStatus) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저 id입니다."));
 
+        if (doneStatus != DoneStatus.NORMAL && doneStatus != DoneStatus.LATE) {
+            return user;
+        }
+
+        boolean isLate = doneStatus == DoneStatus.LATE;
         if ( user.getPunctualityScore() == null || user.getPunctualityScore() == (float) -1) {
             // 초기화 이후 첫 약속
             user.setScheduleCountAfterReset(1);
-            user.setLatenessCountAfterReset(latenessTime > 0 ? 1 : 0);
+            user.setLatenessCountAfterReset(isLate ? 1 : 0);
         } else {
             // 기존 성실도 점수가 존재 -> 약속 수와 지각 수 업데이트
             user.setScheduleCountAfterReset(user.getScheduleCountAfterReset() + 1);
-            if (latenessTime > 0) {
+            if (isLate) {
                 user.setLatenessCountAfterReset(user.getLatenessCountAfterReset() + 1);
             }
         }

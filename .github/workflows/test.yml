@@ -61,13 +61,21 @@ jobs:
 
 
 
-      # 4. Gradle 빌드 & JUnit 테스트 실행
+      # 4. Gradle 검증 및 커버리지 검사 실행
       - name: Run Tests with Gradle
         env:
           SPRING_PROFILES_ACTIVE: test
         run: |
           cd ontime-back
-          ./gradlew test
+          ./gradlew check
+
+      - name: Upload JaCoCo Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: ontime-back/build/reports/jacoco/test/
+          if-no-files-found: warn
 
       - name: Verify Flyway Migrations
         run: |

@@ -45,6 +45,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -143,6 +144,42 @@ class UserAuthServiceTest {
         assertThat(passwordEncoder.matches("password1234", user.getPassword())).isTrue();
         assertThat(user.getRefreshToken()).isNotNull();
         assertThat(user.getUserSetting()).isNotNull();
+    }
+
+    @DisplayName("Authorization 헤더의 Bearer access token에서 userId를 추출한다")
+    @Test
+    void getUserIdFromBearerAccessToken() throws Exception {
+        UserSignUpDto userSignUpDto = getUserSignUpDto("token-user@example.com", "password1234", "token-user");
+        UserInfoResponse signUpResponse = userAuthService.signUp((HttpServletRequest) httpServletRequest, httpServletResponse, userSignUpDto);
+        User savedUser = userRepository.findById(signUpResponse.getUserId()).orElseThrow();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + savedUser.getAccessToken());
+
+        Long userId = userAuthService.getUserIdFromToken(request);
+
+        assertThat(userId).isEqualTo(savedUser.getId());
+        assertThat(userAuthService.getAccessTokenFromRequest(request)).isEqualTo(savedUser.getAccessToken());
+    }
+
+    @DisplayName("refresh token은 Authorization-refresh와 legacy refresh-token 헤더를 모두 지원한다")
+    @Test
+    void getRefreshTokenSupportsBothCurrentAndLegacyHeaders() {
+        MockHttpServletRequest currentHeaderRequest = new MockHttpServletRequest();
+        currentHeaderRequest.addHeader("Authorization-refresh", "Bearer current-refresh");
+        MockHttpServletRequest legacyHeaderRequest = new MockHttpServletRequest();
+        legacyHeaderRequest.addHeader("refresh-token", "legacy-refresh");
+
+        assertThat(userAuthService.getRefreshTokenFromRequest(currentHeaderRequest)).isEqualTo("current-refresh");
+        assertThat(userAuthService.getRefreshTokenFromRequest(legacyHeaderRequest)).isEqualTo("legacy-refresh");
+    }
+
+    @DisplayName("토큰 헤더가 없으면 null로 반환해 컨트롤러가 인증 실패를 처리하게 한다")
+    @Test
+    void tokenExtractionReturnsNullForMissingHeaders() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+
+        assertThat(userAuthService.getAccessTokenFromRequest(request)).isNull();
+        assertThat(userAuthService.getRefreshTokenFromRequest(request)).isNull();
     }
 
     @DisplayName("이미 존재하는 이메일로 회원가입을 시도하는 경우 예외가 발생한다.")

@@ -50,12 +50,13 @@ public class PreparationScheduleService {
 
     @Transactional
     protected void handlePreparationSchedules(Long userId, UUID scheduleId, List<PreparationDto> preparationDtoList, boolean shouldDelete) {
-        Schedule schedule = scheduleRepository.findByIdWithUser(scheduleId)
+        Schedule schedule = scheduleRepository.findByIdWithUserAndPlaceForUpdate(scheduleId)
                 .orElseThrow(() -> new GeneralException(SCHEDULE_NOT_FOUND));
 
         if (!schedule.getUser().getId().equals(userId)) {
             throw new GeneralException(UNAUTHORIZED_ACCESS);
         }
+        scheduleService.assertScheduleEditable(schedule);
 
         if (shouldDelete) {
             preparationScheduleRepository.deleteBySchedule(schedule);

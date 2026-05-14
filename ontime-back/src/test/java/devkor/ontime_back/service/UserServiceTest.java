@@ -1,9 +1,13 @@
 package devkor.ontime_back.service;
 
 import devkor.ontime_back.dto.UpdateSpareTimeDto;
+import devkor.ontime_back.dto.PreparationDto;
 import devkor.ontime_back.dto.UserAdditionalInfoDto;
 import devkor.ontime_back.dto.UserOnboardingDto;
+import devkor.ontime_back.entity.DoneStatus;
+import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
+import devkor.ontime_back.repository.PreparationUserRepository;
 import devkor.ontime_back.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,9 +19,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.data.Offset.offset;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -36,10 +43,14 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Autowired
+    private PreparationUserRepository preparationUserRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @AfterEach
     void tearDown() {
+        preparationUserRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -152,7 +163,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 0);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.NORMAL);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -181,7 +192,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 1);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.LATE);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -210,7 +221,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 0);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.NORMAL);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -239,7 +250,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId();
 
         // when
-        User updatedUser = userService.updatePunctualityScore(targetId, 1);
+        User updatedUser = userService.updatePunctualityScore(targetId, DoneStatus.LATE);
 
         // then
         assertThat(updatedUser.getId()).isNotNull();
@@ -247,6 +258,27 @@ class UserServiceTest {
         assertThat(updatedUser)
                 .extracting("punctualityScore", "scheduleCountAfterReset", "latenessCountAfterReset")
                 .contains(calculatePunctualityScore(4, 2), 4, 2);
+    }
+
+    @DisplayName("ABNORMAL 상태는 성실도 점수 계산에 포함하지 않는다.")
+    @Test
+    void updatePunctualityWithAbnormalDoesNotCount(){
+        User addedUser = User.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .punctualityScore(calculatePunctualityScore(3, 1))
+                .scheduleCountAfterReset(3)
+                .latenessCountAfterReset(1)
+                .build();
+        userRepository.save(addedUser);
+
+        User updatedUser = userService.updatePunctualityScore(addedUser.getId(), DoneStatus.ABNORMAL);
+
+        assertThat(updatedUser.getPunctualityScore()).isCloseTo(calculatePunctualityScore(3, 1), offset(0.0001f));
+        assertThat(updatedUser)
+                .extracting("scheduleCountAfterReset", "latenessCountAfterReset")
+                .contains(3, 1);
     }
 
     @DisplayName("성실도 점수 업데이트할 때 존재하지 않는 유저id를 인자로 넘기는 경우 예외가 발생한다.")
@@ -265,7 +297,7 @@ class UserServiceTest {
         Long targetId = addedUser.getId() + 1;
 
         // when // then
-        assertThatThrownBy(() -> userService.updatePunctualityScore(targetId, 1))
+        assertThatThrownBy(() -> userService.updatePunctualityScore(targetId, DoneStatus.LATE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("존재하지 않는 유저 id입니다.");
     }
@@ -312,6 +344,93 @@ class UserServiceTest {
 
         // when // then
         assertThatThrownBy(() -> userService.updateSpareTime(targetId, updateSpareTimeDto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("존재하지 않는 유저 id입니다.");
+    }
+
+    @DisplayName("온보딩은 유저 추가정보, 권한, 최초 준비과정을 함께 저장한다")
+    @Test
+    void onboardingStoresAdditionalInfoAuthorizesUserAndCreatesPreparations() throws Exception {
+        User addedUser = User.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .role(Role.GUEST)
+                .build();
+        userRepository.save(addedUser);
+        UUID wakeUp = UUID.randomUUID();
+        UUID shower = UUID.randomUUID();
+        UserOnboardingDto onboardingDto = UserOnboardingDto.builder()
+                .spareTime(15)
+                .note("지하철 확인")
+                .preparationList(List.of(
+                        PreparationDto.builder()
+                                .preparationId(wakeUp)
+                                .preparationName("기상")
+                                .preparationTime(5)
+                                .nextPreparationId(shower)
+                                .build(),
+                        PreparationDto.builder()
+                                .preparationId(shower)
+                                .preparationName("샤워")
+                                .preparationTime(10)
+                                .build()
+                ))
+                .build();
+
+        userService.onboarding(addedUser.getId(), onboardingDto);
+
+        User onboardedUser = userRepository.findById(addedUser.getId()).orElseThrow();
+        assertThat(onboardedUser.getSpareTime()).isEqualTo(15);
+        assertThat(onboardedUser.getNote()).isEqualTo("지하철 확인");
+        assertThat(onboardedUser.getRole()).isEqualTo(Role.USER);
+        assertThat(preparationUserRepository.findAll())
+                .extracting("preparationName")
+                .containsExactlyInAnyOrder("기상", "샤워");
+    }
+
+    @DisplayName("존재하지 않는 유저는 온보딩할 수 없다")
+    @Test
+    void onboardingRejectsMissingUser() {
+        UserOnboardingDto onboardingDto = UserOnboardingDto.builder()
+                .spareTime(15)
+                .note("note")
+                .preparationList(List.of(PreparationDto.builder()
+                        .preparationId(UUID.randomUUID())
+                        .preparationName("기상")
+                        .preparationTime(5)
+                        .build()))
+                .build();
+
+        assertThatThrownBy(() -> userService.onboarding(404L, onboardingDto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("존재하지 않는 유저 id입니다.");
+    }
+
+    @DisplayName("유저 정보 조회는 저장된 사용자 프로필을 반환한다")
+    @Test
+    void getUserInfoReturnsPersistedUserProfile() {
+        User addedUser = User.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .spareTime(10)
+                .note("note")
+                .build();
+        userRepository.save(addedUser);
+
+        User userInfo = userService.getUserInfo(addedUser.getId());
+
+        assertThat(userInfo.getId()).isEqualTo(addedUser.getId());
+        assertThat(userInfo)
+                .extracting("email", "name", "spareTime", "note")
+                .contains("user@example.com", "junbeom", 10, "note");
+    }
+
+    @DisplayName("존재하지 않는 유저 정보 조회는 예외를 반환한다")
+    @Test
+    void getUserInfoRejectsMissingUser() {
+        assertThatThrownBy(() -> userService.getUserInfo(404L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("존재하지 않는 유저 id입니다.");
     }

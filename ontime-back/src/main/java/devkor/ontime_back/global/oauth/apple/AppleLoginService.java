@@ -132,7 +132,7 @@ public class AppleLoginService {
 
         User savedUser = userRepository.save(newUser);
 
-        String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
+        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getEmail(), savedUser.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
