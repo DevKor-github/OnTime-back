@@ -121,8 +121,8 @@ Required development secrets:
 - `DEV_REMOTE_HOST`
 - `DEV_REMOTE_USER`
 - `DEV_REMOTE_SSH_KEY`
-- `GHCR_USERNAME`
-- `GHCR_READ_TOKEN`
+
+The development workflow uses the run-scoped `GITHUB_TOKEN` to pull the image from GHCR on the remote PC, so no long-lived GHCR read token is required for development deploys.
 
 Optional development secrets:
 

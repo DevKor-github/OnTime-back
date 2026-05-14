@@ -132,11 +132,9 @@ Development deploy should use development secrets only:
 DEV_REMOTE_HOST
 DEV_REMOTE_USER
 DEV_REMOTE_SSH_KEY
-GHCR_USERNAME
-GHCR_READ_TOKEN
 ```
 
-Optional `DEV_*` secrets can override the default dev deploy directory, HTTP port, MySQL credentials, and non-production OAuth/Firebase settings.
+The development deploy uses the workflow `GITHUB_TOKEN` for GHCR image pulls. Optional `DEV_*` secrets can override the default dev deploy directory, HTTP port, MySQL credentials, and non-production OAuth/Firebase settings.
 
 ## Branch Protection
 
