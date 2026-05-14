@@ -72,6 +72,13 @@ public class Schedule {
     @Column(columnDefinition = "TEXT") // 명시적으로 TEXT 타입으로 정의
     private String scheduleNote; // 스케줄 별 주의사항
 
+    @PrePersist
+    private void initializePreparationMode() {
+        if (preparationMode == null) {
+            preparationMode = Boolean.TRUE.equals(isChange) ? PreparationMode.CUSTOM : PreparationMode.DEFAULT;
+        }
+    }
+
     public void updateSchedule(Place place, ScheduleModDto scheduleModDto) {
         this.place = place;
         this.scheduleName = scheduleModDto.getScheduleName();
