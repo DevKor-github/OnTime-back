@@ -9,7 +9,7 @@ import devkor.ontime_back.repository.PreparationUserRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.GeneralException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +25,7 @@ public class PreparationUserService {
     private final PreparationUserRepository preparationUserRepository;
     private final UserRepository userRepository;
     private final PreparationStepService preparationStepService;
-    @Lazy
-    private final ScheduleService scheduleService;
+    private final ObjectProvider<ScheduleService> scheduleServiceProvider;
 
     @Transactional
     // 회원가입 시 디폴트 준비과정 세팅
@@ -100,7 +99,7 @@ public class PreparationUserService {
 
         preparationUserRepository.saveAll(preparationUsers);
         if (shouldDeleteExisting) {
-            scheduleService.refreshNotStartedDefaultModeSchedules(user.getId());
+            scheduleServiceProvider.getObject().refreshNotStartedDefaultModeSchedules(user.getId());
         }
     }
 
