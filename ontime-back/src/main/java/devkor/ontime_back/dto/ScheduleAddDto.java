@@ -50,6 +50,14 @@ public class ScheduleAddDto {
     private Integer scheduleSpareTime; // 스케줄 별 여유시간
     @Size(max = 1000, message = "일정 메모는 1000자 이하여야 합니다.")
     private String scheduleNote; // 스케줄 별 주의사항
+
+    public ScheduleAddDto(UUID scheduleId, UUID placeId, String placeName, String scheduleName,
+                          Integer moveTime, LocalDateTime scheduleTime, Boolean isChange, Boolean isStarted,
+                          Integer scheduleSpareTime, String scheduleNote) {
+        this(scheduleId, placeId, placeName, scheduleName, moveTime, scheduleTime,
+                isChange, isStarted, null, null, scheduleSpareTime, scheduleNote);
+    }
+
     public Schedule toEntity(User user, Place place) {
         return Schedule.builder()
                 .user(user)

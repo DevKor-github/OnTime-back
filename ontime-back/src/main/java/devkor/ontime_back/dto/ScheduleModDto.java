@@ -46,4 +46,11 @@ public class ScheduleModDto {
     private PreparationMode preparationMode;
     private UUID preparationTemplateId;
     private List<@Valid OrderedPreparationDto> customPreparations;
+
+    public ScheduleModDto(UUID placeId, String placeName, String scheduleName, Integer moveTime,
+                          LocalDateTime scheduleTime, Integer scheduleSpareTime, Integer latenessTime,
+                          String scheduleNote) {
+        this(placeId, placeName, scheduleName, moveTime, scheduleTime, scheduleSpareTime,
+                latenessTime, scheduleNote, null, null, null);
+    }
 }
