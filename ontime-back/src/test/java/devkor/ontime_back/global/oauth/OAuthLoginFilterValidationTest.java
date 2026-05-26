@@ -9,6 +9,7 @@ import devkor.ontime_back.global.oauth.google.GoogleLoginService;
 import devkor.ontime_back.global.oauth.kakao.KakaoLoginFilter;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.DisplayName;
@@ -44,6 +45,9 @@ class OAuthLoginFilterValidationTest {
 
     @Mock
     private UserAlarmSettingRepository userAlarmSettingRepository;
+
+    @Mock
+    private AnalyticsPreferenceService analyticsPreferenceService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
@@ -100,7 +104,8 @@ class OAuthLoginFilterValidationTest {
                 validator,
                 jwtTokenProvider,
                 userRepository,
-                userAlarmSettingRepository);
+                userAlarmSettingRepository,
+                analyticsPreferenceService);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertThatThrownBy(() -> filter.attemptAuthentication(
@@ -109,7 +114,7 @@ class OAuthLoginFilterValidationTest {
                 .isInstanceOf(AuthenticationException.class);
 
         assertValidationResponse(response);
-        verifyNoInteractions(jwtTokenProvider, userRepository, userAlarmSettingRepository);
+        verifyNoInteractions(jwtTokenProvider, userRepository, userAlarmSettingRepository, analyticsPreferenceService);
     }
 
     @Test

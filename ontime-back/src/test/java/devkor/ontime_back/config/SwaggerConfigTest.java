@@ -86,6 +86,7 @@ class SwaggerConfigTest {
                 .addPathItem("/privacy-policy", new PathItem().get(operation()))
                 .addPathItem("/privacy-policy/en", new PathItem().get(operation()))
                 .addPathItem("/users/me/alarm-settings", new PathItem().get(operation()).patch(operationWithBody()))
+                .addPathItem("/users/me/analytics-preference", new PathItem().get(operation()).put(operationWithBody()))
                 .addPathItem("/users/me/devices/current", new PathItem().put(operationWithBody()).delete(operationWithBody()))
                 .addPathItem("/users/me/alarm-status", new PathItem().post(operationWithBody()).get(operation()))
                 .addPathItem("/documents/terms", new PathItem().get(operation()))

@@ -13,6 +13,7 @@ import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class GoogleLoginService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final UserAlarmSettingRepository userAlarmSettingRepository;
+    private final AnalyticsPreferenceService analyticsPreferenceService;
     private static final String GOOGLE_USER_INFO_URL = "https://www.googleapis.com/userinfo/v2/me";
     private static final String GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke?token=";
 
@@ -53,12 +55,14 @@ public class GoogleLoginService {
             JwtTokenProvider jwtTokenProvider,
             UserRepository userRepository,
             UserAlarmSettingRepository userAlarmSettingRepository,
+            AnalyticsPreferenceService analyticsPreferenceService,
             @Value("${google.web.client-id}") String webClientId,
             @Value("${google.app.client-id}") String appClientId
     ) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.userAlarmSettingRepository = userAlarmSettingRepository;
+        this.analyticsPreferenceService = analyticsPreferenceService;
         this.validClientIds = Stream.concat(
                         Stream.of(webClientId),
                         Stream.of(appClientId.split(","))
@@ -138,6 +142,7 @@ public class GoogleLoginService {
         savedUser.updateRefreshToken(refreshToken);
         userRepository.save(savedUser);
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
+        analyticsPreferenceService.createDefaultPreference(savedUser);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser, null, Collections.singletonList(new SimpleGrantedAuthority(savedUser.getRole().name()))

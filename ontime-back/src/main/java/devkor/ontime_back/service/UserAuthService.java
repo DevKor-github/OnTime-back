@@ -43,6 +43,7 @@ public class UserAuthService {
     private final UserSettingRepository userSettingRepository;
     private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final AccountDeletionFeedbackRepository accountDeletionFeedbackRepository;
+    private final AnalyticsPreferenceService analyticsPreferenceService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -120,6 +121,7 @@ public class UserAuthService {
         user.setUserSetting(userSetting);
         userRepository.save(user); //CASCADE옵션 덕분에 userRepository만 save해주면 됨(userSettingRepository는 save안해줘도 부모인 user를 따라 저장됨)
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(user));
+        analyticsPreferenceService.createDefaultPreference(user);
         return user;
     }
 
