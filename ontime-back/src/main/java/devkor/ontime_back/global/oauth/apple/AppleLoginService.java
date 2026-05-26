@@ -14,6 +14,7 @@ import devkor.ontime_back.global.jwt.JwtUtils;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.InvalidTokenException;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -71,6 +72,7 @@ public class AppleLoginService {
     private final UserRepository userRepository;
     private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final AnalyticsPreferenceService analyticsPreferenceService;
 
     private final RestTemplate restTemplate = new RestTemplate();
     public Authentication handleLogin(String appleRefreshToken, User user, HttpServletResponse response) throws IOException {
@@ -141,6 +143,7 @@ public class AppleLoginService {
         savedUser.updateRefreshToken(refreshToken);
         userRepository.save(savedUser);
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
+        analyticsPreferenceService.createDefaultPreference(savedUser);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser, null, Collections.singletonList(new SimpleGrantedAuthority(savedUser.getRole().name()))
