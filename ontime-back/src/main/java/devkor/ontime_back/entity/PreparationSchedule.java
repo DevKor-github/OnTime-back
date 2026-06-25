@@ -24,7 +24,7 @@ public class PreparationSchedule {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Schedule schedule;
 
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 50)
     private String preparationName;
 
     private Integer preparationTime;

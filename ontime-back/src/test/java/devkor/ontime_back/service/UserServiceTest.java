@@ -389,6 +389,35 @@ class UserServiceTest {
                 .containsExactlyInAnyOrder("기상", "샤워");
     }
 
+    @DisplayName("온보딩은 DTO 허용 범위인 50자 준비과정 이름을 저장한다")
+    @Test
+    void onboardingStoresPreparationNameUpToDtoLimit() throws Exception {
+        User addedUser = User.builder()
+                .email("long-name@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("junbeom")
+                .role(Role.GUEST)
+                .build();
+        userRepository.save(addedUser);
+        String fiftyCharacterName = "a".repeat(50);
+
+        UserOnboardingDto onboardingDto = UserOnboardingDto.builder()
+                .spareTime(15)
+                .note("note")
+                .preparationList(List.of(PreparationDto.builder()
+                        .preparationId(UUID.randomUUID())
+                        .preparationName(fiftyCharacterName)
+                        .preparationTime(5)
+                        .build()))
+                .build();
+
+        userService.onboarding(addedUser.getId(), onboardingDto);
+
+        assertThat(preparationUserRepository.findAll())
+                .extracting("preparationName")
+                .contains(fiftyCharacterName);
+    }
+
     @DisplayName("존재하지 않는 유저는 온보딩할 수 없다")
     @Test
     void onboardingRejectsMissingUser() {

@@ -24,7 +24,7 @@ public class PreparationUser {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 50)
     private String preparationName;
 
     private Integer preparationTime;
