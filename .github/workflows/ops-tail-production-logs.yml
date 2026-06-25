@@ -20,5 +20,5 @@ jobs:
           script: |
             set -eu
             sudo docker logs --since 30m --tail=500 ontime-container \
-              | grep -E -A25 -B5 'Apple login failed|InvalidTokenException|invalid_client|invalid_grant|audience|issuer|Exchange Apple credential|Verify Apple identity credential' \
+              | grep -E -A40 -B10 'Apple login failed|InvalidTokenException|invalid_client|invalid_grant|audience|issuer|Exchange Apple credential|Verify Apple identity credential|/users/me/onboarding|onboarding|Onboarding|DataIntegrityViolation|MethodArgumentNotValidException|HttpMessageNotReadableException|GeneralException|Exception|ERROR|WARN' \
               || true
