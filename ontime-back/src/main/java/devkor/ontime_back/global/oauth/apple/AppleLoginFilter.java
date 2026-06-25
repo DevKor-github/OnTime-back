@@ -97,8 +97,8 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
         } catch (Exception e) {
-            log.error("Apple login failed: {}", e.getClass().getSimpleName());
-            throw new AuthenticationException("Apple 로그인 실패") {};
+            log.error("Apple login failed", e);
+            throw new AppleLoginException();
         }
     }
 
@@ -109,12 +109,20 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             return;
         }
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("{\"status\":\"error\", \"message\":\"Authentication failed\"}");
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"status\":\"error\", \"message\":\"Apple 로그인 실패\"}");
     }
 
     private static class RequestValidationException extends AuthenticationException {
         private RequestValidationException() {
             super("Request validation failed");
+        }
+    }
+
+    private static class AppleLoginException extends AuthenticationException {
+        private AppleLoginException() {
+            super("Apple login failed");
         }
     }
 

@@ -28,6 +28,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -221,6 +222,21 @@ class AppleLoginServiceTest {
         assertThat(response.getAccessToken()).isEqualTo("apple-access");
         assertThat(response.getRefreshToken()).isEqualTo("apple-refresh");
         assertThat(response.getIdToken()).isEqualTo("identity-token");
+    }
+
+    @Test
+    void nativeAppleTokenRequestDoesNotIncludeRedirectUri() {
+        ReflectionTestUtils.setField(appleLoginService, "clientId", "club.devkor.ontime.ios");
+
+        MultiValueMap<String, String> body = appleLoginService.buildAppleTokenRequestBody(
+                "apple-auth-code",
+                "apple-client-secret");
+
+        assertThat(body).containsEntry("grant_type", java.util.List.of("authorization_code"));
+        assertThat(body).containsEntry("code", java.util.List.of("apple-auth-code"));
+        assertThat(body).containsEntry("client_id", java.util.List.of("club.devkor.ontime.ios"));
+        assertThat(body).containsEntry("client_secret", java.util.List.of("apple-client-secret"));
+        assertThat(body).doesNotContainKey("redirect_uri");
     }
 
     @Test
