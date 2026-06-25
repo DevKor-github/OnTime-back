@@ -168,6 +168,19 @@ class JwtAuthenticationFilterTest {
                 .containsExactly("ROLE_USER");
     }
 
+    @Test
+    void socialLoginUserWithoutEmailUsesUserIdAuthenticationName() {
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(mock(JwtTokenProvider.class), mock(UserRepository.class));
+        User user = user(null, null);
+
+        filter.saveAuthentication(user);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getName()).isEqualTo("user:1");
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting("authority")
+                .containsExactly("ROLE_USER");
+    }
+
     private User user(String email, String password) {
         return User.builder()
                 .id(1L)

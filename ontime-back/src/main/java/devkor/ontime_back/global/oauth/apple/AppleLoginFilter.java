@@ -81,9 +81,13 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
             String appleUserId = tokenClaims.getSubject();
+            String email = firstNonBlank(
+                    oAuthAppleRequestDto.getEmail(),
+                    tokenClaims.get("email", String.class)
+            );
             String appleRefreshToken = exchangeAppleRefreshToken(oAuthAppleRequestDto);
 
-            OAuthAppleUserDto oAuthAppleUserDto = new OAuthAppleUserDto(appleUserId, oAuthAppleRequestDto.getEmail(), oAuthAppleRequestDto.getFullName());
+            OAuthAppleUserDto oAuthAppleUserDto = new OAuthAppleUserDto(appleUserId, email, oAuthAppleRequestDto.getFullName());
 
             Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.APPLE, appleUserId);
 
@@ -109,6 +113,16 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             log.warn("Apple token exchange failed; continuing with verified identity token", e);
             return null;
         }
+    }
+
+    private String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        if (second != null && !second.isBlank()) {
+            return second;
+        }
+        return null;
     }
 
     @Override

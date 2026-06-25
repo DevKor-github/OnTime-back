@@ -3,6 +3,7 @@ package devkor.ontime_back.global.oauth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import devkor.ontime_back.dto.AppleTokenResponseDto;
+import devkor.ontime_back.dto.OAuthAppleUserDto;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.global.oauth.apple.AppleLoginFilter;
 import devkor.ontime_back.global.oauth.apple.AppleLoginService;
@@ -401,6 +402,38 @@ class OAuthLoginFilterValidationTest {
     }
 
     @Test
+    @DisplayName("애플 로그인 필터가 요청 email이 비어 있으면 identity token email로 신규 유저를 생성한다")
+    void appleLoginFilterUsesIdentityTokenEmailWhenRequestEmailIsMissing() throws Exception {
+        AppleLoginFilter filter = new AppleLoginFilter(
+                "/oauth2/apple/login",
+                objectMapper,
+                validator,
+                appleLoginService,
+                userRepository);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Claims claims = Jwts.claims().setSubject("apple-id");
+        claims.put("email", "token@example.com");
+        AppleTokenResponseDto tokenResponse = appleTokenResponse("apple-refresh-token");
+        User newUser = user(2L, "token@example.com", Role.GUEST);
+
+        when(appleLoginService.verifyIdentityToken("apple-id-token")).thenReturn(claims);
+        when(appleLoginService.getAppleAccessTokenAndRefreshToken("auth-code")).thenReturn(tokenResponse);
+        when(userRepository.findBySocialTypeAndSocialId(SocialType.APPLE, "apple-id"))
+                .thenReturn(Optional.empty());
+        when(appleLoginService.handleRegister(eq("apple-refresh-token"), any(), any())).thenReturn(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(newUser, null)
+        );
+
+        assertThat(filter.attemptAuthentication(
+                request("/oauth2/apple/login", appleBodyWithoutEmail()),
+                response).getPrincipal()).isSameAs(newUser);
+
+        verify(appleLoginService).handleRegister(eq("apple-refresh-token"), org.mockito.ArgumentMatchers.argThat(
+                (OAuthAppleUserDto userDto) -> "token@example.com".equals(userDto.getEmail())
+        ), eq(response));
+    }
+
+    @Test
     @DisplayName("애플 로그인 필터가 Apple refresh token 교환 실패 시 identity token 검증만으로 신규 유저를 회원가입 처리한다")
     void appleLoginFilterRegistersNewUserWhenTokenExchangeFails() throws Exception {
         AppleLoginFilter filter = new AppleLoginFilter(
@@ -474,6 +507,16 @@ class OAuthLoginFilterValidationTest {
                   "authCode": "auth-code",
                   "fullName": "Apple User",
                   "email": "new@example.com"
+                }
+                """;
+    }
+
+    private String appleBodyWithoutEmail() {
+        return """
+                {
+                  "idToken": "apple-id-token",
+                  "authCode": "auth-code",
+                  "fullName": "Apple User"
                 }
                 """;
     }

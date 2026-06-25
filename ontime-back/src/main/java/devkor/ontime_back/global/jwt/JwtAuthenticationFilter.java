@@ -125,7 +125,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         UserDetails userDetailsUser = org.springframework.security.core.userdetails.User.builder()
-                .username(myUser.getEmail())
+                .username(authenticationName(myUser))
                 .password(password)
                 .roles(myUser.getRole().name())
                 .build();
@@ -135,6 +135,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         authoritiesMapper.mapAuthorities(userDetailsUser.getAuthorities()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private String authenticationName(User user) {
+        String email = user.getEmail();
+        if (email != null && !email.isBlank()) {
+            return email;
+        }
+        return "user:" + user.getId();
     }
 
     // 비밀번호 랜덤 생성
