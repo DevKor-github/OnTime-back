@@ -29,7 +29,7 @@ class AppleLoginFilterAuthenticationResultTest {
         filter.callUnsuccessfulAuthentication(new MockHttpServletRequest(), response, new BadCredentialsException("bad"));
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("Authentication failed");
+        assertThat(response.getContentAsString()).contains("Apple 로그인 실패");
     }
 
     private static class TestableAppleLoginFilter extends AppleLoginFilter {

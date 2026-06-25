@@ -74,7 +74,9 @@ public class AppleLoginService {
     private final RestTemplate restTemplate = new RestTemplate();
     public Authentication handleLogin(String appleRefreshToken, User user, HttpServletResponse response) throws IOException {
         log.info("handleLogin");
-        user.updateSocialLoginToken(appleRefreshToken);
+        if (appleRefreshToken != null && !appleRefreshToken.isBlank()) {
+            user.updateSocialLoginToken(appleRefreshToken);
+        }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();

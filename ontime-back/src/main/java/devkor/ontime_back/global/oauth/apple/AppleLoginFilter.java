@@ -81,10 +81,7 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
             String appleUserId = tokenClaims.getSubject();
-            String email = tokenClaims.get("email", String.class);
-
-            // socialRefreshtoken에 저장
-            String appleRefreshToken = appleLoginService.getAppleAccessTokenAndRefreshToken(oAuthAppleRequestDto.getAuthCode()).getRefreshToken();
+            String appleRefreshToken = exchangeAppleRefreshToken(oAuthAppleRequestDto);
 
             OAuthAppleUserDto oAuthAppleUserDto = new OAuthAppleUserDto(appleUserId, oAuthAppleRequestDto.getEmail(), oAuthAppleRequestDto.getFullName());
 
@@ -99,6 +96,18 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
         } catch (Exception e) {
             log.error("Apple login failed", e);
             throw new AppleLoginException();
+        }
+    }
+
+    private String exchangeAppleRefreshToken(OAuthAppleRequestDto oAuthAppleRequestDto) {
+        try {
+            AppleTokenResponseDto tokenResponse = appleLoginService.getAppleAccessTokenAndRefreshToken(
+                    oAuthAppleRequestDto.getAuthCode()
+            );
+            return tokenResponse.getRefreshToken();
+        } catch (Exception e) {
+            log.warn("Apple token exchange failed; continuing with verified identity token", e);
+            return null;
         }
     }
 
