@@ -1,7 +1,7 @@
 CREATE TABLE user_refresh_token (
     user_refresh_token_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    refresh_token VARCHAR(1024) NOT NULL,
+    refresh_token VARCHAR(768) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_user_refresh_token_token UNIQUE (refresh_token),

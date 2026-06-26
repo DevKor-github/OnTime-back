@@ -45,7 +45,7 @@ public class UserRefreshToken {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
-    @Column(name = "refresh_token", nullable = false, length = 1024)
+    @Column(name = "refresh_token", nullable = false, length = 768)
     private String refreshToken;
 
     @Column(nullable = false)
