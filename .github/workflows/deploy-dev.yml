@@ -52,8 +52,6 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     environment: development
-    env:
-      DEV_DEPLOY_DIR: ${{ secrets.DEV_DEPLOY_DIR || format('/home/{0}/OnTime-back-dev', secrets.DEV_REMOTE_USER) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -61,33 +59,37 @@ jobs:
       - name: Prepare dev deploy directory
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEV_REMOTE_HOST }}
-          username: ${{ secrets.DEV_REMOTE_USER }}
-          key: ${{ secrets.DEV_REMOTE_SSH_KEY }}
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             set -eu
-            mkdir -p "${{ env.DEV_DEPLOY_DIR }}"
+            [ "${{ secrets.DEPLOY_ENVIRONMENT }}" = "development" ] || {
+              echo "Invalid development deployment secret scope." >&2
+              exit 1
+            }
+            mkdir -p "${{ secrets.DEPLOY_DIR }}"
 
       - name: Upload compose files to remote PC
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.DEV_REMOTE_HOST }}
-          username: ${{ secrets.DEV_REMOTE_USER }}
-          key: ${{ secrets.DEV_REMOTE_SSH_KEY }}
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
           source: "ontime-back/docker-compose.yml,ontime-back/docker-compose.dev.yml"
-          target: ${{ env.DEV_DEPLOY_DIR }}
+          target: ${{ secrets.DEPLOY_DIR }}
           strip_components: 1
 
       - name: Pull image and restart dev containers
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEV_REMOTE_HOST }}
-          username: ${{ secrets.DEV_REMOTE_USER }}
-          key: ${{ secrets.DEV_REMOTE_SSH_KEY }}
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             set -eu
 
-            DEPLOY_DIR="${{ env.DEV_DEPLOY_DIR }}"
+            DEPLOY_DIR="${{ secrets.DEPLOY_DIR }}"
             CONTAINER_NAME="ontime-dev-container"
 
             mkdir -p "$DEPLOY_DIR"
@@ -98,45 +100,69 @@ jobs:
             IMAGE_TAG=${{ env.IMAGE_TAG }}
             BACKEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             BACKEND_CONTAINER_NAME=ontime-dev-container
-            BACKEND_HTTP_PORT=${{ secrets.DEV_BACKEND_HTTP_PORT || '8081' }}
-            BACKEND_MEMORY_LIMIT=${{ secrets.DEV_BACKEND_MEMORY_LIMIT || '768m' }}
-            BACKEND_CPU_LIMIT=${{ secrets.DEV_BACKEND_CPU_LIMIT || '1.0' }}
+            BACKEND_HTTP_PORT=${{ secrets.BACKEND_HTTP_PORT }}
+            BACKEND_MEMORY_LIMIT=${{ secrets.BACKEND_MEMORY_LIMIT }}
+            BACKEND_CPU_LIMIT=${{ secrets.BACKEND_CPU_LIMIT }}
             SERVER_PORT=8080
             SPRING_PROFILES_ACTIVE=dev
             JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom
 
-            MYSQL_DATABASE=${{ secrets.DEV_MYSQL_DATABASE || 'ontime_dev' }}
-            MYSQL_USER=${{ secrets.DEV_MYSQL_USER || 'ontime_dev' }}
-            MYSQL_PASSWORD=${{ secrets.DEV_MYSQL_PASSWORD || 'ontime_dev_password' }}
-            MYSQL_ROOT_PASSWORD=${{ secrets.DEV_MYSQL_ROOT_PASSWORD || 'ontime_dev_root_password' }}
+            MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
+            MYSQL_USER=${{ secrets.MYSQL_USER }}
+            MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
 
-            SPRING_APPLICATION_NAME=${{ secrets.DEV_SPRING_APPLICATION_NAME || 'ontime-back-dev' }}
-            SPRING_DATASOURCE_URL=${{ secrets.DEV_SPRING_DATASOURCE_URL || 'jdbc:mysql://mysql:3306/ontime_dev?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true' }}
-            SPRING_DATASOURCE_USERNAME=${{ secrets.DEV_SPRING_DATASOURCE_USERNAME || secrets.DEV_MYSQL_USER || 'ontime_dev' }}
-            SPRING_DATASOURCE_PASSWORD=${{ secrets.DEV_SPRING_DATASOURCE_PASSWORD || secrets.DEV_MYSQL_PASSWORD || 'ontime_dev_password' }}
+            SPRING_APPLICATION_NAME=${{ secrets.SPRING_APPLICATION_NAME }}
+            SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }}
+            SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME }}
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }}
             SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
             SPRING_JPA_HIBERNATE_DDL_AUTO=validate
 
             SPRING_FLYWAY_ENABLED=true
             SPRING_FLYWAY_BASELINE_ON_MIGRATE=false
 
-            JWT_SECRET_KEY=${{ secrets.DEV_JWT_SECRETKEY || 'dev_secret_key_for_ontime_back_remote_pc_development_1234567890' }}
-            JWT_ACCESS_EXPIRATION=${{ secrets.DEV_JWT_ACCESS_EXPIRATION || '3600000' }}
-            JWT_REFRESH_EXPIRATION=${{ secrets.DEV_JWT_REFRESH_EXPIRATION || '1209600000' }}
-            JWT_ACCESS_HEADER=${{ secrets.DEV_JWT_ACCESS_HEADER || 'Authorization' }}
-            JWT_REFRESH_HEADER=${{ secrets.DEV_JWT_REFRESH_HEADER || 'Authorization-refresh' }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRETKEY }}
+            JWT_ACCESS_EXPIRATION=${{ secrets.JWT_ACCESS_EXPIRATION }}
+            JWT_REFRESH_EXPIRATION=${{ secrets.JWT_REFRESH_EXPIRATION }}
+            JWT_ACCESS_HEADER=${{ secrets.JWT_ACCESS_HEADER }}
+            JWT_REFRESH_HEADER=${{ secrets.JWT_REFRESH_HEADER }}
 
-            GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID || 'dev-google-web-client-id' }}
-            GOOGLE_APP_CLIENT_ID=${{ secrets.GOOGLE_APP_CLIENT_ID || 'dev-google-app-client-id' }}
+            GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+            GOOGLE_APP_CLIENT_ID=${{ secrets.GOOGLE_APP_CLIENT_ID }}
 
             APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}
             APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
             APPLE_LOGIN_KEY=${{ secrets.APPLE_LOGIN_KEY }}
             APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
-            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.FEATURE_APPLE_LOGIN_ENABLED || 'true' }}
+            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.FEATURE_APPLE_LOGIN_ENABLED }}
 
             FIREBASE_CREDENTIALS_BASE64=${{ secrets.FIREBASE_CREDENTIALS_BASE64 }}
             EOF
+
+            fail_deploy() {
+              echo "Unsafe development configuration: $1" >&2
+              exit 1
+            }
+
+            get_env_value() {
+              grep -E "^$1=" .env | tail -n 1 | cut -d= -f2-
+            }
+
+            DB_URL="$(get_env_value SPRING_DATASOURCE_URL)"
+            BACKEND_HTTP_BIND="$(get_env_value BACKEND_HTTP_PORT)"
+            DB_URL_NO_PREFIX="${DB_URL#jdbc:mysql://}"
+            [ "$DB_URL_NO_PREFIX" != "$DB_URL" ] || fail_deploy "SPRING_DATASOURCE_URL must start with jdbc:mysql://."
+            DB_ADDRESS="${DB_URL_NO_PREFIX%%/*}"
+            DB_HOST="${DB_ADDRESS%%:*}"
+            DB_NAME_AND_QUERY="${DB_URL_NO_PREFIX#*/}"
+            DB_NAME="$(printf '%s' "$DB_NAME_AND_QUERY" | sed 's/[?;].*$//')"
+
+            [ "${{ secrets.DEPLOY_ENVIRONMENT }}" = "development" ] || fail_deploy "DEPLOY_ENVIRONMENT must be development."
+            [ -n "$DB_URL" ] || fail_deploy "SPRING_DATASOURCE_URL is required."
+            [ "$DB_HOST" = "mysql" ] || fail_deploy "SPRING_DATASOURCE_URL must point to the Compose mysql service."
+            [ "$DB_NAME" = "ontime_dev" ] || fail_deploy "SPRING_DATASOURCE_URL must use the ontime_dev database."
+            [ "$BACKEND_HTTP_BIND" != "127.0.0.1:8080" ] || fail_deploy "BACKEND_HTTP_PORT looks like the production bind."
 
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
@@ -166,4 +192,4 @@ jobs:
               exit 1
             fi
 
-            curl -fsS "http://127.0.0.1:${{ secrets.DEV_BACKEND_HTTP_PORT || '8081' }}/actuator/health/readiness"
+            curl -fsS "http://127.0.0.1:${{ secrets.BACKEND_HTTP_PORT }}/actuator/health/readiness"
