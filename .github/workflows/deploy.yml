@@ -60,33 +60,33 @@ jobs:
       - name: Upload compose file to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
           source: "ontime-back/docker-compose.yml"
-          target: "/home/ubuntu/OnTime-back"
+          target: ${{ secrets.DEPLOY_DIR }}
           strip_components: 1
 
       - name: Upload Caddyfile to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
           source: "ontime-back/Caddyfile"
-          target: "/home/ubuntu/OnTime-back"
+          target: ${{ secrets.DEPLOY_DIR }}
           strip_components: 1
 
       - name: Pull image and restart container
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
           script: |
             set -eu
 
-            DEPLOY_DIR="/home/ubuntu/OnTime-back"
+            DEPLOY_DIR="${{ secrets.DEPLOY_DIR }}"
             CONTAINER_NAME="ontime-container"
             PUBLIC_BACKEND_HOST="${{ env.PUBLIC_BACKEND_HOST }}"
 
@@ -98,9 +98,9 @@ jobs:
             IMAGE_TAG=${{ env.IMAGE_TAG }}
             BACKEND_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             BACKEND_CONTAINER_NAME=ontime-container
-            BACKEND_HTTP_PORT=${{ secrets.BACKEND_HTTP_PORT || '127.0.0.1:8080' }}
-            BACKEND_MEMORY_LIMIT=${{ secrets.BACKEND_MEMORY_LIMIT || '768m' }}
-            BACKEND_CPU_LIMIT=${{ secrets.BACKEND_CPU_LIMIT || '1.0' }}
+            BACKEND_HTTP_PORT=${{ secrets.BACKEND_HTTP_PORT }}
+            BACKEND_MEMORY_LIMIT=${{ secrets.BACKEND_MEMORY_LIMIT }}
+            BACKEND_CPU_LIMIT=${{ secrets.BACKEND_CPU_LIMIT }}
             SERVER_PORT=8080
             SPRING_PROFILES_ACTIVE=prod
             JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom
@@ -147,7 +147,7 @@ jobs:
             APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
             APPLE_LOGIN_KEY=${{ secrets.APPLE_LOGIN_KEY }}
             APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
-            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.FEATURE_APPLE_LOGIN_ENABLED || 'true' }}
+            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.FEATURE_APPLE_LOGIN_ENABLED }}
 
             FIREBASE_CREDENTIALS_BASE64=${{ secrets.FIREBASE_CREDENTIALS_BASE64 }}
             EOF
@@ -200,6 +200,7 @@ jobs:
             [ -n "$DB_USERNAME" ] || fail_deploy "SPRING_DATASOURCE_USERNAME is required."
             [ -n "$DB_PASSWORD" ] || fail_deploy "SPRING_DATASOURCE_PASSWORD is required."
             [ -n "$DB_HOST" ] || fail_deploy "SPRING_DATASOURCE_URL must include an RDS host."
+            [ "${{ secrets.DEPLOY_ENVIRONMENT }}" = "production" ] || fail_deploy "DEPLOY_ENVIRONMENT must be production."
             [ "$DB_NAME" = "ontime_prod" ] || fail_deploy "SPRING_DATASOURCE_URL must use the ontime_prod database."
             [ "$NORMALIZED_DB_USERNAME" != "root" ] || fail_deploy "SPRING_DATASOURCE_USERNAME must not be root."
             [ "$BACKEND_HTTP_BIND" = "127.0.0.1:8080" ] || fail_deploy "BACKEND_HTTP_PORT must be 127.0.0.1:8080 so public traffic goes through Caddy HTTPS."
