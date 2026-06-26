@@ -128,4 +128,34 @@ class UserControllerTest extends ControllerTestSupport {
                 .andExpect(jsonPath("$.message").value("온보딩이 성공적으로 완료되었습니다!"));
     }
 
+    @DisplayName("현재 사용자 정보 조회는 프로필과 소셜 타입을 응답한다.")
+    @Test
+    void getUserInfo() throws Exception {
+        User user = User.builder()
+                .id(1L)
+                .email("user@example.com")
+                .name("junbeom")
+                .spareTime(10)
+                .note("note")
+                .punctualityScore(90.5f)
+                .role(Role.USER)
+                .socialType(devkor.ontime_back.entity.SocialType.GOOGLE)
+                .build();
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(1L);
+        when(userService.getUserInfo(1L)).thenReturn(user);
+
+        mockMvc.perform(
+                        get("/users/me")
+                                .header("Authorization", "Bearer access-token")
+                                .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message").value("사용자 정보 조회 성공"))
+                .andExpect(jsonPath("$.data.userId").value(1))
+                .andExpect(jsonPath("$.data.email").value("user@example.com"))
+                .andExpect(jsonPath("$.data.role").value("USER"))
+                .andExpect(jsonPath("$.data.socialType").value("GOOGLE"));
+    }
+
 }

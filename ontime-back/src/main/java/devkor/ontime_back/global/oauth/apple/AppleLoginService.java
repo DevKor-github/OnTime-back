@@ -52,7 +52,6 @@ public class AppleLoginService {
 
     private static final String APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys";
     private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
-    private static final String REDIRECT_URI = "https://ontime-back.duckdns.org/oauth2/apple/callback";
     private String issuer = "https://appleid.apple.com";
     @Value("${apple.client.id}")
     private String clientId;
@@ -77,7 +76,9 @@ public class AppleLoginService {
     private final RestTemplate restTemplate = new RestTemplate();
     public Authentication handleLogin(String appleRefreshToken, User user, HttpServletResponse response) throws IOException {
         log.info("handleLogin");
-        user.updateSocialLoginToken(appleRefreshToken);
+        if (appleRefreshToken != null && !appleRefreshToken.isBlank()) {
+            user.updateSocialLoginToken(appleRefreshToken);
+        }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
@@ -134,7 +135,7 @@ public class AppleLoginService {
 
         User savedUser = userRepository.save(newUser);
 
-        String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
+        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getEmail(), savedUser.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
@@ -201,12 +202,7 @@ public class AppleLoginService {
         // clientSecret
         String clientSecret = generateClientSecret();
         log.info("Exchange Apple credential");
-        MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
-        requestBody.add("grant_type", "authorization_code");
-        requestBody.add("code", authCode);
-        requestBody.add("client_id", clientId);
-        requestBody.add("client_secret", clientSecret);
-        requestBody.add("redirect_uri", REDIRECT_URI);
+        MultiValueMap<String, String> requestBody = buildAppleTokenRequestBody(authCode, clientSecret);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -220,6 +216,15 @@ public class AppleLoginService {
 
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.treeToValue(response, AppleTokenResponseDto.class);
+    }
+
+    MultiValueMap<String, String> buildAppleTokenRequestBody(String authCode, String clientSecret) {
+        MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
+        requestBody.add("grant_type", "authorization_code");
+        requestBody.add("code", authCode);
+        requestBody.add("client_id", clientId);
+        requestBody.add("client_secret", clientSecret);
+        return requestBody;
     }
 
     // clientsecret 생성

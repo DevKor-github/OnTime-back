@@ -18,6 +18,7 @@ import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -50,7 +51,9 @@ public class GoogleLoginService {
     private static final String GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke?token=";
 
     private final List<String> validClientIds;
+    private final RestTemplate revokeRestTemplate;
 
+    @Autowired
     public GoogleLoginService(
             JwtTokenProvider jwtTokenProvider,
             UserRepository userRepository,
@@ -59,10 +62,24 @@ public class GoogleLoginService {
             @Value("${google.web.client-id}") String webClientId,
             @Value("${google.app.client-id}") String appClientId
     ) {
+        this(jwtTokenProvider, userRepository, userAlarmSettingRepository, analyticsPreferenceService,
+                webClientId, appClientId, createRevokeRestTemplate());
+    }
+
+    GoogleLoginService(
+            JwtTokenProvider jwtTokenProvider,
+            UserRepository userRepository,
+            UserAlarmSettingRepository userAlarmSettingRepository,
+            AnalyticsPreferenceService analyticsPreferenceService,
+            String webClientId,
+            String appClientId,
+            RestTemplate revokeRestTemplate
+    ) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.userAlarmSettingRepository = userAlarmSettingRepository;
         this.analyticsPreferenceService = analyticsPreferenceService;
+        this.revokeRestTemplate = revokeRestTemplate;
         this.validClientIds = Stream.concat(
                         Stream.of(webClientId),
                         Stream.of(appClientId.split(","))
@@ -73,6 +90,13 @@ public class GoogleLoginService {
         log.info("Configured Google OAuth audiences: {}", validClientIds.stream()
                 .map(this::maskClientId)
                 .toList());
+    }
+
+    private static RestTemplate createRevokeRestTemplate() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(3000);
+        requestFactory.setReadTimeout(3000);
+        return new RestTemplate(requestFactory);
     }
 
 
@@ -133,7 +157,7 @@ public class GoogleLoginService {
 
         User savedUser = userRepository.save(newUser);
 
-        String accessToken = jwtTokenProvider.createAccessToken(newUser.getEmail(), newUser.getId());
+        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getEmail(), savedUser.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 
         jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
@@ -233,10 +257,6 @@ public class GoogleLoginService {
 
         String googleRefreshToken = user.getSocialLoginToken();
 
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(3000);
-        requestFactory.setReadTimeout(3000);
-        RestTemplate restTemplate = new RestTemplate(requestFactory);
         String revokeUrl = GOOGLE_REVOKE_URL + googleRefreshToken;
 
         HttpHeaders headers = new HttpHeaders();
@@ -244,7 +264,7 @@ public class GoogleLoginService {
 
         HttpEntity<String> request = new HttpEntity<>(headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(
+        ResponseEntity<String> response = revokeRestTemplate.exchange(
                 revokeUrl, HttpMethod.POST, request, String.class);
 
         return response.getStatusCode().is2xxSuccessful();

@@ -99,6 +99,56 @@ class ScheduleControllerTest extends ControllerTestSupport {
         verify(scheduleService, times(1)).showScheduleByScheduleId(userId, scheduleId);
     }
 
+    @DisplayName("알람 윈도우 조회는 offset date-time을 local wall-clock으로 파싱해 반환한다.")
+    @Test
+    void getAlarmWindowSchedules_successWithOffsetDateTimes() throws Exception {
+        Long userId = 1L;
+        UUID scheduleId = UUID.randomUUID();
+        AlarmWindowScheduleDto windowSchedule = AlarmWindowScheduleDto.builder()
+                .scheduleId(scheduleId)
+                .scheduleName("회의")
+                .place(new PlaceDto(UUID.randomUUID(), "사무실"))
+                .scheduleTime(LocalDateTime.of(2026, 5, 5, 9, 30))
+                .moveTime(20)
+                .scheduleSpareTime(10)
+                .doneStatus(DoneStatus.NOT_ENDED)
+                .preparationStartTime(LocalDateTime.of(2026, 5, 5, 8, 50))
+                .defaultAlarmTime(LocalDateTime.of(2026, 5, 5, 8, 40))
+                .preparations(List.of())
+                .build();
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(userId);
+        when(scheduleService.getAlarmWindowSchedules(
+                eq(userId),
+                eq(LocalDateTime.of(2026, 5, 5, 0, 0)),
+                eq(LocalDateTime.of(2026, 5, 6, 0, 0))))
+                .thenReturn(List.of(windowSchedule));
+
+        mockMvc.perform(get("/schedules/alarm-window")
+                        .param("startDate", "2026-05-05T00:00:00+09:00")
+                        .param("endDate", "2026-05-06T00:00:00+09:00")
+                        .header("Authorization", "Bearer test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].scheduleId").value(scheduleId.toString()))
+                .andExpect(jsonPath("$.data[0].scheduleName").value("회의"))
+                .andExpect(jsonPath("$.data[0].defaultAlarmTime").value("2026-05-05T08:40:00"));
+    }
+
+    @DisplayName("알람 윈도우 조회는 잘못된 날짜 형식을 400으로 반환한다.")
+    @Test
+    void getAlarmWindowSchedules_rejectsInvalidDateTime() throws Exception {
+        when(userAuthService.getUserIdFromToken(any())).thenReturn(1L);
+
+        mockMvc.perform(get("/schedules/alarm-window")
+                        .param("startDate", "not-a-date")
+                        .param("endDate", "2026-05-06T00:00:00")
+                        .header("Authorization", "Bearer test-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("error"))
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT.getCode()));
+
+        verify(scheduleService, never()).getAlarmWindowSchedules(any(), any(), any());
+    }
+
     @DisplayName("약속 삭제를 성공한다.")
     @Test
     void deleteSchedule_success() throws Exception {

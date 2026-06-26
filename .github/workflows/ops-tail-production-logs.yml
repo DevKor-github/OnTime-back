@@ -1,0 +1,24 @@
+name: Ops Tail Production Logs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tail-logs:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Tail production backend logs
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -eu
+            sudo docker logs --since 30m --tail=500 ontime-container \
+              | grep -E -A40 -B10 'Apple login failed|InvalidTokenException|invalid_client|invalid_grant|audience|issuer|Exchange Apple credential|Verify Apple identity credential|/users/me/onboarding|onboarding|Onboarding|DataIntegrityViolation|MethodArgumentNotValidException|HttpMessageNotReadableException|GeneralException|Exception|ERROR|WARN' \
+              || true

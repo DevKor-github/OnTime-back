@@ -28,7 +28,8 @@ import org.springframework.test.web.servlet.MockMvc;
                 AnalyticsPreferenceController.class,
                 SocialAuthController.class,
                 AccountDeletionPageController.class,
-                PrivacyPolicyController.class
+                PrivacyPolicyController.class,
+                DocumentController.class
         }
 )
 public abstract class ControllerTestSupport {

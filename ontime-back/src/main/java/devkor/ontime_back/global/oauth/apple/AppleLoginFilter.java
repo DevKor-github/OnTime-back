@@ -81,12 +81,13 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
             String appleUserId = tokenClaims.getSubject();
-            String email = tokenClaims.get("email", String.class);
+            String email = firstNonBlank(
+                    oAuthAppleRequestDto.getEmail(),
+                    tokenClaims.get("email", String.class)
+            );
+            String appleRefreshToken = exchangeAppleRefreshToken(oAuthAppleRequestDto);
 
-            // socialRefreshtoken에 저장
-            String appleRefreshToken = appleLoginService.getAppleAccessTokenAndRefreshToken(oAuthAppleRequestDto.getAuthCode()).getRefreshToken();
-
-            OAuthAppleUserDto oAuthAppleUserDto = new OAuthAppleUserDto(appleUserId, oAuthAppleRequestDto.getEmail(), oAuthAppleRequestDto.getFullName());
+            OAuthAppleUserDto oAuthAppleUserDto = new OAuthAppleUserDto(appleUserId, email, oAuthAppleRequestDto.getFullName());
 
             Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.APPLE, appleUserId);
 
@@ -97,9 +98,31 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             }
 
         } catch (Exception e) {
-            log.error("Apple login failed: {}", e.getClass().getSimpleName());
-            throw new AuthenticationException("Apple 로그인 실패") {};
+            log.error("Apple login failed", e);
+            throw new AppleLoginException();
         }
+    }
+
+    private String exchangeAppleRefreshToken(OAuthAppleRequestDto oAuthAppleRequestDto) {
+        try {
+            AppleTokenResponseDto tokenResponse = appleLoginService.getAppleAccessTokenAndRefreshToken(
+                    oAuthAppleRequestDto.getAuthCode()
+            );
+            return tokenResponse.getRefreshToken();
+        } catch (Exception e) {
+            log.warn("Apple credential exchange failed; continuing with verified identity credential", e);
+            return null;
+        }
+    }
+
+    private String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        if (second != null && !second.isBlank()) {
+            return second;
+        }
+        return null;
     }
 
     @Override
@@ -109,12 +132,20 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             return;
         }
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("{\"status\":\"error\", \"message\":\"Authentication failed\"}");
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"status\":\"error\", \"message\":\"Apple 로그인 실패\"}");
     }
 
     private static class RequestValidationException extends AuthenticationException {
         private RequestValidationException() {
             super("Request validation failed");
+        }
+    }
+
+    private static class AppleLoginException extends AuthenticationException {
+        private AppleLoginException() {
+            super("Apple login failed");
         }
     }
 

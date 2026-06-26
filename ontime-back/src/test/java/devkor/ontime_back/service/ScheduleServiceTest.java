@@ -1875,6 +1875,56 @@ class ScheduleServiceTest {
         assertThat(schedules.get(0).getStartedAt()).isEqualTo(startedAt);
     }
 
+    @Test
+    @DisplayName("알람 윈도우는 시작 전 스케줄의 현재 기본 준비과정을 포함한다.")
+    void getAlarmWindowSchedules_includesCurrentDefaultPreparationsBeforeStart() {
+        User user = saveUser("alarm-window-default-prep@example.com");
+        user.updateAdditionalInfo(5, null);
+        userRepository.save(user);
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, null);
+        saveDefaultPreparations(user, "세면", "옷입기");
+
+        List<AlarmWindowScheduleDto> schedules = scheduleService.getAlarmWindowSchedules(
+                user.getId(),
+                schedule.getScheduleTime().minusHours(1),
+                schedule.getScheduleTime().plusHours(1)
+        );
+
+        assertThat(schedules).hasSize(1);
+        assertThat(schedules.get(0).getPreparations())
+                .extracting(PreparationDto::getPreparationName)
+                .containsExactlyInAnyOrder("세면", "옷입기");
+    }
+
+    @Test
+    @DisplayName("알람 윈도우는 시작된 스케줄의 고정된 준비과정 스냅샷을 포함한다.")
+    void getAlarmWindowSchedules_includesFrozenPreparationSnapshotsAfterStart() {
+        User user = saveUser("alarm-window-snapshot-prep@example.com");
+        user.updateAdditionalInfo(5, null);
+        userRepository.save(user);
+        Place place = savePlace();
+        Schedule schedule = saveSchedule(user, place, DoneStatus.NOT_ENDED, null);
+        saveDefaultPreparations(user, "세면", "옷입기");
+        scheduleService.startSchedule(user.getId(), schedule.getScheduleId());
+
+        List<PreparationDto> updatedDefaults = List.of(
+                new PreparationDto(UUID.randomUUID(), "운동하기", 5, null)
+        );
+        preparationUserService.updatePreparationUsers(user.getId(), updatedDefaults);
+
+        List<AlarmWindowScheduleDto> schedules = scheduleService.getAlarmWindowSchedules(
+                user.getId(),
+                schedule.getScheduleTime().minusHours(1),
+                schedule.getScheduleTime().plusHours(1)
+        );
+
+        assertThat(schedules).hasSize(1);
+        assertThat(schedules.get(0).getPreparations())
+                .extracting(PreparationDto::getPreparationName)
+                .containsExactlyInAnyOrder("세면", "옷입기");
+    }
+
     private User saveUser(String email) {
         User user = User.builder()
                 .email(email)
