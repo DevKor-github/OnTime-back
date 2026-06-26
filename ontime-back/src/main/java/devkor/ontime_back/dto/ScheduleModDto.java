@@ -1,5 +1,7 @@
 package devkor.ontime_back.dto;
 
+import devkor.ontime_back.entity.PreparationMode;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -9,7 +11,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -28,15 +32,25 @@ public class ScheduleModDto {
     @NotNull(message = "이동 시간은 필수입니다.")
     @Min(value = 0, message = "이동 시간은 0 이상이어야 합니다.")
     @Max(value = 1440, message = "이동 시간은 1440 이하여야 합니다.")
-    private Integer moveTime; // 이동시간
+    private Integer moveTime;
     @NotNull(message = "일정 시간은 필수입니다.")
-    private LocalDateTime scheduleTime; // 약속시각
+    private LocalDateTime scheduleTime;
     @Min(value = 0, message = "여유 시간은 0 이상이어야 합니다.")
     @Max(value = 1440, message = "여유 시간은 1440 이하여야 합니다.")
-    private Integer scheduleSpareTime; // 스케줄 별 여유시간
+    private Integer scheduleSpareTime;
     @Min(value = 0, message = "지각 시간은 0 이상이어야 합니다.")
     @Max(value = 1440, message = "지각 시간은 1440 이하여야 합니다.")
     private Integer latenessTime;
     @Size(max = 1000, message = "일정 메모는 1000자 이하여야 합니다.")
-    private String scheduleNote; // 스케줄 별 주의사항
+    private String scheduleNote;
+    private PreparationMode preparationMode;
+    private UUID preparationTemplateId;
+    private List<@Valid OrderedPreparationDto> customPreparations;
+
+    public ScheduleModDto(UUID placeId, String placeName, String scheduleName, Integer moveTime,
+                          LocalDateTime scheduleTime, Integer scheduleSpareTime, Integer latenessTime,
+                          String scheduleNote) {
+        this(placeId, placeName, scheduleName, moveTime, scheduleTime, scheduleSpareTime,
+                latenessTime, scheduleNote, null, null, null);
+    }
 }

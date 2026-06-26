@@ -5,6 +5,7 @@ import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.InvalidAccessTokenException;
 import devkor.ontime_back.response.InvalidRefreshTokenException;
+import devkor.ontime_back.service.AuthTokenService;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.AfterEach;
@@ -36,8 +37,9 @@ class JwtAuthenticationFilterTest {
     void skipsPublicHtmlPages(String path) throws Exception {
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         UserRepository userRepository = mock(UserRepository.class);
+        AuthTokenService authTokenService = mock(AuthTokenService.class);
         FilterChain filterChain = mock(FilterChain.class);
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository, authTokenService);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -52,8 +54,9 @@ class JwtAuthenticationFilterTest {
     void validAccessTokenAuthenticatesUserAndContinuesFilterChain() throws Exception {
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         UserRepository userRepository = mock(UserRepository.class);
+        AuthTokenService authTokenService = mock(AuthTokenService.class);
         FilterChain filterChain = mock(FilterChain.class);
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository, authTokenService);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/schedules");
         MockHttpServletResponse response = new MockHttpServletResponse();
         User user = user("user@example.com", "encoded-password");
@@ -74,8 +77,9 @@ class JwtAuthenticationFilterTest {
     void validRefreshTokenReissuesAccessTokenWithoutContinuingRequest() throws Exception {
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         UserRepository userRepository = mock(UserRepository.class);
+        AuthTokenService authTokenService = mock(AuthTokenService.class);
         FilterChain filterChain = mock(FilterChain.class);
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository, authTokenService);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/schedules");
         MockHttpServletResponse response = new MockHttpServletResponse();
         User user = user("user@example.com", "encoded-password");
@@ -83,23 +87,22 @@ class JwtAuthenticationFilterTest {
         when(jwtTokenProvider.extractAccessToken(request)).thenReturn(Optional.empty());
         when(jwtTokenProvider.extractRefreshToken(request)).thenReturn(Optional.of("refresh-token"));
         when(jwtTokenProvider.isRefreshTokenValid("refresh-token")).thenReturn(true);
-        when(userRepository.findByRefreshToken("refresh-token")).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.createAccessToken("user@example.com", 1L)).thenReturn("new-access-token");
+        when(authTokenService.rotateRefreshToken("refresh-token", response))
+                .thenReturn(new AuthTokenService.AuthTokens("new-access-token", "new-refresh-token"));
 
         filter.doFilter(request, response, filterChain);
 
-        verify(jwtTokenProvider).sendAccessToken(response, "new-access-token");
-        verify(userRepository).saveAndFlush(user);
+        verify(authTokenService).rotateRefreshToken("refresh-token", response);
         verify(filterChain, never()).doFilter(request, response);
-        assertThat(user.getAccessToken()).isEqualTo("new-access-token");
     }
 
     @Test
     void missingAccessTokenReturnsTokenEmptyErrorEnvelope() throws Exception {
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         UserRepository userRepository = mock(UserRepository.class);
+        AuthTokenService authTokenService = mock(AuthTokenService.class);
         FilterChain filterChain = mock(FilterChain.class);
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository, authTokenService);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/schedules");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -117,8 +120,9 @@ class JwtAuthenticationFilterTest {
     void invalidRefreshTokenReturnsRefreshSpecificErrorEnvelope() throws Exception {
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         UserRepository userRepository = mock(UserRepository.class);
+        AuthTokenService authTokenService = mock(AuthTokenService.class);
         FilterChain filterChain = mock(FilterChain.class);
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository, authTokenService);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/schedules");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -138,8 +142,9 @@ class JwtAuthenticationFilterTest {
     void invalidAccessTokenReturnsAccessSpecificErrorEnvelope() throws Exception {
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
         UserRepository userRepository = mock(UserRepository.class);
+        AuthTokenService authTokenService = mock(AuthTokenService.class);
         FilterChain filterChain = mock(FilterChain.class);
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository, authTokenService);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/schedules");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -157,7 +162,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void socialLoginUserWithoutPasswordReceivesGeneratedAuthenticationPassword() {
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(mock(JwtTokenProvider.class), mock(UserRepository.class));
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(mock(JwtTokenProvider.class), mock(UserRepository.class), mock(AuthTokenService.class));
         User user = user("social@example.com", null);
 
         filter.saveAuthentication(user);
@@ -170,7 +175,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void socialLoginUserWithoutEmailUsesUserIdAuthenticationName() {
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(mock(JwtTokenProvider.class), mock(UserRepository.class));
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(mock(JwtTokenProvider.class), mock(UserRepository.class), mock(AuthTokenService.class));
         User user = user(null, null);
 
         filter.saveAuthentication(user);

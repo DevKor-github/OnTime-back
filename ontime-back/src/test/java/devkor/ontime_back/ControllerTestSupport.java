@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
                 FeedbackController.class,
                 FirebaseTokenController.class,
                 AlarmController.class,
+                AnalyticsPreferenceController.class,
                 SocialAuthController.class,
                 AccountDeletionPageController.class,
                 PrivacyPolicyController.class,
@@ -68,6 +69,9 @@ public abstract class ControllerTestSupport {
 
     @MockBean
     protected AlarmService alarmService;
+
+    @MockBean
+    protected AnalyticsPreferenceService analyticsPreferenceService;
 
     @MockBean
     protected AppleLoginService appleLoginService;

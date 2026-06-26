@@ -20,6 +20,7 @@ import devkor.ontime_back.entity.SocialType;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserAlarmSetting;
 import devkor.ontime_back.entity.UserAlarmStatus;
+import devkor.ontime_back.entity.UserAnalyticsPreference;
 import devkor.ontime_back.entity.UserDevice;
 import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.repository.AccountDeletionFeedbackRepository;
@@ -32,6 +33,7 @@ import devkor.ontime_back.repository.PreparationUserRepository;
 import devkor.ontime_back.repository.ScheduleRepository;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserAlarmStatusRepository;
+import devkor.ontime_back.repository.UserAnalyticsPreferenceRepository;
 import devkor.ontime_back.repository.UserDeviceRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.repository.UserSettingRepository;
@@ -93,6 +95,8 @@ class UserAuthServiceTest {
     @Autowired
     private UserAlarmSettingRepository userAlarmSettingRepository;
     @Autowired
+    private UserAnalyticsPreferenceRepository userAnalyticsPreferenceRepository;
+    @Autowired
     private UserAlarmStatusRepository userAlarmStatusRepository;
     @Autowired
     private UserDeviceRepository userDeviceRepository;
@@ -106,6 +110,7 @@ class UserAuthServiceTest {
     @AfterEach
     void tearDown() {
         accountDeletionFeedbackRepository.deleteAllInBatch();
+        userAnalyticsPreferenceRepository.deleteAllInBatch();
         userAlarmStatusRepository.deleteAllInBatch();
         userDeviceRepository.deleteAllInBatch();
         notificationScheduleRepository.deleteAllInBatch();
@@ -144,6 +149,12 @@ class UserAuthServiceTest {
         assertThat(passwordEncoder.matches("password1234", user.getPassword())).isTrue();
         assertThat(user.getRefreshToken()).isNotNull();
         assertThat(user.getUserSetting()).isNotNull();
+        assertThat(userAnalyticsPreferenceRepository.findByUserId(user.getId()))
+                .hasValueSatisfying(preference -> {
+                    assertThat(preference.getEnabled()).isFalse();
+                    assertThat(preference.getUserOverridden()).isFalse();
+                    assertThat(preference.getUpdatedAt()).isNotNull();
+                });
     }
 
     @DisplayName("Authorization 헤더의 Bearer access token에서 userId를 추출한다")
@@ -515,6 +526,7 @@ class UserAuthServiceTest {
                 .receiverId(friendUser.getId())
                 .acceptStatus("ACCEPTED")
                 .build());
+        userAnalyticsPreferenceRepository.save(UserAnalyticsPreference.defaultFor(targetUser, false));
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(targetUser));
         UserDevice userDevice = UserDevice.create(targetUser, "device-" + socialType.name().toLowerCase());
         userDevice.activate("ios", "1.0.0", "17.0", true, "native", "fcm", Instant.now());
@@ -559,6 +571,7 @@ class UserAuthServiceTest {
         assertThat(feedbackRepository.count()).isZero();
         assertThat(friendshipRepository.count()).isZero();
         assertThat(userSettingRepository.findByUserId(targetUser.getId())).isEmpty();
+        assertThat(userAnalyticsPreferenceRepository.findByUserId(targetUser.getId())).isEmpty();
         assertThat(userAlarmSettingRepository.findByUserId(targetUser.getId())).isEmpty();
         assertThat(userDeviceRepository.findByUserIdAndDeviceId(targetUser.getId(), userDevice.getDeviceId())).isEmpty();
         assertThat(userAlarmStatusRepository.findByUserDeviceUserDeviceId(userDevice.getUserDeviceId())).isEmpty();

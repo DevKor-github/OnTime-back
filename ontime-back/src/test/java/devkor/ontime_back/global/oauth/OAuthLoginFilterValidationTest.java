@@ -16,6 +16,8 @@ import devkor.ontime_back.entity.User;
 import devkor.ontime_back.entity.UserAlarmSetting;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.DisplayName;
@@ -60,6 +62,12 @@ class OAuthLoginFilterValidationTest {
 
     @Mock
     private UserAlarmSettingRepository userAlarmSettingRepository;
+
+    @Mock
+    private AnalyticsPreferenceService analyticsPreferenceService;
+
+    @Mock
+    private AuthTokenService authTokenService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
@@ -235,7 +243,9 @@ class OAuthLoginFilterValidationTest {
                 validator,
                 jwtTokenProvider,
                 userRepository,
-                userAlarmSettingRepository);
+                userAlarmSettingRepository,
+                analyticsPreferenceService,
+                authTokenService);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertThatThrownBy(() -> filter.attemptAuthentication(
@@ -244,7 +254,7 @@ class OAuthLoginFilterValidationTest {
                 .isInstanceOf(AuthenticationException.class);
 
         assertValidationResponse(response);
-        verifyNoInteractions(jwtTokenProvider, userRepository, userAlarmSettingRepository);
+        verifyNoInteractions(jwtTokenProvider, userRepository, userAlarmSettingRepository, analyticsPreferenceService);
     }
 
     @Test
@@ -255,8 +265,11 @@ class OAuthLoginFilterValidationTest {
         User existingUser = user(1L, "user@example.com", Role.USER);
         when(userRepository.findBySocialTypeAndSocialId(SocialType.KAKAO, "kakao-id"))
                 .thenReturn(Optional.of(existingUser));
-        when(jwtTokenProvider.createAccessToken("user@example.com", 1L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
+        when(authTokenService.issueLoginTokens(existingUser, response)).thenAnswer(invocation -> {
+            existingUser.updateAccessToken("access-token");
+            existingUser.updateRefreshToken("refresh-token");
+            return new AuthTokenService.AuthTokens("access-token", "refresh-token");
+        });
 
         assertThat(filter.attemptAuthentication(
                 request("/oauth2/kakao/login", validKakaoBody()),
@@ -265,7 +278,7 @@ class OAuthLoginFilterValidationTest {
         assertThat(existingUser.getAccessToken()).isEqualTo("access-token");
         assertThat(existingUser.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getContentAsString()).contains("로그인에 성공하였습니다.");
-        verify(jwtTokenProvider).sendAccessAndRefreshToken(response, "access-token", "refresh-token");
+        verify(authTokenService).issueLoginTokens(existingUser, response);
         verify(userRepository).saveAndFlush(existingUser);
     }
 
@@ -278,8 +291,11 @@ class OAuthLoginFilterValidationTest {
         when(userRepository.findBySocialTypeAndSocialId(SocialType.KAKAO, "kakao-id"))
                 .thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtTokenProvider.createAccessToken("kakao@example.com", 2L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
+        when(authTokenService.issueLoginTokens(savedUser, response)).thenAnswer(invocation -> {
+            savedUser.updateAccessToken("access-token");
+            savedUser.updateRefreshToken("refresh-token");
+            return new AuthTokenService.AuthTokens("access-token", "refresh-token");
+        });
 
         assertThat(filter.attemptAuthentication(
                 request("/oauth2/kakao/login", validKakaoBody()),
@@ -288,7 +304,7 @@ class OAuthLoginFilterValidationTest {
         assertThat(savedUser.getAccessToken()).isEqualTo("access-token");
         assertThat(savedUser.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getContentAsString()).contains("온보딩이 필요합니다.");
-        verify(jwtTokenProvider).createAccessToken("kakao@example.com", 2L);
+        verify(authTokenService).issueLoginTokens(savedUser, response);
         verify(userRepository, times(2)).save(any(User.class));
         verify(userAlarmSettingRepository).save(any(UserAlarmSetting.class));
     }
@@ -469,7 +485,9 @@ class OAuthLoginFilterValidationTest {
                 validator,
                 jwtTokenProvider,
                 userRepository,
-                userAlarmSettingRepository);
+                userAlarmSettingRepository,
+                analyticsPreferenceService,
+                authTokenService);
     }
 
     private MockHttpServletRequest request(String uri, String body) {

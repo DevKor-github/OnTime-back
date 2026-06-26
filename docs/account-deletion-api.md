@@ -8,6 +8,8 @@ Account deletion hard-deletes the user from OnTime. The request can optionally i
 
 For Google and Apple social accounts, the backend first tries to revoke the social login token, then deletes the local OnTime account. If provider token revocation fails, the backend logs a warning and still deletes the local OnTime account.
 
+Account deletion also deletes account-scoped settings and preferences, including the analytics preference stored in `user_analytics_preference`. Future user-linked Product Usage Events stop after deletion; historical analytics may be retained only in aggregate or de-identified form under the approved privacy policy and analytics provider configuration.
+
 For release/privacy evidence by data category, see `docs/account-deletion-verification-evidence.md`.
 
 ## Authentication

@@ -13,6 +13,8 @@ import devkor.ontime_back.entity.UserSetting;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,8 @@ public class GoogleLoginService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final UserAlarmSettingRepository userAlarmSettingRepository;
+    private final AnalyticsPreferenceService analyticsPreferenceService;
+    private final AuthTokenService authTokenService;
     private static final String GOOGLE_USER_INFO_URL = "https://www.googleapis.com/userinfo/v2/me";
     private static final String GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke?token=";
 
@@ -56,16 +60,21 @@ public class GoogleLoginService {
             JwtTokenProvider jwtTokenProvider,
             UserRepository userRepository,
             UserAlarmSettingRepository userAlarmSettingRepository,
+            AnalyticsPreferenceService analyticsPreferenceService,
+            AuthTokenService authTokenService,
             @Value("${google.web.client-id}") String webClientId,
             @Value("${google.app.client-id}") String appClientId
     ) {
-        this(jwtTokenProvider, userRepository, userAlarmSettingRepository, webClientId, appClientId, createRevokeRestTemplate());
+        this(jwtTokenProvider, userRepository, userAlarmSettingRepository, analyticsPreferenceService,
+                authTokenService, webClientId, appClientId, createRevokeRestTemplate());
     }
 
     GoogleLoginService(
             JwtTokenProvider jwtTokenProvider,
             UserRepository userRepository,
             UserAlarmSettingRepository userAlarmSettingRepository,
+            AnalyticsPreferenceService analyticsPreferenceService,
+            AuthTokenService authTokenService,
             String webClientId,
             String appClientId,
             RestTemplate revokeRestTemplate
@@ -73,6 +82,8 @@ public class GoogleLoginService {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.userAlarmSettingRepository = userAlarmSettingRepository;
+        this.analyticsPreferenceService = analyticsPreferenceService;
+        this.authTokenService = authTokenService;
         this.revokeRestTemplate = revokeRestTemplate;
         this.validClientIds = Stream.concat(
                         Stream.of(webClientId),
@@ -97,12 +108,7 @@ public class GoogleLoginService {
     public Authentication handleLogin(OAuthGoogleRequestDto oAuthGoogleRequestDto, User user, HttpServletResponse response) throws IOException {
         user.updateSocialLoginToken(oAuthGoogleRequestDto.getRefreshToken());
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-        user.updateAccessToken(accessToken);
-        user.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(user, response);
         userRepository.saveAndFlush(user);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -151,15 +157,10 @@ public class GoogleLoginService {
 
         User savedUser = userRepository.save(newUser);
 
-        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getEmail(), savedUser.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-
-        savedUser.updateAccessToken(accessToken);
-        savedUser.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(savedUser, response);
         userRepository.save(savedUser);
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
+        analyticsPreferenceService.createDefaultPreference(savedUser);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser, null, Collections.singletonList(new SimpleGrantedAuthority(savedUser.getRole().name()))

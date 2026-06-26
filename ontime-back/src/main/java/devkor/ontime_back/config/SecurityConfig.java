@@ -17,6 +17,8 @@ import devkor.ontime_back.global.oauth.kakao.KakaoLoginFilter;
 import devkor.ontime_back.global.oauth.google.GoogleLoginFilter;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,6 +60,8 @@ public class SecurityConfig {
     private final Validator validator;
     private final AppleLoginService appleLoginService;
     private final GoogleLoginService googleLoginService;
+    private final AnalyticsPreferenceService analyticsPreferenceService;
+    private final AuthTokenService authTokenService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -79,7 +83,7 @@ public class SecurityConfig {
                         .requestMatchers("/health").permitAll() // 로드밸런서 연결 확인용 url
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new KakaoLoginFilter("/oauth2/kakao/login", objectMapper, validator, jwtTokenProvider, userRepository, userAlarmSettingRepository),
+                .addFilterBefore(new KakaoLoginFilter("/oauth2/kakao/login", objectMapper, validator, jwtTokenProvider, userRepository, userAlarmSettingRepository, analyticsPreferenceService, authTokenService),
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new GoogleLoginFilter("/oauth2/google/login", objectMapper, validator, googleLoginService, userRepository),
                         UsernamePasswordAuthenticationFilter.class)
@@ -112,7 +116,7 @@ public class SecurityConfig {
 
     @Bean
     public LoginSuccessHandler loginSuccessHandler() {
-        return new LoginSuccessHandler(jwtTokenProvider, userRepository);
+        return new LoginSuccessHandler(userRepository, authTokenService);
     }
 
     @Bean
@@ -132,7 +136,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationProcessingFilter() {
-        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository, authTokenService);
         return jwtAuthenticationFilter;
     }
 

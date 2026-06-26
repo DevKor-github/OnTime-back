@@ -1,9 +1,7 @@
 package devkor.ontime_back.dto;
 
 import devkor.ontime_back.entity.DoneStatus;
-import devkor.ontime_back.entity.Place;
-import devkor.ontime_back.entity.User;
-import jakarta.persistence.*;
+import devkor.ontime_back.entity.PreparationMode;
 import lombok.*;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -24,18 +22,23 @@ public class ScheduleDto {
     private DoneStatus doneStatus;
     private Instant startedAt;
     private Instant finishedAt;
+    private PreparationMode preparationMode;
+    private UUID preparationTemplateId;
+    private String preparationTemplateName;
+    private Boolean preparationTemplateDeleted;
+    private Boolean preparationFrozen;
 
     public ScheduleDto(UUID scheduleId, PlaceDto place, String scheduleName, Integer moveTime,
                        LocalDateTime scheduleTime, Integer scheduleSpareTime, String scheduleNote,
                        Integer latenessTime, DoneStatus doneStatus) {
         this(scheduleId, place, scheduleName, moveTime, scheduleTime, scheduleSpareTime,
-                scheduleNote, latenessTime, doneStatus, null, null);
+                scheduleNote, latenessTime, doneStatus, null, null, null, null, null, null, null);
     }
 
     public ScheduleDto(UUID scheduleId, PlaceDto place, String scheduleName, Integer moveTime,
                        LocalDateTime scheduleTime, Integer scheduleSpareTime, String scheduleNote,
                        Integer latenessTime, DoneStatus doneStatus, Instant startedAt) {
         this(scheduleId, place, scheduleName, moveTime, scheduleTime, scheduleSpareTime,
-                scheduleNote, latenessTime, doneStatus, startedAt, null);
+                scheduleNote, latenessTime, doneStatus, startedAt, null, null, null, null, null, null);
     }
 }

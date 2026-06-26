@@ -5,6 +5,8 @@ import devkor.ontime_back.entity.User;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.AfterEach;
@@ -58,7 +60,9 @@ class KakaoLoginFilterAuthenticationResultTest {
                     Validation.buildDefaultValidatorFactory().getValidator(),
                     mock(JwtTokenProvider.class),
                     mock(UserRepository.class),
-                    mock(UserAlarmSettingRepository.class)
+                    mock(UserAlarmSettingRepository.class),
+                    mock(AnalyticsPreferenceService.class),
+                    mock(AuthTokenService.class)
             );
         }
 

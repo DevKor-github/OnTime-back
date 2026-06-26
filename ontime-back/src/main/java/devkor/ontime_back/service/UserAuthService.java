@@ -43,8 +43,10 @@ public class UserAuthService {
     private final UserSettingRepository userSettingRepository;
     private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final AccountDeletionFeedbackRepository accountDeletionFeedbackRepository;
+    private final AnalyticsPreferenceService analyticsPreferenceService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final AuthTokenService authTokenService;
 
     // 엑세스토큰에서 UserId 추출
     public Long getUserIdFromToken(HttpServletRequest request) {
@@ -120,17 +122,12 @@ public class UserAuthService {
         user.setUserSetting(userSetting);
         userRepository.save(user); //CASCADE옵션 덕분에 userRepository만 save해주면 됨(userSettingRepository는 save안해줘도 부모인 user를 따라 저장됨)
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(user));
+        analyticsPreferenceService.createDefaultPreference(user);
         return user;
     }
 
     private void createAndSendTokens(HttpServletResponse response, User user) {
-        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-
-        user.updateAccessToken(accessToken);
-        user.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(user, response);
         userRepository.saveAndFlush(user);
     }
 

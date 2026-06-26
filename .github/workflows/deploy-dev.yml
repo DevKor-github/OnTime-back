@@ -173,6 +173,36 @@ jobs:
             fi
 
             $COMPOSE -f docker-compose.yml -f docker-compose.dev.yml pull
+            $COMPOSE -f docker-compose.yml -f docker-compose.dev.yml up -d mysql
+
+            DB_ROOT_PASSWORD="$(get_env_value MYSQL_ROOT_PASSWORD)"
+            DB_NAME="$(get_env_value MYSQL_DATABASE)"
+
+            for attempt in $(seq 1 30); do
+              MYSQL_STATUS="$(sudo docker inspect -f '{{.State.Health.Status}}' ontime-dev-mysql 2>/dev/null || true)"
+              if [ "$MYSQL_STATUS" = "healthy" ]; then
+                echo "MySQL container is healthy."
+                break
+              fi
+              echo "Waiting for healthy MySQL status; current status: ${MYSQL_STATUS:-unknown}"
+              sleep 5
+            done
+
+            MYSQL_STATUS="$(sudo docker inspect -f '{{.State.Health.Status}}' ontime-dev-mysql 2>/dev/null || true)"
+            [ "$MYSQL_STATUS" = "healthy" ] || fail_deploy "MySQL container did not become healthy."
+
+            FAILED_V17_COUNT="$(
+              sudo docker exec ontime-dev-mysql \
+                mysql -u root --password="$DB_ROOT_PASSWORD" "$DB_NAME" \
+                -Nse "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '17' AND success = 0;" 2>/dev/null || echo 0
+            )"
+            if [ "$FAILED_V17_COUNT" != "0" ]; then
+              echo "Repairing failed development Flyway migration V17 before backend startup."
+              sudo docker exec ontime-dev-mysql \
+                mysql -u root --password="$DB_ROOT_PASSWORD" "$DB_NAME" \
+                -e "DROP TABLE IF EXISTS user_refresh_token; DELETE FROM flyway_schema_history WHERE version = '17' AND success = 0;"
+            fi
+
             $COMPOSE -f docker-compose.yml -f docker-compose.dev.yml up -d --remove-orphans
 
             HEALTHY=false

@@ -110,7 +110,7 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             );
             return tokenResponse.getRefreshToken();
         } catch (Exception e) {
-            log.warn("Apple token exchange failed; continuing with verified identity token", e);
+            log.warn("Apple credential exchange failed; continuing with verified identity credential", e);
             return null;
         }
     }

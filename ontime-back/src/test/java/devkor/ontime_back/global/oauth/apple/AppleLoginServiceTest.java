@@ -13,6 +13,8 @@ import devkor.ontime_back.global.jwt.JwtUtils;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.InvalidTokenException;
+import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.AfterEach;
@@ -68,6 +70,12 @@ class AppleLoginServiceTest {
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
+    @Mock
+    private AnalyticsPreferenceService analyticsPreferenceService;
+
+    @Mock
+    private AuthTokenService authTokenService;
+
     private AppleLoginService appleLoginService;
 
     @BeforeEach
@@ -77,7 +85,9 @@ class AppleLoginServiceTest {
                 jwtUtils,
                 userRepository,
                 userAlarmSettingRepository,
-                jwtTokenProvider
+                jwtTokenProvider,
+                analyticsPreferenceService,
+                authTokenService
         );
     }
 
@@ -90,8 +100,11 @@ class AppleLoginServiceTest {
     void handleLoginRotatesAppleRefreshTokenAndApplicationTokens() throws Exception {
         User user = user(1L, "user@example.com", "Existing User", Role.USER);
         MockHttpServletResponse response = new MockHttpServletResponse();
-        when(jwtTokenProvider.createAccessToken("user@example.com", 1L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
+        when(authTokenService.issueLoginTokens(user, response)).thenAnswer(invocation -> {
+            user.updateAccessToken("access-token");
+            user.updateRefreshToken("refresh-token");
+            return new AuthTokenService.AuthTokens("access-token", "refresh-token");
+        });
 
         Authentication authentication = appleLoginService.handleLogin("apple-refresh-token", user, response);
 
@@ -100,7 +113,7 @@ class AppleLoginServiceTest {
         assertThat(user.getAccessToken()).isEqualTo("access-token");
         assertThat(user.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getContentAsString()).contains("\"message\": \"로그인에 성공하였습니다.\"");
-        verify(jwtTokenProvider).sendAccessAndRefreshToken(response, "access-token", "refresh-token");
+        verify(authTokenService).issueLoginTokens(user, response);
         verify(userRepository).saveAndFlush(user);
     }
 
@@ -108,10 +121,13 @@ class AppleLoginServiceTest {
     void handleRegisterCreatesGuestAppleUserAndDefaultAlarmSettings() throws Exception {
         OAuthAppleUserDto appleUser = new OAuthAppleUserDto("apple-id", "new@example.com", "New User");
         User savedUser = user(2L, "new@example.com", "New User", Role.GUEST);
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtTokenProvider.createAccessToken("new@example.com", 2L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(authTokenService.issueLoginTokens(savedUser, response)).thenAnswer(invocation -> {
+            savedUser.updateAccessToken("access-token");
+            savedUser.updateRefreshToken("refresh-token");
+            return new AuthTokenService.AuthTokens("access-token", "refresh-token");
+        });
 
         Authentication authentication = appleLoginService.handleRegister("apple-refresh-token", appleUser, response);
 
@@ -119,9 +135,10 @@ class AppleLoginServiceTest {
         assertThat(savedUser.getAccessToken()).isEqualTo("access-token");
         assertThat(savedUser.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getContentAsString()).contains("회원가입에 성공하였습니다.");
-        verify(jwtTokenProvider).createAccessToken("new@example.com", 2L);
+        verify(authTokenService).issueLoginTokens(savedUser, response);
         verify(userRepository, times(2)).save(any(User.class));
         verify(userAlarmSettingRepository).save(any(UserAlarmSetting.class));
+        verify(analyticsPreferenceService).createDefaultPreference(savedUser);
     }
 
     @Test

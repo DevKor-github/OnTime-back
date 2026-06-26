@@ -281,6 +281,11 @@ public class SwaggerConfig {
                 examples.put("valid_partial_update", json("Valid partial update", "Only provided fields are updated.", "{\"alarmsEnabled\":true,\"defaultAlarmOffsetMinutes\":10}"));
                 examples.put("invalid_unknown_field", json("Invalid unknown field", "Unknown fields are rejected.", "{\"alarmsEnabled\":\"true\",\"unknown\":1}"));
             }
+            case "PUT /users/me/analytics-preference" -> {
+                examples.put("enabled", json("Enable analytics", "Allows optional Product Usage Events for the signed-in account.", "{\"enabled\":true}"));
+                examples.put("disabled", json("Disable analytics", "Stops optional Product Usage Events for the signed-in account.", "{\"enabled\":false}"));
+                examples.put("invalid_unknown_field", json("Invalid unknown field", "Only enabled is accepted.", "{\"enabled\":\"false\",\"unknown\":1}"));
+            }
             case "PUT /users/me/devices/current" -> {
                 examples.put("valid_ios_device", json("Valid iOS device", "Registers the current access-token session to the device.", "{\"deviceId\":\"ios-device-000001\",\"platform\":\"ios\",\"appVersion\":\"1.2.3\",\"osVersion\":\"iOS 18.0\",\"supportsNativeAlarm\":true,\"nativeAlarmProvider\":\"iosAlarmKit\",\"fallbackProvider\":\"localNotification\"}"));
                 examples.put("invalid_device_id", json("Invalid device ID", "deviceId must be 16-128 allowed characters.", "{\"deviceId\":\"short\",\"platform\":\"ios\",\"supportsNativeAlarm\":true,\"nativeAlarmProvider\":\"iosAlarmKit\",\"fallbackProvider\":\"localNotification\"}"));
@@ -389,6 +394,8 @@ public class SwaggerConfig {
         return switch (operationKey) {
             case "GET /users/me/alarm-settings" -> "{\"alarmsEnabled\":true,\"defaultAlarmOffsetMinutes\":10,\"updatedAt\":\"2026-05-05T00:00:00Z\"}";
             case "PATCH /users/me/alarm-settings" -> "{\"alarmsEnabled\":false,\"defaultAlarmOffsetMinutes\":5,\"updatedAt\":\"2026-05-05T00:00:00Z\"}";
+            case "GET /users/me/analytics-preference" -> "{\"enabled\":false,\"updatedAt\":\"2026-05-26T12:00:00Z\"}";
+            case "PUT /users/me/analytics-preference" -> "{\"enabled\":true,\"updatedAt\":\"2026-05-26T12:00:05Z\"}";
             case "PUT /users/me/devices/current" -> "{\"deviceId\":\"ios-device-000001\",\"active\":true,\"lastSeenAt\":\"2026-05-05T00:00:00Z\"}";
             case "DELETE /users/me/devices/current" -> "{\"active\":false}";
             case "POST /users/me/alarm-status" -> "{\"received\":true}";

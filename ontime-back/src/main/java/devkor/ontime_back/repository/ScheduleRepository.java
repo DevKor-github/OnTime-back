@@ -76,4 +76,23 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
             "AND NOT EXISTS (SELECT ps FROM PreparationSchedule ps WHERE ps.schedule = s)")
     List<Schedule> findStartedSchedulesWithoutPreparationSnapshot();
 
+    @Query("SELECT s FROM Schedule s " +
+            "JOIN FETCH s.user " +
+            "LEFT JOIN FETCH s.place " +
+            "LEFT JOIN FETCH s.preparationTemplate " +
+            "WHERE s.preparationMode = devkor.ontime_back.entity.PreparationMode.TEMPLATE " +
+            "AND s.preparationTemplate.preparationTemplateId = :templateId " +
+            "AND s.doneStatus = devkor.ontime_back.entity.DoneStatus.NOT_ENDED " +
+            "AND s.startedAt IS NULL")
+    List<Schedule> findNotStartedTemplateModeSchedules(@Param("templateId") UUID templateId);
+
+    @Query("SELECT s FROM Schedule s " +
+            "JOIN FETCH s.user " +
+            "LEFT JOIN FETCH s.place " +
+            "WHERE s.user.id = :userId " +
+            "AND s.preparationMode = devkor.ontime_back.entity.PreparationMode.DEFAULT " +
+            "AND s.doneStatus = devkor.ontime_back.entity.DoneStatus.NOT_ENDED " +
+            "AND s.startedAt IS NULL")
+    List<Schedule> findNotStartedDefaultModeSchedules(@Param("userId") Long userId);
+
 }
