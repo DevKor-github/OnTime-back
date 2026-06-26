@@ -41,7 +41,7 @@ class AuthTokenServiceTest {
     }
 
     @Test
-    void issueLoginTokensCreatesSeparateRefreshTokenRowsForEachLogin() {
+    void issueLoginTokensClearsPreviousRefreshCredentialsBeforeSavingTheNewLogin() {
         User user = user();
         MockHttpServletResponse response = new MockHttpServletResponse();
         when(jwtTokenProvider.createAccessToken("user@example.com", 1L))
@@ -53,6 +53,7 @@ class AuthTokenServiceTest {
         authTokenService.issueLoginTokens(user, response);
 
         ArgumentCaptor<UserRefreshToken> tokenCaptor = ArgumentCaptor.forClass(UserRefreshToken.class);
+        verify(userRefreshTokenRepository, times(2)).deleteByUser(user);
         verify(userRefreshTokenRepository, times(2)).save(tokenCaptor.capture());
         assertThat(tokenCaptor.getAllValues())
                 .extracting(UserRefreshToken::getRefreshToken)

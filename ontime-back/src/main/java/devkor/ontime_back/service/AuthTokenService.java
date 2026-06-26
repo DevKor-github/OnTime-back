@@ -21,6 +21,8 @@ public class AuthTokenService {
 
     @Transactional
     public AuthTokens issueLoginTokens(User user, HttpServletResponse response) {
+        userRefreshTokenRepository.deleteByUser(user);
+
         String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
         String refreshToken = jwtTokenProvider.createRefreshToken();
 

@@ -91,11 +91,20 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void accessTokenValidityRequiresExistingUserClaim() {
+    void accessTokenValidityRequiresCurrentStoredAccessCredential() {
         String accessToken = jwtTokenProvider.createAccessToken("user@example.com", 7L);
-        when(userRepository.findById(7L)).thenReturn(Optional.of(user("user@example.com")));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user("user@example.com", accessToken)));
 
         assertThat(jwtTokenProvider.isAccessTokenValid(accessToken)).isTrue();
+    }
+
+    @Test
+    void accessTokenValidityRejectsStaleAccessCredential() {
+        String accessToken = jwtTokenProvider.createAccessToken("user@example.com", 7L);
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user("user@example.com", "newer-access-token")));
+
+        assertThatThrownBy(() -> jwtTokenProvider.isAccessTokenValid(accessToken))
+                .isInstanceOf(InvalidAccessTokenException.class);
     }
 
     @Test
@@ -134,10 +143,11 @@ class JwtTokenProviderTest {
         assertThat(jwtTokenProvider.isRefreshTokenValid(refreshToken)).isTrue();
     }
 
-    private User user(String email) {
+    private User user(String email, String accessToken) {
         return User.builder()
                 .id(7L)
                 .email(email)
+                .accessToken(accessToken)
                 .role(Role.USER)
                 .build();
     }

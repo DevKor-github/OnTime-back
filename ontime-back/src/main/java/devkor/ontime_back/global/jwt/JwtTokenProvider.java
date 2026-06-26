@@ -161,7 +161,9 @@ public class JwtTokenProvider {
                     .verify(token)
                     .getClaim(USER_ID_CLAIM)
                     .asLong();
-            if (userId == null || userRepository.findById(userId).isEmpty()) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다."));
+            if (!token.equals(user.getAccessToken())) {
                 throw new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다.");
             }
             log.info("Access credential is valid");
