@@ -138,7 +138,7 @@ jobs:
             FIREBASE_CREDENTIALS_BASE64=${{ secrets.DEV_FIREBASE_CREDENTIALS_BASE64 }}
             EOF
 
-            echo "${{ secrets.GHCR_READ_TOKEN }}" | sudo docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             if sudo docker compose version >/dev/null 2>&1; then
               COMPOSE="sudo docker compose"
