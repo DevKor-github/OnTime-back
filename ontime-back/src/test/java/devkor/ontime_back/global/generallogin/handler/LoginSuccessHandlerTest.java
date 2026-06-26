@@ -2,8 +2,8 @@ package devkor.ontime_back.global.generallogin.handler;
 
 import devkor.ontime_back.entity.Role;
 import devkor.ontime_back.entity.User;
-import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AuthTokenService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -22,34 +22,38 @@ import static org.mockito.Mockito.*;
 class LoginSuccessHandlerTest {
 
     @Mock
-    private JwtTokenProvider jwtTokenProvider;
+    private UserRepository userRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private AuthTokenService authTokenService;
 
     @Test
     void successfulUserLoginRotatesTokensAndWritesUserResponse() throws Exception {
-        LoginSuccessHandler handler = new LoginSuccessHandler(jwtTokenProvider, userRepository);
+        LoginSuccessHandler handler = new LoginSuccessHandler(userRepository, authTokenService);
         User user = user(Role.USER);
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.createAccessToken("user@example.com", 1L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
+        when(authTokenService.issueLoginTokens(eq(user), any()))
+                .thenAnswer(invocation -> {
+                    user.updateAccessToken("access-token");
+                    user.updateRefreshToken("refresh-token");
+                    return new AuthTokenService.AuthTokens("access-token", "refresh-token");
+                });
 
         handler.onAuthenticationSuccess(new MockHttpServletRequest(), new MockHttpServletResponse(), authentication());
 
         assertThat(user.getAccessToken()).isEqualTo("access-token");
         assertThat(user.getRefreshToken()).isEqualTo("refresh-token");
-        verify(jwtTokenProvider).sendAccessAndRefreshToken(any(), eq("access-token"), eq("refresh-token"));
+        verify(authTokenService).issueLoginTokens(eq(user), any());
         verify(userRepository).saveAndFlush(user);
     }
 
     @Test
     void successfulGuestLoginTellsClientToContinueOnboarding() throws Exception {
-        LoginSuccessHandler handler = new LoginSuccessHandler(jwtTokenProvider, userRepository);
+        LoginSuccessHandler handler = new LoginSuccessHandler(userRepository, authTokenService);
         User user = user(Role.GUEST);
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
-        when(jwtTokenProvider.createAccessToken("user@example.com", 1L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
+        when(authTokenService.issueLoginTokens(eq(user), any()))
+                .thenAnswer(invocation -> new AuthTokenService.AuthTokens("access-token", "refresh-token"));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, authentication());
@@ -60,12 +64,12 @@ class LoginSuccessHandlerTest {
 
     @Test
     void successfulAuthenticationDoesNothingWhenEmailNoLongerExists() throws Exception {
-        LoginSuccessHandler handler = new LoginSuccessHandler(jwtTokenProvider, userRepository);
+        LoginSuccessHandler handler = new LoginSuccessHandler(userRepository, authTokenService);
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
 
         handler.onAuthenticationSuccess(new MockHttpServletRequest(), new MockHttpServletResponse(), authentication());
 
-        verifyNoInteractions(jwtTokenProvider);
+        verifyNoInteractions(authTokenService);
         verify(userRepository, never()).saveAndFlush(any());
     }
 

@@ -10,6 +10,7 @@ import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,9 @@ class GoogleLoginServiceTest {
     @Mock
     private AnalyticsPreferenceService analyticsPreferenceService;
 
+    @Mock
+    private AuthTokenService authTokenService;
+
     private GoogleLoginService googleLoginService;
     @Mock
     private RestTemplate revokeRestTemplate;
@@ -64,6 +68,7 @@ class GoogleLoginServiceTest {
                 userRepository,
                 userAlarmSettingRepository,
                 analyticsPreferenceService,
+                authTokenService,
                 "web-client.apps.googleusercontent.com",
                 "ios-client.apps.googleusercontent.com, android-client.apps.googleusercontent.com",
                 revokeRestTemplate
@@ -80,8 +85,11 @@ class GoogleLoginServiceTest {
         User user = user(1L, "user@example.com", "Existing User", Role.USER);
         OAuthGoogleRequestDto request = googleRequest("google-refresh-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
-        when(jwtTokenProvider.createAccessToken("user@example.com", 1L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
+        when(authTokenService.issueLoginTokens(user, response)).thenAnswer(invocation -> {
+            user.updateAccessToken("access-token");
+            user.updateRefreshToken("refresh-token");
+            return new AuthTokenService.AuthTokens("access-token", "refresh-token");
+        });
 
         Authentication authentication = googleLoginService.handleLogin(request, user, response);
 
@@ -91,7 +99,7 @@ class GoogleLoginServiceTest {
         assertThat(user.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getContentType()).startsWith("application/json");
         assertThat(response.getContentAsString()).contains("\"message\": \"로그인에 성공하였습니다.\"");
-        verify(jwtTokenProvider).sendAccessAndRefreshToken(response, "access-token", "refresh-token");
+        verify(authTokenService).issueLoginTokens(user, response);
         verify(userRepository).saveAndFlush(user);
     }
 
@@ -105,10 +113,13 @@ class GoogleLoginServiceTest {
                 "new@example.com"
         );
         User savedUser = user(2L, "new@example.com", "New User", Role.GUEST);
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtTokenProvider.createAccessToken("new@example.com", 2L)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(authTokenService.issueLoginTokens(savedUser, response)).thenAnswer(invocation -> {
+            savedUser.updateAccessToken("access-token");
+            savedUser.updateRefreshToken("refresh-token");
+            return new AuthTokenService.AuthTokens("access-token", "refresh-token");
+        });
 
         Authentication authentication = googleLoginService.handleRegister(request, googleUser, response);
 
@@ -116,7 +127,7 @@ class GoogleLoginServiceTest {
         assertThat(savedUser.getAccessToken()).isEqualTo("access-token");
         assertThat(savedUser.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getContentAsString()).contains("회원가입에 성공하였습니다.");
-        verify(jwtTokenProvider).createAccessToken("new@example.com", 2L);
+        verify(authTokenService).issueLoginTokens(savedUser, response);
         verify(userRepository, times(2)).save(any(User.class));
         verify(userAlarmSettingRepository).save(any(UserAlarmSetting.class));
         verify(analyticsPreferenceService).createDefaultPreference(savedUser);
@@ -129,6 +140,7 @@ class GoogleLoginServiceTest {
                 userRepository,
                 userAlarmSettingRepository,
                 analyticsPreferenceService,
+                authTokenService,
                 "web-client.apps.googleusercontent.com",
                 " ios-client.apps.googleusercontent.com, ,android-client.apps.googleusercontent.com "
         );

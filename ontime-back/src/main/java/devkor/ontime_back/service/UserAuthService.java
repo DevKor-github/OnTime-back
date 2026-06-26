@@ -46,6 +46,7 @@ public class UserAuthService {
     private final AnalyticsPreferenceService analyticsPreferenceService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final AuthTokenService authTokenService;
 
     // 엑세스토큰에서 UserId 추출
     public Long getUserIdFromToken(HttpServletRequest request) {
@@ -126,13 +127,7 @@ public class UserAuthService {
     }
 
     private void createAndSendTokens(HttpServletResponse response, User user) {
-        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-
-        user.updateAccessToken(accessToken);
-        user.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(user, response);
         userRepository.saveAndFlush(user);
     }
 

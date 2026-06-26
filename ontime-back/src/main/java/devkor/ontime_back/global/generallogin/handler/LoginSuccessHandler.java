@@ -1,7 +1,7 @@
 package devkor.ontime_back.global.generallogin.handler;
 
-import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.service.AuthTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -17,8 +17,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final AuthTokenService authTokenService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -26,16 +26,7 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         String email = extractUsername(authentication); // 인증 정보에서 Username(email) 추출
         userRepository.findByEmail(email)
                 .ifPresent(user -> {
-                    // 수정된 부분: User의 ID(PK)를 AccessToken 생성에 사용
-                    String accessToken = jwtTokenProvider.createAccessToken(email, user.getId());
-
-                    String refreshToken = jwtTokenProvider.createRefreshToken(); // RefreshToken 발급
-
-                    // 수정된 부분: 응답 헤더에 AccessToken, RefreshToken 실어서 응답
-                    jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-
-                    user.updateAccessToken(accessToken);
-                    user.updateRefreshToken(refreshToken);
+                    authTokenService.issueLoginTokens(user, response);
                     userRepository.saveAndFlush(user);
 
                     log.info("Login succeeded for userId: {}", user.getId());

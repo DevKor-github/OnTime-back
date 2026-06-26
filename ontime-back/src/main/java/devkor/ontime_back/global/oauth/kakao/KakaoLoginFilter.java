@@ -12,6 +12,7 @@ import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.ValidationErrorWriter;
 import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +40,7 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
     private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final AnalyticsPreferenceService analyticsPreferenceService;
+    private final AuthTokenService authTokenService;
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
@@ -48,7 +50,8 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
                             JwtTokenProvider jwtTokenProvider,
                             UserRepository userRepository,
                             UserAlarmSettingRepository userAlarmSettingRepository,
-                            AnalyticsPreferenceService analyticsPreferenceService) {
+                            AnalyticsPreferenceService analyticsPreferenceService,
+                            AuthTokenService authTokenService) {
         super(defaultFilterProcessesUrl);
         this.objectMapper = objectMapper;
         this.validator = validator;
@@ -56,6 +59,7 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
         this.userRepository = userRepository;
         this.userAlarmSettingRepository = userAlarmSettingRepository;
         this.analyticsPreferenceService = analyticsPreferenceService;
+        this.authTokenService = authTokenService;
 
     }
 
@@ -79,12 +83,7 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
     }
 
     private Authentication handleLogin(User user, HttpServletResponse response) throws IOException {
-        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-        user.updateAccessToken(accessToken);
-        user.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(user, response);
         userRepository.saveAndFlush(user);
 
         response.setContentType("application/json");
@@ -123,11 +122,7 @@ public class KakaoLoginFilter extends AbstractAuthenticationProcessingFilter {
 
         User savedUser = userRepository.save(newUser);
 
-        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getEmail(), savedUser.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-        savedUser.updateAccessToken(accessToken);
-        savedUser.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(savedUser, response);
         userRepository.save(savedUser);
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
         analyticsPreferenceService.createDefaultPreference(savedUser);

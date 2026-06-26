@@ -16,8 +16,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByName(String name);
 
-    Optional<User> findByRefreshToken(String refreshToken);
-
     // socialType과 socialId으로 user 찾는 메소드
     // 추가정보 입력받을때 사용
     Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
@@ -27,5 +25,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.spareTime FROM User u WHERE u.id = :id")
     Integer findSpareTimeById(Long id);
 
-    Optional<Object> findByAccessToken(String token);
 }

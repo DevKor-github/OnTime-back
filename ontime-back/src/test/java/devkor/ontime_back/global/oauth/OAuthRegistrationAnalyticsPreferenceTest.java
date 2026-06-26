@@ -13,6 +13,7 @@ import devkor.ontime_back.global.oauth.kakao.KakaoLoginFilter;
 import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +29,6 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +48,9 @@ class OAuthRegistrationAnalyticsPreferenceTest {
     private AnalyticsPreferenceService analyticsPreferenceService;
 
     @Mock
+    private AuthTokenService authTokenService;
+
+    @Mock
     private ApplePublicKeyGenerator applePublicKeyGenerator;
 
     @Mock
@@ -64,6 +67,7 @@ class OAuthRegistrationAnalyticsPreferenceTest {
                 userRepository,
                 userAlarmSettingRepository,
                 analyticsPreferenceService,
+                authTokenService,
                 "123-web.apps.googleusercontent.com",
                 "123-app.apps.googleusercontent.com"
         );
@@ -72,9 +76,6 @@ class OAuthRegistrationAnalyticsPreferenceTest {
             ReflectionTestUtils.setField(user, "id", 1L);
             return user;
         });
-        when(jwtTokenProvider.createAccessToken(anyString(), any())).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
-
         OAuthGoogleRequestDto requestDto = new OAuthGoogleRequestDto();
         ReflectionTestUtils.setField(requestDto, "refreshToken", "google-refresh-token");
         OAuthGoogleUserDto userDto = new OAuthGoogleUserDto(
@@ -98,16 +99,14 @@ class OAuthRegistrationAnalyticsPreferenceTest {
                 userRepository,
                 userAlarmSettingRepository,
                 jwtTokenProvider,
-                analyticsPreferenceService
+                analyticsPreferenceService,
+                authTokenService
         );
         when(userRepository.save(any())).thenAnswer(invocation -> {
             Object user = invocation.getArgument(0);
             ReflectionTestUtils.setField(user, "id", 1L);
             return user;
         });
-        when(jwtTokenProvider.createAccessToken(anyString(), any())).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
-
         OAuthAppleUserDto userDto = new OAuthAppleUserDto("apple-id", "user@example.com", "Apple User");
 
         appleLoginService.handleRegister("apple-refresh-token", userDto, new MockHttpServletResponse());
@@ -125,7 +124,8 @@ class OAuthRegistrationAnalyticsPreferenceTest {
                 jwtTokenProvider,
                 userRepository,
                 userAlarmSettingRepository,
-                analyticsPreferenceService
+                analyticsPreferenceService,
+                authTokenService
         );
         when(userRepository.findBySocialTypeAndSocialId(any(), anyString())).thenReturn(Optional.empty());
         when(userRepository.save(any())).thenAnswer(invocation -> {
@@ -133,9 +133,6 @@ class OAuthRegistrationAnalyticsPreferenceTest {
             ReflectionTestUtils.setField(user, "id", 1L);
             return user;
         });
-        when(jwtTokenProvider.createAccessToken(isNull(), any())).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken()).thenReturn("refresh-token");
-
         filter.attemptAuthentication(
                 request("""
                         {

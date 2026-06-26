@@ -91,36 +91,17 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    void updateRefreshTokenMutatesExistingUserRefreshToken() {
-        User user = user("user@example.com");
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
-
-        jwtTokenProvider.updateRefreshToken("user@example.com", "new-refresh-token");
-
-        assertThat(user.getRefreshToken()).isEqualTo("new-refresh-token");
-    }
-
-    @Test
-    void updateRefreshTokenFailsWhenUserDoesNotExist() {
-        when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> jwtTokenProvider.updateRefreshToken("missing@example.com", "token"))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("일치하는 회원이 없습니다.");
-    }
-
-    @Test
-    void accessTokenValidityRequiresTokenToBeStoredForAUser() {
+    void accessTokenValidityRequiresExistingUserClaim() {
         String accessToken = jwtTokenProvider.createAccessToken("user@example.com", 7L);
-        when(userRepository.findByAccessToken(accessToken)).thenReturn(Optional.of(user("user@example.com")));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user("user@example.com")));
 
         assertThat(jwtTokenProvider.isAccessTokenValid(accessToken)).isTrue();
     }
 
     @Test
-    void accessTokenValidityRejectsValidJwtThatIsNotStored() {
+    void accessTokenValidityRejectsValidJwtForMissingUser() {
         String accessToken = jwtTokenProvider.createAccessToken("user@example.com", 7L);
-        when(userRepository.findByAccessToken(accessToken)).thenReturn(Optional.empty());
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> jwtTokenProvider.isAccessTokenValid(accessToken))
                 .isInstanceOf(InvalidAccessTokenException.class);

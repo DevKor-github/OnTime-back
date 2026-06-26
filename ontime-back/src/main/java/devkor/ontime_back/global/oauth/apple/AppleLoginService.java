@@ -15,6 +15,7 @@ import devkor.ontime_back.repository.UserAlarmSettingRepository;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.InvalidTokenException;
 import devkor.ontime_back.service.AnalyticsPreferenceService;
+import devkor.ontime_back.service.AuthTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -72,6 +73,7 @@ public class AppleLoginService {
     private final UserAlarmSettingRepository userAlarmSettingRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final AnalyticsPreferenceService analyticsPreferenceService;
+    private final AuthTokenService authTokenService;
 
     private final RestTemplate restTemplate = new RestTemplate();
     public Authentication handleLogin(String appleRefreshToken, User user, HttpServletResponse response) throws IOException {
@@ -80,12 +82,7 @@ public class AppleLoginService {
             user.updateSocialLoginToken(appleRefreshToken);
         }
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-        user.updateAccessToken(accessToken);
-        user.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(user, response);
         userRepository.saveAndFlush(user);
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -135,13 +132,7 @@ public class AppleLoginService {
 
         User savedUser = userRepository.save(newUser);
 
-        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getEmail(), savedUser.getId());
-        String refreshToken = jwtTokenProvider.createRefreshToken();
-
-        jwtTokenProvider.sendAccessAndRefreshToken(response, accessToken, refreshToken);
-
-        savedUser.updateAccessToken(accessToken);
-        savedUser.updateRefreshToken(refreshToken);
+        authTokenService.issueLoginTokens(savedUser, response);
         userRepository.save(savedUser);
         userAlarmSettingRepository.save(UserAlarmSetting.defaultFor(savedUser));
         analyticsPreferenceService.createDefaultPreference(savedUser);

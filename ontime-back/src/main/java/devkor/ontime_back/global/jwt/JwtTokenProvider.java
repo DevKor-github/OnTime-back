@@ -142,16 +142,6 @@ public class JwtTokenProvider {
         response.setHeader(refreshHeader, refreshToken);
     }
 
-    // refreshToken db에 업데이트
-    public void updateRefreshToken(String email, String refreshToken) {
-        userRepository.findByEmail(email)
-                .ifPresentOrElse(
-                        user -> user.updateRefreshToken(refreshToken),
-                        () -> {
-                            throw new RuntimeException("일치하는 회원이 없습니다.");
-                        });
-    }
-
     // token 유효성 확인
     public boolean isTokenValid(String token) {
         try {
@@ -166,9 +156,14 @@ public class JwtTokenProvider {
 
     public boolean isAccessTokenValid(String token) {
         try {
-            userRepository.findByAccessToken(token)
-                    .orElseThrow(() -> new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다."));
-            JWT.require(Algorithm.HMAC512(secretKey)).build().verify(token);
+            Long userId = JWT.require(Algorithm.HMAC512(secretKey))
+                    .build()
+                    .verify(token)
+                    .getClaim(USER_ID_CLAIM)
+                    .asLong();
+            if (userId == null || userRepository.findById(userId).isEmpty()) {
+                throw new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다.");
+            }
             log.info("Access credential is valid");
             return true;
         } catch (Exception e) {

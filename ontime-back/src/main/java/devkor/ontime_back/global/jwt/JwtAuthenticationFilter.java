@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import devkor.ontime_back.entity.User;
 import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.*;
+import devkor.ontime_back.service.AuthTokenService;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final AuthTokenService authTokenService;
 
     private GrantedAuthoritiesMapper authoritiesMapper = new NullAuthoritiesMapper();
 
@@ -91,15 +93,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // DB에 없으면 InvalidRefreshTokenException 발생
     public void reIssueAccessToken(HttpServletResponse response, String refreshToken) throws IOException {
         log.info("Checking stored refresh credential");
-        User user = userRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid Refresh token!~!"));
+        authTokenService.rotateRefreshToken(refreshToken, response);
         log.info("Stored refresh credential matched");
-
-        String accessToken = jwtTokenProvider.createAccessToken(user.getEmail(), user.getId());
-
-        user.updateAccessToken(accessToken);
-        jwtTokenProvider.sendAccessToken(response, accessToken);
-        userRepository.saveAndFlush(user);
     }
 
     // accessToken으로 유저의 권한정보만 저장하고 인증 허가(스프링 시큐리티 필터체인 中 인증체인 통과해 다음 체인으로 이동)
