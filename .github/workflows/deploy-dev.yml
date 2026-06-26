@@ -129,13 +129,13 @@ jobs:
             GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID || 'dev-google-web-client-id' }}
             GOOGLE_APP_CLIENT_ID=${{ secrets.GOOGLE_APP_CLIENT_ID || 'dev-google-app-client-id' }}
 
-            APPLE_CLIENT_ID=${{ secrets.DEV_APPLE_CLIENT_ID || 'dev-apple-client-id' }}
-            APPLE_TEAM_ID=${{ secrets.DEV_APPLE_TEAM_ID || 'dev-apple-team-id' }}
-            APPLE_LOGIN_KEY=${{ secrets.DEV_APPLE_LOGIN_KEY || 'dev-apple-key-id' }}
-            APPLE_PRIVATE_KEY_BASE64=${{ secrets.DEV_APPLE_PRIVATE_KEY_BASE64 }}
-            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.DEV_FEATURE_APPLE_LOGIN_ENABLED || 'false' }}
+            APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}
+            APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
+            APPLE_LOGIN_KEY=${{ secrets.APPLE_LOGIN_KEY }}
+            APPLE_PRIVATE_KEY_BASE64=${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
+            FEATURE_APPLE_LOGIN_ENABLED=${{ secrets.FEATURE_APPLE_LOGIN_ENABLED || 'true' }}
 
-            FIREBASE_CREDENTIALS_BASE64=${{ secrets.DEV_FIREBASE_CREDENTIALS_BASE64 }}
+            FIREBASE_CREDENTIALS_BASE64=${{ secrets.FIREBASE_CREDENTIALS_BASE64 }}
             EOF
 
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
