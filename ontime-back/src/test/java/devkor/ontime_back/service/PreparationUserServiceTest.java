@@ -299,4 +299,43 @@ public class PreparationUserServiceTest {
                 .containsExactlyInAnyOrder("세면", "옷입기");
     }
 
+    @Test
+    @DisplayName("기존 준비과정 ID를 유지하며 기본 준비과정을 수정한다.")
+    void updatePreparationUsers_reusesExistingStepIds() {
+        // given
+        User newUser = User.builder()
+                .email("reuse@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("reuse")
+                .punctualityScore(-1f)
+                .scheduleCountAfterReset(0)
+                .latenessCountAfterReset(0)
+                .build();
+        userRepository.save(newUser);
+
+        UUID preparationUser1Id = UUID.randomUUID();
+        UUID preparationUser2Id = UUID.randomUUID();
+
+        PreparationUser preparationUser2 = preparationUserRepository.save(new PreparationUser(
+                preparationUser2Id, newUser, "화장실 가기", 3, 1, null));
+        preparationUserRepository.save(new PreparationUser(
+                preparationUser1Id, newUser, "메이크업", 38, 0, preparationUser2));
+
+        List<PreparationDto> preparationDtoList = List.of(
+                new PreparationDto(preparationUser1Id, "메이크업", 38, preparationUser2Id),
+                new PreparationDto(preparationUser2Id, "화장실 가기", 3, null)
+        );
+
+        // when
+        preparationUserService.updatePreparationUsers(newUser.getId(), preparationDtoList);
+
+        // then
+        List<PreparationDto> result = preparationUserService.showAllPreparationUsers(newUser.getId());
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getPreparationId()).isEqualTo(preparationUser1Id);
+        assertThat(result.get(0).getNextPreparationId()).isEqualTo(preparationUser2Id);
+        assertThat(result.get(1).getPreparationId()).isEqualTo(preparationUser2Id);
+        assertThat(result.get(1).getNextPreparationId()).isNull();
+    }
+
 }
