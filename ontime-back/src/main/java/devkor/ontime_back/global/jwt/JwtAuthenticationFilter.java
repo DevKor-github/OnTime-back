@@ -2,7 +2,6 @@ package devkor.ontime_back.global.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import devkor.ontime_back.entity.User;
-import devkor.ontime_back.repository.UserRepository;
 import devkor.ontime_back.response.*;
 import devkor.ontime_back.service.AuthTokenService;
 import jakarta.servlet.DispatcherType;
@@ -36,7 +35,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final List<String> NO_CHECK_URLS = List.of("/login", "/health", "/actuator/health", "/swagger-ui", "/sign-up", "/account-deletion", "/privacy-policy", "/v3/api-docs", "/oauth2/google/login", "/oauth2/kakao/login", "/oauth2/apple/login");
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final UserRepository userRepository;
     private final AuthTokenService authTokenService;
 
     private GrantedAuthoritiesMapper authoritiesMapper = new NullAuthoritiesMapper();
@@ -71,8 +69,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 이제부터는 엑세스 토큰'만' 헤더에 담긴 요청만 생각하면 됨
 
             // 엑세스 토큰이 있고, 유효할 경우 checkAccessTokenAndAuthentication 메서드 호출해 권한정보 저장하고 스프링 시큐리티 필터체인 계속 진행
-            if (accessToken != null && jwtTokenProvider.isAccessTokenValid(accessToken)) {
-                checkAccessTokenAndAuthentication(request, response, filterChain);
+            if (accessToken != null) {
+                checkAccessTokenAndAuthentication(accessToken, request, response, filterChain);
             }
 
             // 엑세스 토큰이 없는 경우 EmptyAccessTokenException 발생
@@ -98,16 +96,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     // accessToken으로 유저의 권한정보만 저장하고 인증 허가(스프링 시큐리티 필터체인 中 인증체인 통과해 다음 체인으로 이동)
-    public void checkAccessTokenAndAuthentication(HttpServletRequest request, HttpServletResponse response,
+    public void checkAccessTokenAndAuthentication(String accessToken, HttpServletRequest request, HttpServletResponse response,
                                                   FilterChain filterChain) throws ServletException, IOException {
         log.info("Checking access credential authentication");
-        jwtTokenProvider.extractAccessToken(request)
-                .ifPresent(accessToken -> jwtTokenProvider.extractUserId(accessToken)
-                        .ifPresent(userId -> {
-                            log.info("Authenticated userId: {}", userId);
-                            userRepository.findById(userId)
-                                    .ifPresent(this::saveAuthentication);
-                        }));
+        User user = authTokenService.validateActiveAccessToken(accessToken);
+        log.info("Authenticated userId: {}", user.getId());
+        saveAuthentication(user);
 
         filterChain.doFilter(request, response);
     }

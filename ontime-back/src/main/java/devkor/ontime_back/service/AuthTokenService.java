@@ -5,6 +5,7 @@ import devkor.ontime_back.entity.UserRefreshToken;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserRefreshTokenRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.InvalidAccessTokenException;
 import devkor.ontime_back.response.InvalidRefreshTokenException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,20 @@ public class AuthTokenService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRefreshTokenRepository userRefreshTokenRepository;
     private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public User validateActiveAccessToken(String accessToken) {
+        Long userId = jwtTokenProvider.extractUserId(accessToken)
+                .orElseThrow(() -> new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다."));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다."));
+
+        if (!accessToken.equals(user.getAccessToken())) {
+            throw new InvalidAccessTokenException("유효하지 않은 엑세스 토큰입니다.");
+        }
+
+        return user;
+    }
 
     @Transactional
     public AuthTokens issueLoginTokens(User user, HttpServletResponse response) {

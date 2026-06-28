@@ -36,30 +36,19 @@ def summarize(result_dir):
         label = match.group("label")
         concurrency = match.group("concurrency")
         run = match.group("run")
-        stub_path = result_dir / f"stub-{label}-c{concurrency}-run{run}.json"
         k6_summary = read_json(k6_path)
-        stub_counts = read_json(stub_path) if stub_path.exists() else {}
 
         metrics = k6_summary.get("metrics", {})
-        requests = metric_value(metrics, "http_reqs", "count", 0)
-        failed_rate = metric_value(metrics, "http_req_failed", "rate", 0)
-        keys = stub_counts.get("keys", 0)
-        exchange = stub_counts.get("exchange", 0)
-
         rows.append(
             {
                 "label": label,
                 "concurrency": concurrency,
                 "run": run,
-                "requests": requests,
-                "error_rate": failed_rate,
+                "requests": metric_value(metrics, "http_reqs", "count", 0),
+                "error_rate": metric_value(metrics, "http_req_failed", "rate", 0),
                 "p50_ms": percentile(metrics, "http_req_duration", "p(50)"),
                 "p95_ms": percentile(metrics, "http_req_duration", "p(95)"),
                 "p99_ms": percentile(metrics, "http_req_duration", "p(99)"),
-                "jwks_calls": keys,
-                "token_exchange_calls": exchange,
-                "jwks_calls_per_request": keys / requests if requests else None,
-                "token_exchange_calls_per_request": exchange / requests if requests else None,
             }
         )
 

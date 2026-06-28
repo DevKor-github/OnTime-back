@@ -1,8 +1,8 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 
-const backendUrl = __ENV.BACKEND_URL || "http://127.0.0.1:18081";
-const stubUrl = __ENV.APPLE_STUB_URL || "http://127.0.0.1:18080";
+const backendUrl = __ENV.BACKEND_URL || "http://127.0.0.1:18082";
+const accessToken = __ENV.ACCESS_TOKEN || "";
 const vus = Number(__ENV.K6_VUS || 1);
 const duration = __ENV.K6_DURATION || "5m";
 const resultJson = __ENV.K6_RESULT_JSON || "k6-summary.json";
@@ -21,26 +21,20 @@ export const options = {
 };
 
 export function setup() {
-  const response = http.get(`${stubUrl}/fixture/apple-login-payload`);
-  if (response.status !== 200) {
-    throw new Error(`fixture request failed with status ${response.status}`);
+  if (!accessToken) {
+    throw new Error("ACCESS_TOKEN is required");
   }
-  return response.json();
 }
 
-export default function (payload) {
-  const response = http.post(
-    `${backendUrl}/oauth2/apple/login`,
-    JSON.stringify(payload),
-    {
-      headers: {
-        "content-type": "application/json",
-      },
-      tags: {
-        endpoint: "apple-login",
-      },
+export default function () {
+  const response = http.get(`${backendUrl}/users/me/punctuality-score`, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
     },
-  );
+    tags: {
+      endpoint: "jwt-auth-punctuality-score",
+    },
+  });
 
   check(response, {
     "status is 200": (res) => res.status === 200,
