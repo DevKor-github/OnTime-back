@@ -6,7 +6,7 @@ This benchmark measures issue #323: repeated Apple provider round trips on the r
 
 - Endpoint: `POST /oauth2/apple/login`
 - Primary path: returning Apple User, warm Apple key cache
-- Seeded Apple subject: `bench-apple-user`
+- Seeded Apple subjects: `bench-apple-user-<vu>` up to `bench-apple-user-64`
 - Apple provider: local stub, not the real Apple network
 - Stub delay:
   - `GET /auth/keys`: 80 ms
@@ -38,7 +38,7 @@ scripts/benchmarks/apple-login/run.sh before full
 scripts/benchmarks/apple-login/run.sh after full
 ```
 
-The script starts an isolated MySQL container, starts the Apple stub, starts the backend with the `bench` Spring profile, seeds the returning Apple User, runs k6, and writes results.
+The script starts an isolated MySQL container, starts the Apple stub, starts the backend with the `bench` Spring profile, seeds returning Apple Users, runs k6, and writes results.
 
 The script does not run `git checkout`. Measure the checkout you have selected, and use `before` or `after` only as the result label.
 
@@ -54,6 +54,8 @@ The script does not run `git checkout`. Measure the checkout you have selected, 
 - Warmup: 2 minutes
 - Measurement: 5 minutes
 - Concurrency: 1, 10, 20
+
+Each VU uses a distinct returning Apple User. This keeps the benchmark focused on Apple provider round trips instead of same-user active-session token rotation under concurrent login load.
 
 Override example:
 

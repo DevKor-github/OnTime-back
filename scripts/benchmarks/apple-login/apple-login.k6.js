@@ -21,14 +21,20 @@ export const options = {
 };
 
 export function setup() {
-  const response = http.get(`${stubUrl}/fixture/apple-login-payload`);
-  if (response.status !== 200) {
-    throw new Error(`fixture request failed with status ${response.status}`);
+  const payloads = [];
+  for (let index = 1; index <= vus; index += 1) {
+    const subject = `bench-apple-user-${index}`;
+    const response = http.get(`${stubUrl}/fixture/apple-login-payload?subject=${subject}`);
+    if (response.status !== 200) {
+      throw new Error(`fixture request failed for ${subject} with status ${response.status}`);
+    }
+    payloads.push(response.json());
   }
-  return response.json();
+  return payloads;
 }
 
-export default function (payload) {
+export default function (payloads) {
+  const payload = payloads[(__VU - 1) % payloads.length];
   const response = http.post(
     `${backendUrl}/oauth2/apple/login`,
     JSON.stringify(payload),

@@ -2,7 +2,7 @@ DELETE urt
 FROM user_refresh_token urt
 JOIN `user` u ON u.user_id = urt.user_id
 WHERE u.social_type = 'APPLE'
-  AND u.social_id = 'bench-apple-user';
+  AND u.social_id LIKE 'bench-apple-user-%';
 
 INSERT INTO `user` (
   email,
@@ -21,11 +21,11 @@ INSERT INTO `user` (
   firebase_token,
   social_login_token,
   access_token
-) VALUES (
-  'bench.apple@example.com',
+) SELECT
+  CONCAT('bench.apple+', seq.n, '@example.com'),
   NULL,
   NULL,
-  'Bench User',
+  CONCAT('Bench User ', seq.n),
   10,
   NULL,
   100.0,
@@ -33,12 +33,24 @@ INSERT INTO `user` (
   0,
   'USER',
   'APPLE',
-  'bench-apple-user',
+  CONCAT('bench-apple-user-', seq.n),
   NULL,
   NULL,
   'bench-existing-provider-grant',
   NULL
-) ON DUPLICATE KEY UPDATE
+FROM (
+  SELECT ones.n + tens.n * 10 + 1 AS n
+  FROM (
+    SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+    UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9
+  ) ones
+  CROSS JOIN (
+    SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+    UNION ALL SELECT 5 UNION ALL SELECT 6
+  ) tens
+  WHERE ones.n + tens.n * 10 + 1 <= 64
+) seq
+ON DUPLICATE KEY UPDATE
   email = VALUES(email),
   name = VALUES(name),
   spare_time = VALUES(spare_time),

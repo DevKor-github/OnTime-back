@@ -43,6 +43,7 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
@@ -53,6 +54,7 @@ public class AppleLoginService {
 
     private static final String APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys";
     private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
+    private static final Duration APPLE_PUBLIC_KEY_CACHE_TTL = Duration.ofHours(24);
     private String issuer = "https://appleid.apple.com";
     @Value("${apple.keys-url:" + APPLE_KEYS_URL + "}")
     private String appleKeysUrl = APPLE_KEYS_URL;
@@ -80,6 +82,9 @@ public class AppleLoginService {
     private final AuthTokenService authTokenService;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private ApplePublicKeyResponse cachedApplePublicKeys;
+    private Instant cachedApplePublicKeysAt;
+
     public Authentication handleLogin(String appleRefreshToken, User user, HttpServletResponse response) throws IOException {
         log.info("handleLogin");
         if (appleRefreshToken != null && !appleRefreshToken.isBlank()) {
@@ -170,9 +175,7 @@ public class AppleLoginService {
             Exception {
         log.info("Verify Apple identity credential");
         Map<String, String> headers = jwtUtils.parseHeaders(identityToken);
-        // apple publickey
-        ApplePublicKeyResponse applePublicKeyResponse = restTemplate.getForObject(appleKeysUrl, ApplePublicKeyResponse.class);
-        PublicKey publicKey = applePublicKeyGenerator.generatePublicKey(headers, applePublicKeyResponse);
+        PublicKey publicKey = resolveApplePublicKey(headers);
         // claim
         Claims tokenClaims = jwtUtils.getTokenClaims(identityToken, publicKey);
         // iss 확인
@@ -190,6 +193,30 @@ public class AppleLoginService {
         }
 
         return tokenClaims;
+    }
+
+    private PublicKey resolveApplePublicKey(Map<String, String> headers) throws Exception {
+        ApplePublicKeyResponse applePublicKeys = getCachedApplePublicKeys();
+        try {
+            return applePublicKeyGenerator.generatePublicKey(headers, applePublicKeys);
+        } catch (IllegalArgumentException e) {
+            log.info("Apple public key cache miss for signed credential header; refreshing key set");
+            return applePublicKeyGenerator.generatePublicKey(headers, refreshApplePublicKeys());
+        }
+    }
+
+    private synchronized ApplePublicKeyResponse getCachedApplePublicKeys() {
+        if (cachedApplePublicKeys == null || cachedApplePublicKeysAt == null ||
+                cachedApplePublicKeysAt.plus(APPLE_PUBLIC_KEY_CACHE_TTL).isBefore(Instant.now())) {
+            return refreshApplePublicKeys();
+        }
+        return cachedApplePublicKeys;
+    }
+
+    private synchronized ApplePublicKeyResponse refreshApplePublicKeys() {
+        cachedApplePublicKeys = restTemplate.getForObject(appleKeysUrl, ApplePublicKeyResponse.class);
+        cachedApplePublicKeysAt = Instant.now();
+        return cachedApplePublicKeys;
     }
 
     // apple 서버로부터 accesstoken, refreshtoken 발급

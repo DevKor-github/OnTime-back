@@ -3,7 +3,7 @@ import { createSign, generateKeyPairSync } from "node:crypto";
 
 const port = Number(process.env.APPLE_STUB_PORT || 18080);
 const clientId = process.env.APPLE_CLIENT_ID || "club.devkor.ontime.bench";
-const subject = process.env.BENCH_APPLE_SUB || "bench-apple-user";
+const defaultSubject = process.env.BENCH_APPLE_SUB || "bench-apple-user-1";
 const fullName = process.env.BENCH_APPLE_FULL_NAME || "Bench User";
 const email = process.env.BENCH_APPLE_EMAIL || "bench.apple@example.com";
 const keyDelayMs = Number(process.env.APPLE_KEYS_DELAY_MS || 80);
@@ -52,7 +52,7 @@ function readBody(request) {
   });
 }
 
-function signedIdentity() {
+function signedIdentity(subject) {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const header = {
     alg: "RS256",
@@ -64,7 +64,7 @@ function signedIdentity() {
     aud: clientId,
     exp: nowSeconds + 3600,
     iat: nowSeconds,
-    sub: subject,
+    sub: subject || defaultSubject,
     email,
   };
   const signingInput = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
@@ -102,7 +102,7 @@ const server = http.createServer(async (request, response) => {
       jsonResponse(response, 200, {
         access_token: "bench-apple-access",
         refresh_token: "bench-apple-refresh",
-        id_token: signedIdentity(),
+        id_token: signedIdentity(defaultSubject),
         token_type: "Bearer",
         expires_in: 3600,
       });
@@ -110,11 +110,12 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/fixture/apple-login-payload") {
+      const subject = url.searchParams.get("subject") || defaultSubject;
       jsonResponse(response, 200, {
-        idToken: signedIdentity(),
+        idToken: signedIdentity(subject),
         authCode: "bench-auth-code",
         fullName,
-        email,
+        email: email.replace("@", `+${subject}@`),
       });
       return;
     }
