@@ -1110,6 +1110,59 @@ class ScheduleServiceTest {
     }
 
     @Test
+    @DisplayName("이미 존재하는 scheduleId로 약속 추가 시 실패한다.")
+    void addSchedule_failByDuplicateScheduleId() {
+        // given
+        User newUser = User.builder()
+                .email("user@example.com")
+                .password(passwordEncoder.encode("password1234"))
+                .name("jinsuh")
+                .punctualityScore(-1f)
+                .scheduleCountAfterReset(0)
+                .latenessCountAfterReset(0)
+                .build();
+        userRepository.save(newUser);
+
+        Place place = Place.builder()
+                .placeId(UUID.fromString("70d460da-6a82-4c57-a285-567cdeda5601"))
+                .placeName("과학도서관")
+                .build();
+        placeRepository.save(place);
+
+        UUID duplicateScheduleId = UUID.fromString("023e4567-e89b-12d3-a456-426614170000");
+        scheduleRepository.save(Schedule.builder()
+                .scheduleId(duplicateScheduleId)
+                .scheduleName("기존 약속")
+                .scheduleTime(LocalDateTime.of(2025, 2, 10, 14, 0))
+                .moveTime(30)
+                .latenessTime(-1)
+                .doneStatus(DoneStatus.NOT_ENDED)
+                .place(place)
+                .user(newUser)
+                .build());
+
+        ScheduleAddDto scheduleAddDto = ScheduleAddDto.builder()
+                .scheduleId(duplicateScheduleId)
+                .scheduleName("중복 약속")
+                .scheduleTime(LocalDateTime.of(2025, 2, 11, 14, 0))
+                .moveTime(30)
+                .scheduleNote("늦으면 안됨")
+                .placeId(place.getPlaceId())
+                .placeName(place.getPlaceName())
+                .scheduleSpareTime(5)
+                .isChange(false)
+                .isStarted(false)
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> scheduleService.addSchedule(scheduleAddDto, newUser.getId()))
+                .isInstanceOf(GeneralException.class)
+                .hasMessage(ErrorCode.RESOURCE_ALREADY_EXISTS.getMessage())
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.RESOURCE_ALREADY_EXISTS);
+    }
+
+    @Test
     @DisplayName("다른 사용자가 약속 추가 시 실패한다.")
     void addSchedule_failByNonExistentUser() {
         // given
