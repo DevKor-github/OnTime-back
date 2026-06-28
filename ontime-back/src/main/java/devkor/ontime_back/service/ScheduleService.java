@@ -123,8 +123,11 @@ public class ScheduleService {
     public void deleteSchedule(UUID scheduleId, Long userId) {
         Schedule schedule = getLockedScheduleWithAuthorization(scheduleId, userId);
         assertScheduleNotFinished(schedule);
-        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(scheduleId)
-                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
+        List<NotificationSchedule> notifications = notificationScheduleRepository.findAllByScheduleScheduleIdOrderByIdAsc(scheduleId);
+        if (notifications.isEmpty()) {
+            throw new GeneralException(NOTIFICATION_NOT_FOUND);
+        }
+        notifications.forEach(notification -> notificationService.cancelScheduledNotification(notification.getId()));
         scheduleRepository.deleteByScheduleId(scheduleId);
     }
 
@@ -160,6 +163,9 @@ public class ScheduleService {
     // schedule 추가
     @Transactional
     public void addSchedule(ScheduleAddDto scheduleAddDto, Long userId) {
+        if (scheduleRepository.existsById(scheduleAddDto.getScheduleId())) {
+            throw new GeneralException(RESOURCE_ALREADY_EXISTS);
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new GeneralException(USER_NOT_FOUND));
         Place place = placeRepository.findByPlaceName(scheduleAddDto.getPlaceName())
@@ -559,9 +565,8 @@ public class ScheduleService {
     }
 
     private void refreshScheduleNotification(Schedule schedule) {
-        NotificationSchedule notification = notificationScheduleRepository.findByScheduleScheduleId(schedule.getScheduleId())
-                .orElseThrow(() -> new GeneralException(NOTIFICATION_NOT_FOUND));
         LocalDateTime newNotificationTime = getNotificationTime(schedule, schedule.getUser());
+        NotificationSchedule notification = resolveNotificationForRefresh(schedule, newNotificationTime);
         if (newNotificationTime.equals(notification.getNotificationTime())) {
             notificationService.cancelScheduledNotification(notification.getId());
             notification.markAsUnsent();
@@ -570,6 +575,27 @@ public class ScheduleService {
             return;
         }
         updateAndRescheduleNotification(newNotificationTime, notification);
+    }
+
+    private NotificationSchedule resolveNotificationForRefresh(Schedule schedule, LocalDateTime notificationTime) {
+        List<NotificationSchedule> notifications = notificationScheduleRepository
+                .findAllByScheduleScheduleIdOrderByIdAsc(schedule.getScheduleId());
+        if (notifications.isEmpty()) {
+            NotificationSchedule notification = NotificationSchedule.builder()
+                    .notificationTime(notificationTime)
+                    .isSent(false)
+                    .schedule(schedule)
+                    .build();
+            return notificationScheduleRepository.save(notification);
+        }
+
+        NotificationSchedule notification = notifications.get(0);
+        for (int i = 1; i < notifications.size(); i++) {
+            NotificationSchedule duplicate = notifications.get(i);
+            notificationService.cancelScheduledNotification(duplicate.getId());
+            notificationScheduleRepository.delete(duplicate);
+        }
+        return notification;
     }
 
     private PreparationDto mapPreparationUserToDto(PreparationUser preparationUser) {
