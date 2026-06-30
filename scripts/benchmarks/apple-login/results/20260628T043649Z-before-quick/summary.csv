@@ -1,0 +1,4 @@
+label,concurrency,run,requests,error_rate,p50_ms,p95_ms,p99_ms,jwks_calls,token_exchange_calls,jwks_calls_per_request,token_exchange_calls_per_request
+before,1,01,590,0,405.59299999999996,425.5111,,590,590,1.0,1.0
+before,10,01,5773,0,417.912,435.10979999999995,,5773,5773,1.0,1.0
+before,20,01,11745,0,408.035,431.1746,,11745,11745,1.0,1.0

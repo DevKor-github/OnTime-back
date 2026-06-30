@@ -164,6 +164,55 @@ class AppleLoginServiceTest {
     }
 
     @Test
+    void verifyIdentityTokenReusesCachedApplePublicKeys() throws Exception {
+        RestTemplate restTemplate = mockRestTemplate();
+        ApplePublicKeyResponse appleKeys = new ApplePublicKeyResponse(java.util.List.of());
+        PublicKey publicKey = java.security.KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic();
+        Claims claims = validAppleClaims();
+        Map<String, String> headers = Map.of("kid", "key-id", "alg", "RS256");
+        ReflectionTestUtils.setField(appleLoginService, "clientId", "com.ontime.service");
+        when(jwtUtils.parseHeaders("identity-token")).thenReturn(headers);
+        when(restTemplate.getForObject("https://appleid.apple.com/auth/keys", ApplePublicKeyResponse.class))
+                .thenReturn(appleKeys);
+        when(applePublicKeyGenerator.generatePublicKey(headers, appleKeys)).thenReturn(publicKey);
+        when(jwtUtils.getTokenClaims("identity-token", publicKey)).thenReturn(claims);
+
+        appleLoginService.verifyIdentityToken("identity-token");
+        appleLoginService.verifyIdentityToken("identity-token");
+
+        verify(restTemplate, times(1)).getForObject("https://appleid.apple.com/auth/keys", ApplePublicKeyResponse.class);
+        verify(applePublicKeyGenerator, times(2)).generatePublicKey(headers, appleKeys);
+    }
+
+    @Test
+    void verifyIdentityTokenRefreshesApplePublicKeysOnceWhenKidIsUnknown() throws Exception {
+        RestTemplate restTemplate = mockRestTemplate();
+        ApplePublicKeyResponse staleKeys = new ApplePublicKeyResponse(java.util.List.of(
+                new ApplePublicKey("RSA", "old-key-id", "RS256", "AQAB", "AQAB")
+        ));
+        ApplePublicKeyResponse rotatedKeys = new ApplePublicKeyResponse(java.util.List.of(
+                new ApplePublicKey("RSA", "new-key-id", "RS256", "AQAB", "AQAB")
+        ));
+        PublicKey publicKey = java.security.KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic();
+        Claims claims = validAppleClaims();
+        Map<String, String> headers = Map.of("kid", "new-key-id", "alg", "RS256");
+        ReflectionTestUtils.setField(appleLoginService, "clientId", "com.ontime.service");
+        when(jwtUtils.parseHeaders("identity-token")).thenReturn(headers);
+        when(restTemplate.getForObject("https://appleid.apple.com/auth/keys", ApplePublicKeyResponse.class))
+                .thenReturn(staleKeys)
+                .thenReturn(rotatedKeys);
+        when(applePublicKeyGenerator.generatePublicKey(headers, staleKeys))
+                .thenThrow(new IllegalArgumentException("Invalid JWT: No matching Apple Public Key found"));
+        when(applePublicKeyGenerator.generatePublicKey(headers, rotatedKeys)).thenReturn(publicKey);
+        when(jwtUtils.getTokenClaims("identity-token", publicKey)).thenReturn(claims);
+
+        Claims verifiedClaims = appleLoginService.verifyIdentityToken("identity-token");
+
+        assertThat(verifiedClaims).isSameAs(claims);
+        verify(restTemplate, times(2)).getForObject("https://appleid.apple.com/auth/keys", ApplePublicKeyResponse.class);
+    }
+
+    @Test
     void verifyIdentityTokenRejectsTokenFromUnexpectedIssuer() throws Exception {
         RestTemplate restTemplate = mockRestTemplate();
         PublicKey publicKey = java.security.KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic();

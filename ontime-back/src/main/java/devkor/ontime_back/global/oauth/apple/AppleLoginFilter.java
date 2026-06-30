@@ -74,8 +74,9 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
         }
 
         try {
-            // Apple Identity Token 검증
+            long startedAt = System.nanoTime();
             Claims tokenClaims = appleLoginService.verifyIdentityToken(oAuthAppleRequestDto.getIdToken());
+            long verifiedAt = System.nanoTime();
             if (tokenClaims.getSubject() == null) {
                 throw new IllegalStateException("Apple 로그인 검증 실패");
             }
@@ -85,17 +86,20 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
                     oAuthAppleRequestDto.getEmail(),
                     tokenClaims.get("email", String.class)
             );
-            String appleRefreshToken = exchangeAppleRefreshToken(oAuthAppleRequestDto);
-
             OAuthAppleUserDto oAuthAppleUserDto = new OAuthAppleUserDto(appleUserId, email, oAuthAppleRequestDto.getFullName());
 
             Optional<User> existingUser = userRepository.findBySocialTypeAndSocialId(SocialType.APPLE, appleUserId);
+            long userLookupAt = System.nanoTime();
 
             if (existingUser.isPresent()) {
-                return appleLoginService.handleLogin(appleRefreshToken, existingUser.get(), response);
-            } else {
-                return appleLoginService.handleRegister(appleRefreshToken, oAuthAppleUserDto, response);
+                logAppleLoginTiming("existing_user", startedAt, verifiedAt, userLookupAt, userLookupAt);
+                return appleLoginService.handleLogin(null, existingUser.get(), response);
             }
+
+            String appleRefreshToken = exchangeAppleRefreshToken(oAuthAppleRequestDto);
+            long credentialExchangeAt = System.nanoTime();
+            logAppleLoginTiming("new_user", startedAt, verifiedAt, userLookupAt, credentialExchangeAt);
+            return appleLoginService.handleRegister(appleRefreshToken, oAuthAppleUserDto, response);
 
         } catch (Exception e) {
             log.error("Apple login failed", e);
@@ -113,6 +117,21 @@ public class AppleLoginFilter extends AbstractAuthenticationProcessingFilter {
             log.warn("Apple credential exchange failed; continuing with verified identity credential", e);
             return null;
         }
+    }
+
+    private void logAppleLoginTiming(String result, long startedAt, long verifiedAt, long userLookupAt, long credentialExchangeAt) {
+        log.info(
+                "Apple login stage timing result={} verifyMs={} dbLookupMs={} credentialExchangeMs={} totalMs={}",
+                result,
+                elapsedMillis(startedAt, verifiedAt),
+                elapsedMillis(verifiedAt, userLookupAt),
+                elapsedMillis(userLookupAt, credentialExchangeAt),
+                elapsedMillis(startedAt, credentialExchangeAt)
+        );
+    }
+
+    private long elapsedMillis(long from, long to) {
+        return (to - from) / 1_000_000;
     }
 
     private String firstNonBlank(String first, String second) {

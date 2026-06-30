@@ -42,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -330,7 +331,7 @@ class OAuthLoginFilterValidationTest {
     }
 
     @Test
-    @DisplayName("애플 로그인 필터가 기존 유저를 Apple refresh token으로 로그인 처리한다")
+    @DisplayName("애플 로그인 필터가 기존 유저는 Apple token 교환 없이 로그인 처리한다")
     void appleLoginFilterLogsInExistingUser() throws Exception {
         AppleLoginFilter filter = new AppleLoginFilter(
                 "/oauth2/apple/login",
@@ -341,14 +342,12 @@ class OAuthLoginFilterValidationTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         Claims claims = Jwts.claims().setSubject("apple-id");
         claims.put("email", "user@example.com");
-        AppleTokenResponseDto tokenResponse = appleTokenResponse("apple-refresh-token");
         User existingUser = user(1L, "user@example.com", Role.USER);
 
         when(appleLoginService.verifyIdentityToken("apple-id-token")).thenReturn(claims);
-        when(appleLoginService.getAppleAccessTokenAndRefreshToken("auth-code")).thenReturn(tokenResponse);
         when(userRepository.findBySocialTypeAndSocialId(SocialType.APPLE, "apple-id"))
                 .thenReturn(Optional.of(existingUser));
-        when(appleLoginService.handleLogin("apple-refresh-token", existingUser, response)).thenReturn(
+        when(appleLoginService.handleLogin(null, existingUser, response)).thenReturn(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(existingUser, null)
         );
 
@@ -356,12 +355,13 @@ class OAuthLoginFilterValidationTest {
                 request("/oauth2/apple/login", validAppleBody()),
                 response).getPrincipal()).isSameAs(existingUser);
 
-        verify(appleLoginService).handleLogin("apple-refresh-token", existingUser, response);
+        verify(appleLoginService, never()).getAppleAccessTokenAndRefreshToken("auth-code");
+        verify(appleLoginService).handleLogin(null, existingUser, response);
     }
 
     @Test
-    @DisplayName("애플 로그인 필터가 Apple refresh token 교환 실패 시 identity token 검증만으로 기존 유저를 로그인 처리한다")
-    void appleLoginFilterLogsInExistingUserWhenTokenExchangeFails() throws Exception {
+    @DisplayName("애플 로그인 필터가 기존 유저 경로에서는 실패 가능한 Apple token 교환을 시도하지 않는다")
+    void appleLoginFilterSkipsTokenExchangeForExistingUser() throws Exception {
         AppleLoginFilter filter = new AppleLoginFilter(
                 "/oauth2/apple/login",
                 objectMapper,
@@ -373,8 +373,6 @@ class OAuthLoginFilterValidationTest {
         User existingUser = user(1L, "user@example.com", Role.USER);
 
         when(appleLoginService.verifyIdentityToken("apple-id-token")).thenReturn(claims);
-        when(appleLoginService.getAppleAccessTokenAndRefreshToken("auth-code"))
-                .thenThrow(new RuntimeException("invalid_client"));
         when(userRepository.findBySocialTypeAndSocialId(SocialType.APPLE, "apple-id"))
                 .thenReturn(Optional.of(existingUser));
         when(appleLoginService.handleLogin(null, existingUser, response)).thenReturn(
@@ -385,6 +383,7 @@ class OAuthLoginFilterValidationTest {
                 request("/oauth2/apple/login", validAppleBody()),
                 response).getPrincipal()).isSameAs(existingUser);
 
+        verify(appleLoginService, never()).getAppleAccessTokenAndRefreshToken("auth-code");
         verify(appleLoginService).handleLogin(null, existingUser, response);
     }
 
