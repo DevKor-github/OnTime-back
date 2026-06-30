@@ -394,9 +394,11 @@ public class ScheduleService {
 
         List<Schedule> schedules = scheduleRepository.findAlarmWindowSchedules(userId, startDate, endDate, DoneStatus.NOT_ENDED);
         Integer defaultAlarmOffsetMinutes = alarmService.getDefaultAlarmOffsetMinutes(userId);
+        Integer userSpareTime = userRepository.findSpareTimeById(userId);
+        AlarmWindowPreparationLookup preparationLookup = preloadAlarmWindowPreparations(userId, schedules);
 
         return schedules.stream()
-                .map(schedule -> mapToAlarmWindowDto(schedule, defaultAlarmOffsetMinutes))
+                .map(schedule -> mapToAlarmWindowDto(schedule, defaultAlarmOffsetMinutes, userSpareTime, preparationLookup))
                 .collect(Collectors.toList());
     }
 
@@ -421,15 +423,24 @@ public class ScheduleService {
         );
     }
 
-    private AlarmWindowScheduleDto mapToAlarmWindowDto(Schedule schedule, Integer defaultAlarmOffsetMinutes) {
-        List<PreparationDto> preparations = resolvePreparationDtos(schedule);
+    private AlarmWindowScheduleDto mapToAlarmWindowDto(Schedule schedule,
+                                                       Integer defaultAlarmOffsetMinutes,
+                                                       Integer userSpareTime,
+                                                       AlarmWindowPreparationLookup preparationLookup) {
+        List<PreparationDto> preparations = preparationLookup != null
+                ? preparationLookup.resolve(schedule)
+                : resolvePreparationDtos(schedule);
 
         int totalPreparationTime = preparations.stream()
                 .map(PreparationDto::getPreparationTime)
                 .map(this::defaultNonNegative)
                 .reduce(0, Integer::sum);
         int moveTime = defaultNonNegative(schedule.getMoveTime());
-        int scheduleSpareTime = getEffectiveSpareTime(schedule);
+        int scheduleSpareTime = getEffectiveSpareTime(schedule, userSpareTime);
+        PreparationMode preparationMode = schedule.effectivePreparationMode();
+        PreparationTemplate preparationTemplate = preparationMode == PreparationMode.TEMPLATE
+                ? schedule.getPreparationTemplate()
+                : null;
 
         LocalDateTime preparationStartTime = schedule.getScheduleTime()
                 .minusMinutes((long) totalPreparationTime + moveTime + scheduleSpareTime);
@@ -445,16 +456,67 @@ public class ScheduleService {
                 .doneStatus(schedule.getDoneStatus())
                 .startedAt(schedule.getStartedAt())
                 .finishedAt(schedule.getFinishedAt())
-                .preparationMode(schedule.effectivePreparationMode())
-                .preparationTemplateId(schedule.getPreparationTemplate() != null ? schedule.getPreparationTemplate().getPreparationTemplateId() : null)
-                .preparationTemplateName(schedule.getPreparationTemplate() != null ? schedule.getPreparationTemplate().getTemplateName() : null)
-                .preparationTemplateDeleted(schedule.getPreparationTemplate() != null && schedule.getPreparationTemplate().isDeleted())
+                .preparationMode(preparationMode)
+                .preparationTemplateId(preparationTemplate != null ? preparationTemplate.getPreparationTemplateId() : null)
+                .preparationTemplateName(preparationTemplate != null ? preparationTemplate.getTemplateName() : null)
+                .preparationTemplateDeleted(preparationTemplate != null && preparationTemplate.isDeleted())
                 .preparationFrozen(schedule.getStartedAt() != null)
                 .preparationStartTime(preparationStartTime)
                 .defaultAlarmTime(defaultAlarmTime)
                 .preparations(preparations)
                 .alarmSettings(null)
                 .build();
+    }
+
+    private AlarmWindowPreparationLookup preloadAlarmWindowPreparations(Long userId, List<Schedule> schedules) {
+        if (schedules.isEmpty()) {
+            return new AlarmWindowPreparationLookup(List.of(), Map.of(), Map.of());
+        }
+
+        boolean hasDefaultPreparationSchedule = schedules.stream()
+                .anyMatch(schedule -> schedule.getStartedAt() == null
+                        && schedule.effectivePreparationMode() == PreparationMode.DEFAULT);
+        List<PreparationDto> defaultPreparations = List.of();
+        if (hasDefaultPreparationSchedule) {
+            defaultPreparations = preparationStepService.toLinkedDtoFromUser(
+                    preparationUserRepository.findByUserIdWithNextPreparation(userId)
+            );
+        }
+
+        List<Schedule> scheduleSpecificPreparationSchedules = schedules.stream()
+                .filter(schedule -> schedule.getStartedAt() != null || schedule.effectivePreparationMode() == PreparationMode.CUSTOM)
+                .toList();
+        Map<UUID, List<PreparationDto>> preparationsByScheduleId = scheduleSpecificPreparationSchedules.isEmpty()
+                ? Map.of()
+                : preparationScheduleRepository.findBySchedulesWithNextPreparation(scheduleSpecificPreparationSchedules)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        preparationSchedule -> preparationSchedule.getSchedule().getScheduleId(),
+                        Collectors.collectingAndThen(Collectors.toList(), preparationStepService::toLinkedDtoFromSchedule)
+                ));
+
+        List<PreparationTemplate> templates = schedules.stream()
+                .filter(schedule -> schedule.effectivePreparationMode() == PreparationMode.TEMPLATE)
+                .map(Schedule::getPreparationTemplate)
+                .filter(template -> template != null)
+                .collect(Collectors.toMap(
+                        PreparationTemplate::getPreparationTemplateId,
+                        template -> template,
+                        (first, ignored) -> first
+                ))
+                .values()
+                .stream()
+                .toList();
+        Map<UUID, List<PreparationDto>> preparationsByTemplateId = templates.isEmpty()
+                ? Map.of()
+                : preparationTemplateStepRepository.findByPreparationTemplatesOrdered(templates)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        templateStep -> templateStep.getPreparationTemplate().getPreparationTemplateId(),
+                        Collectors.collectingAndThen(Collectors.toList(), preparationStepService::toLinkedDtoFromTemplate)
+                ));
+
+        return new AlarmWindowPreparationLookup(defaultPreparations, preparationsByScheduleId, preparationsByTemplateId);
     }
 
     private PreparationDto mapPreparationScheduleToDto(PreparationSchedule preparationSchedule) {
@@ -610,10 +672,14 @@ public class ScheduleService {
     }
 
     private Integer getEffectiveSpareTime(Schedule schedule) {
+        return getEffectiveSpareTime(schedule, null);
+    }
+
+    private Integer getEffectiveSpareTime(Schedule schedule, Integer userSpareTime) {
         if (schedule.getScheduleSpareTime() != null) {
             return defaultNonNegative(schedule.getScheduleSpareTime());
         }
-        return defaultNonNegative(schedule.getUser().getSpareTime());
+        return defaultNonNegative(userSpareTime != null ? userSpareTime : schedule.getUser().getSpareTime());
     }
 
     private Integer defaultNonNegative(Integer value) {
@@ -622,6 +688,26 @@ public class ScheduleService {
 
     private Instant nowForPersistence() {
         return Instant.now().truncatedTo(ChronoUnit.SECONDS);
+    }
+
+    private record AlarmWindowPreparationLookup(
+            List<PreparationDto> defaultPreparations,
+            Map<UUID, List<PreparationDto>> preparationsByScheduleId,
+            Map<UUID, List<PreparationDto>> preparationsByTemplateId
+    ) {
+        private List<PreparationDto> resolve(Schedule schedule) {
+            if (schedule.getStartedAt() != null || schedule.effectivePreparationMode() == PreparationMode.CUSTOM) {
+                return preparationsByScheduleId.getOrDefault(schedule.getScheduleId(), List.of());
+            }
+            if (schedule.effectivePreparationMode() == PreparationMode.TEMPLATE) {
+                PreparationTemplate template = schedule.getPreparationTemplate();
+                if (template == null) {
+                    throw new GeneralException(PREPARATION_TEMPLATE_NOT_FOUND);
+                }
+                return preparationsByTemplateId.getOrDefault(template.getPreparationTemplateId(), List.of());
+            }
+            return defaultPreparations;
+        }
     }
 
 }
