@@ -6,6 +6,7 @@ import devkor.ontime_back.entity.UserRefreshToken;
 import devkor.ontime_back.global.jwt.JwtTokenProvider;
 import devkor.ontime_back.repository.UserRefreshTokenRepository;
 import devkor.ontime_back.repository.UserRepository;
+import devkor.ontime_back.response.InvalidAccessTokenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +18,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +40,32 @@ class AuthTokenServiceTest {
     @BeforeEach
     void setUp() {
         authTokenService = new AuthTokenService(jwtTokenProvider, userRefreshTokenRepository, userRepository);
+    }
+
+    @Test
+    void validateActiveAccessTokenReadsUserOnceAndReturnsTheAuthenticatedUser() {
+        User user = user();
+        user.updateAccessToken("access-token");
+        when(jwtTokenProvider.extractUserId("access-token")).thenReturn(Optional.of(1L));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        User authenticatedUser = authTokenService.validateActiveAccessToken("access-token");
+
+        assertThat(authenticatedUser).isSameAs(user);
+        verify(userRepository, times(1)).findById(1L);
+    }
+
+    @Test
+    void validateActiveAccessTokenRejectsAReplacedAccessToken() {
+        User user = user();
+        user.updateAccessToken("newer-access-token");
+        when(jwtTokenProvider.extractUserId("access-token")).thenReturn(Optional.of(1L));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> authTokenService.validateActiveAccessToken("access-token"))
+                .isInstanceOf(InvalidAccessTokenException.class);
+
+        verify(userRepository, times(1)).findById(1L);
     }
 
     @Test

@@ -54,6 +54,10 @@ public class AppleLoginService {
     private static final String APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys";
     private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
     private String issuer = "https://appleid.apple.com";
+    @Value("${apple.keys-url:" + APPLE_KEYS_URL + "}")
+    private String appleKeysUrl = APPLE_KEYS_URL;
+    @Value("${apple.token-url:" + APPLE_TOKEN_URL + "}")
+    private String appleTokenUrl = APPLE_TOKEN_URL;
     @Value("${apple.client.id}")
     private String clientId;
     @Value("${apple.team.id}")
@@ -167,7 +171,7 @@ public class AppleLoginService {
         log.info("Verify Apple identity credential");
         Map<String, String> headers = jwtUtils.parseHeaders(identityToken);
         // apple publickey
-        ApplePublicKeyResponse applePublicKeyResponse = restTemplate.getForObject(APPLE_KEYS_URL, ApplePublicKeyResponse.class);
+        ApplePublicKeyResponse applePublicKeyResponse = restTemplate.getForObject(appleKeysUrl, ApplePublicKeyResponse.class);
         PublicKey publicKey = applePublicKeyGenerator.generatePublicKey(headers, applePublicKeyResponse);
         // claim
         Claims tokenClaims = jwtUtils.getTokenClaims(identityToken, publicKey);
@@ -201,7 +205,7 @@ public class AppleLoginService {
         HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
 
         ResponseEntity<JsonNode> responseEntity = restTemplate.exchange(
-                APPLE_TOKEN_URL, HttpMethod.POST, requestEntity, JsonNode.class);
+                appleTokenUrl, HttpMethod.POST, requestEntity, JsonNode.class);
 
         JsonNode response = responseEntity.getBody();
 

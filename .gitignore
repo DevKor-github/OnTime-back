@@ -1,3 +1,5 @@
 .DS_Store
 .idea/
 .codex/
+scripts/benchmarks/*/results/*
+!scripts/benchmarks/*/results/.gitkeep
