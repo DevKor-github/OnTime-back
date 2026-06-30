@@ -17,6 +17,12 @@ public interface PreparationTemplateStepRepository extends JpaRepository<Prepara
             "ORDER BY pts.orderIndex ASC, pts.preparationTemplateStepId ASC")
     List<PreparationTemplateStep> findByPreparationTemplateOrdered(@Param("template") PreparationTemplate template);
 
+    @Query("SELECT pts FROM PreparationTemplateStep pts " +
+            "JOIN FETCH pts.preparationTemplate pt " +
+            "WHERE pts.preparationTemplate IN :templates " +
+            "ORDER BY pt.preparationTemplateId ASC, pts.orderIndex ASC, pts.preparationTemplateStepId ASC")
+    List<PreparationTemplateStep> findByPreparationTemplatesOrdered(@Param("templates") List<PreparationTemplate> templates);
+
     void deleteByPreparationTemplate(PreparationTemplate preparationTemplate);
 
     boolean existsByPreparationTemplateStepIdAndPreparationTemplate(UUID preparationTemplateStepId, PreparationTemplate preparationTemplate);

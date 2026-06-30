@@ -59,8 +59,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     List<Schedule> findAllByUserId(@Param("userId") Long userId);
 
     @Query("SELECT s FROM Schedule s " +
-            "JOIN FETCH s.user " +
             "LEFT JOIN FETCH s.place " +
+            "LEFT JOIN FETCH s.preparationTemplate " +
             "WHERE s.user.id = :userId " +
             "AND s.doneStatus = :doneStatus " +
             "AND s.scheduleTime >= :startDate " +
